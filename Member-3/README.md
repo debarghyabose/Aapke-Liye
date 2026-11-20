@@ -1,6 +1,6 @@
 # 🛰️ Member 3: Verification + Offline + Channels
 
-**Name:** _your name_ · **GitHub:** [DEBANIK07](https://github.com/DEBANIK07)
+**Name:** Debanik Dey · **GitHub:** [DEBANIK07](https://github.com/DEBANIK07)
 
 ## Your job
 Make claims trustworthy for officials, make sure no claim is lost when the network drops, and reach people without smartphones.
