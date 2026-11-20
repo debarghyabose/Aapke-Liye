@@ -7,11 +7,18 @@ drafts follow-up documents.
 ## 🚀 Current sprint (2 hours) — your tasks
 
 ### Gemini speech + before/after (Google AI 20%)
-- [ ] **Gemini hears the voice note.** In `asr.py`, add `ASR_PROVIDER=gemini|whisper` (default `gemini`). Send the 16 kHz WAV to Gemini as audio and ask for the transcript plus language. Keep Whisper as the fallback when Gemini fails or there's no key. *Even better:* one Gemini call from audio straight to claim fields (skips a step, faster).
-- [ ] Return `asr_provider: "gemini"` in the turn response, so it shows on stage and in `/health`.
-- [ ] **Before/after:** make `/v1/damage/compare` real with Gemini (it already exists, tested in mock mode only). Member 2 will call it when a claim photo has a baseline photo from the vault.
-- [ ] Tests: provider switch, fallback to Whisper, compare in mock and live.
+- [x] **Gemini hears the voice note.** In `asr.py`, add `ASR_PROVIDER=gemini|whisper` (default `gemini`). Send the 16 kHz WAV to Gemini as audio and ask for the transcript plus language. Keep Whisper as the fallback when Gemini fails or there's no key. *Even better:* one Gemini call from audio straight to claim fields (skips a step, faster).
+- [x] Return `asr_provider: "gemini"` in the turn response, so it shows on stage and in `/health`.
+- [x] **Before/after:** make `/v1/damage/compare` real with Gemini (it already exists, tested in mock mode only). Member 2 will call it when a claim photo has a baseline photo from the vault.
+- [x] Tests: provider switch, fallback to Whisper, compare in mock and live.
 - **Done when:** a Hindi voice note is transcribed by Gemini (Whisper turned off) and the claim fills in.
+
+**✅ Done (branch `member-1/gemini-speech`):**
+- `ASR_PROVIDER=gemini` (default) sends the 16 kHz WAV to Gemini; `ASR_FALLBACK=whisper` falls back to local Whisper if Gemini fails (`none` turns it off). Silence is not sent to Whisper. Whisper is only loaded at startup when it is the main provider.
+- `/health` shows `"asr": "gemini:<model> (fallback whisper:...)"`; every voice turn returns `asr_provider` (`gemini` / `whisper`), also saved in `claim.transcripts[].asr_provider`.
+- Tested live: a Hindi note (Devanagari, 7 s) and a Bengali note (Bengali script) filled name, village, district, state, date, house and livestock; Gemini read a spoken 10-digit phone number correctly.
+- `/v1/damage/compare` already used Gemini in live mode; tested live: a different house is reported as `same_property: false` → `needs_human_review: true` (fraud signal); the same photo twice gives score 0. **For Member 2:** call it with `{"baseline_image_base64", "damage_image_base64", "baseline_media_type", "damage_media_type", "context"}`.
+- Tests: `tests/test_asr_providers.py` (7 tests).
 
 **Rules:** work on your own branch `member-1/<feature>`, edit only your own folder (ask the owner otherwise), never commit `.env`, run your tests before pushing, then open a pull request into `main`. The team lead merges all four and builds the final web app (with mobile UI).
 Full plan, timeline, demo script and what to cut if time runs out: [docs/next-features-plan.md](../docs/next-features-plan.md)

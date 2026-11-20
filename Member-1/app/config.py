@@ -25,7 +25,12 @@ class Settings:
     # stand-ins so the team can integrate and tests can run without keys.
     mode: str = field(default_factory=lambda: os.getenv("CLAIM_AI_MODE", "live").lower())
 
-    # Speech to text: Whisper running locally. large-v3-turbo is a good
+    # Speech to text. "gemini" (default) sends the voice note to Gemini, which hears all six
+    # languages directly. "whisper" runs Whisper on this computer (no key). With
+    # ASR_FALLBACK=whisper, a Gemini failure falls back to Whisper; "none" turns that off.
+    asr_provider: str = field(default_factory=lambda: os.getenv("ASR_PROVIDER", "gemini").strip().lower())
+    asr_fallback: str = field(default_factory=lambda: os.getenv("ASR_FALLBACK", "whisper").strip().lower())
+    # Whisper settings (used when ASR_PROVIDER=whisper or as the fallback). large-v3-turbo is a good
     # speed/accuracy balance; large-v3 is most accurate; small is fastest.
     asr_min_confidence: float = field(default_factory=lambda: float(os.getenv("ASR_MIN_CONFIDENCE", "0.45")))
     whisper_model: str = field(default_factory=lambda: os.getenv("WHISPER_MODEL", "large-v3-turbo"))

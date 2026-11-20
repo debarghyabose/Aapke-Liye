@@ -1,6 +1,11 @@
-"""Speech to text with Whisper, running locally (no account or API key).
+"""Speech to text. Two providers (ASR_PROVIDER in .env):
 
-Uses faster-whisper (CTranslate2). The model downloads once on first use:
+- gemini (default): the voice note goes to Gemini, which hears English, Hindi, Bengali,
+  Marathi, Telugu and Tamil directly and writes the transcript in the speaker's own script.
+- whisper: runs on this computer, no account or key. Also the fallback when Gemini fails
+  (ASR_FALLBACK=whisper).
+
+Whisper uses faster-whisper (CTranslate2). The model downloads once on first use:
   large-v3  ~3 GB  best for Hindi/Bengali/Marathi/Telugu/Tamil (GPU recommended)
   medium    ~1.5 GB  good middle ground on a laptop
   small     ~500 MB  fast on CPU, weaker on Indian languages
@@ -14,9 +19,12 @@ import tempfile
 import threading
 from dataclasses import dataclass
 
+import base64
+
+from . import llm
 from .audio import Audio
 from .config import Settings
-from .languages import normalize_lang
+from .languages import LANGUAGES, normalize_lang
 
 log = logging.getLogger("aapke_liye.asr")
 
@@ -105,8 +113,58 @@ def _run(settings: Settings, path: str, language: str | None):
     return list(segments), info
 
 
+_GEMINI_SCHEMA = llm.obj({
+    "text": {"type": "string", "description": "verbatim transcript; empty if there is no speech"},
+    "language": {"type": "string", "enum": sorted(LANGUAGES)},
+    "confidence": {"type": "number", "description": "0..1, how clearly the speech was heard"},
+})
+
+_GEMINI_SYSTEM = """You transcribe short voice notes from disaster victims in India for a relief claim.
+Write exactly what the speaker says, in the script of the language they speak (Hindi and Marathi
+in Devanagari, Bengali in Bengali script, Telugu in Telugu script, Tamil in Tamil script, English in
+Latin script). Keep names, places, numbers and amounts exactly as spoken; do not translate,
+summarise, correct or add anything. If speakers mix languages, keep the mix.
+If there is no clear speech (silence, only noise), return an empty text and confidence 0.
+language: the main language spoken, one of en, hi, bn, mr, te, ta.
+confidence: how clearly you could hear and understand the speech, from 0 to 1."""
+
+
+def _gemini(audio: Audio, language: str | None, settings: Settings) -> ASRResult:
+    hint = (f"The speaker chose {LANGUAGES[language]} ({language})."
+            if language in LANGUAGES else "The language is not known; detect it.")
+    out = llm.structured(
+        settings, system=_GEMINI_SYSTEM, schema=_GEMINI_SCHEMA, max_tokens=2000,
+        content=[{"type": "text", "text": hint},
+                 {"type": "audio", "source": {"type": "base64", "media_type": "audio/wav",
+                                              "data": base64.b64encode(audio.wav_bytes).decode()}}],
+    )
+    text = (out.get("text") or "").strip()
+    if not text:
+        raise ASRError("no speech found in the audio")
+    detected = normalize_lang(out.get("language"))
+    if language is None and detected is None:
+        raise ASRError(f"detected language '{out.get('language')}' is not supported")
+    conf = max(0.0, min(1.0, float(out.get("confidence") or 0)))
+    return ASRResult(text=text, language=language or detected, confidence=round(conf, 3), provider="gemini")
+
+
 def transcribe(audio: Audio, language: str | None, settings: Settings) -> ASRResult:
+    """Speech to text with the configured provider; Gemini falls back to Whisper on failure."""
     language = normalize_lang(language)
+    if settings.asr_provider != "gemini":
+        return _whisper(audio, language, settings)
+    try:
+        return _gemini(audio, language, settings)
+    except ASRError:
+        raise  # Gemini heard the audio and found no usable speech: Whisper won't do better
+    except llm.LLMError as exc:
+        if settings.asr_fallback != "whisper":
+            raise ASRError(f"Gemini speech recognition failed: {exc}") from exc
+        log.warning("Gemini speech recognition failed (%s); falling back to Whisper", exc)
+        return _whisper(audio, language, settings)
+
+
+def _whisper(audio: Audio, language: str | None, settings: Settings) -> ASRResult:
 
     f = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
     try:

@@ -6,6 +6,7 @@
 - Callers pass content as a string, or a list of blocks:
     {"type": "text", "text": "..."}
     {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": "..."}}
+    {"type": "audio", "source": {"type": "base64", "media_type": "audio/wav", "data": "..."}}
 """
 from __future__ import annotations
 
@@ -48,7 +49,7 @@ def _parts(content: str | list[dict[str, Any]]) -> list[types.Part]:
     for block in content:
         if block["type"] == "text":
             parts.append(types.Part.from_text(text=block["text"]))
-        elif block["type"] == "image":
+        elif block["type"] in ("image", "audio"):
             src = block["source"]
             parts.append(types.Part.from_bytes(data=base64.b64decode(src["data"]), mime_type=src["media_type"]))
     return parts

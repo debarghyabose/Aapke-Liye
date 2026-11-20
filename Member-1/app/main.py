@@ -39,15 +39,18 @@ def demo_page():
 def health():
     s = get_settings()
     return {"ok": True, "mode": s.mode, "schema_version": SCHEMA_VERSION, "languages": LANGUAGES,
-            "asr": f"whisper:{s.whisper_model}", "llm_model": s.llm_model}
+            "asr": ("gemini:" + s.llm_model + (f" (fallback whisper:{s.whisper_model})"
+                                                if s.asr_fallback == "whisper" else ""))
+                   if s.asr_provider == "gemini" else f"whisper:{s.whisper_model}",
+            "llm_model": s.llm_model}
 
 
 @app.on_event("startup")
 def _warm_whisper():
     """Load Whisper in the background so the first voice note isn't slow."""
     s = get_settings()
-    if s.is_mock:
-        return
+    if s.is_mock or s.asr_provider != "whisper":
+        return  # Gemini needs no warm-up; Whisper loads on first use if it is the fallback
     import threading
 
     from .asr import warm_up

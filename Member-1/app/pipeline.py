@@ -80,6 +80,14 @@ def _complete(claim: Claim, transcript: str | None, timer: _Timer) -> TurnRespon
 
 
 def run_turn(req: TurnRequest, settings: Settings) -> TurnResponse:
+    resp = _run_turn(req, settings)
+    heard = [t for t in resp.claim.transcripts if t.asr_provider not in (None, "text")]
+    if (req.audio_base64 or req.audio_url) and heard:
+        resp.asr_provider = heard[-1].asr_provider
+    return resp
+
+
+def _run_turn(req: TurnRequest, settings: Settings) -> TurnResponse:
     timer = _Timer()
     claim = req.claim.model_copy(deep=True) if req.claim else Claim(session_id=req.session_id)
     claim.session_id = req.session_id

@@ -113,6 +113,7 @@ class TurnResponse(BaseModel):
     next_question: Optional[NextQuestion] = None
     status: ClaimStatus
     message: Optional[str] = None  # e.g. "please repeat", "claim recorded"
+    asr_provider: Optional[str] = None  # "gemini" or "whisper" when this turn had a voice note
     timings_ms: dict[str, int] = Field(default_factory=dict)
 
 
