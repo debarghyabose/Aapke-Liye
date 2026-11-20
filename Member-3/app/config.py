@@ -14,7 +14,7 @@ DISASTER_START = datetime.fromisoformat(os.getenv("DISASTER_START_DATE", "2026-1
 VISION_PROVIDER = os.getenv("VISION_PROVIDER", "gemini").strip().lower()  # gemini | claude
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
 
 VISION_API_KEY = os.getenv("VISION_API_KEY", "")  # Anthropic key, for VISION_PROVIDER=claude
 VISION_MODEL = os.getenv("VISION_MODEL", "claude-opus-5-5")
