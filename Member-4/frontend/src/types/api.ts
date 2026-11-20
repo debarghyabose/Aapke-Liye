@@ -22,6 +22,8 @@ export interface ClaimFields {
   bank_account_available?: boolean | null;
   vulnerability?: string[] | null; // elderly | disabled | single_mother | child_under_5
   crop_insured?: boolean | null; // PMFBY
+  is_hilly?: boolean | null; // SDRF hilly area rate (Rs 1,30,000 vs Rs 1,20,000)
+  household_id?: string | null;
   [key: string]: any;
 }
 
@@ -30,6 +32,7 @@ export interface ClaimCreate {
   disaster_type?: string | null;
   consent: true;
   consent_text_version: string;
+  household_id?: string | null;
 }
 
 export interface ClaimFieldsUpdate {
@@ -41,6 +44,15 @@ export interface StatusUpdate {
   note?: string | null;
 }
 
+export interface PhotoComparison {
+  damage_score: number;
+  damage_detected?: boolean;
+  notes?: string[];
+  before_url?: string;
+  after_url?: string;
+  baseline_matched?: boolean;
+}
+
 export interface PhotoVerification {
   status: 'pending' | 'complete';
   damage_level?: 'none' | 'partial' | 'severe' | 'total';
@@ -49,6 +61,7 @@ export interface PhotoVerification {
   time_valid?: boolean;
   exif_valid?: boolean;
   duplicate?: boolean;
+  comparison?: PhotoComparison;
   [key: string]: any;
 }
 
@@ -137,6 +150,7 @@ export interface ClaimOut {
   submitted_at: string | null;
   created_at: string;
   updated_at: string;
+  is_offline_draft?: boolean;
 }
 
 export interface ClaimCreated extends ClaimOut {
@@ -153,3 +167,48 @@ export interface StaffClaimOut extends ClaimOut {
   };
 }
 
+// ---------- Pre-disaster Document Vault & Household Types ----------
+
+export interface VaultDocument {
+  id: string;
+  household_id: string;
+  doc_type: 'aadhaar' | 'ration_card' | 'land_record' | 'bank_passbook' | 'baseline_photo' | string;
+  filename: string;
+  file_url?: string;
+  source: 'upload' | 'digilocker_mock';
+  uploaded_at: string;
+  verified?: boolean;
+}
+
+export interface Household {
+  id: string;
+  token: string;
+  head_name: string;
+  phone: string;
+  village: string;
+  district: string;
+  state: string;
+  ration_card_no?: string;
+  baseline_photo_url?: string;
+  documents: VaultDocument[];
+  created_at: string;
+}
+
+// ---------- Mesh Phone-to-Phone Relay Types ----------
+
+export interface SealedClaimEnvelope {
+  claim_id: string;
+  created_at: string;
+  sender_device_id: string;
+  priority: 'urgent' | 'normal';
+  summary: {
+    name: string;
+    village: string;
+    disaster_type: string;
+    losses_count: number;
+    has_photos: boolean;
+  };
+  payload_json: string;
+  signature?: string;
+  receipt?: string;
+}

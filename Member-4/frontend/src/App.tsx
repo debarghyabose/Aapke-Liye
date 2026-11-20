@@ -7,6 +7,8 @@ import Home from './pages/Home';
 import Claim from './pages/Claim';
 import Track from './pages/Track';
 import Official from './pages/Official';
+import Prepare from './pages/Prepare';
+import Mesh from './pages/Mesh';
 import { OfflineBanner } from './components/OfflineBanner';
 import { A11yProvider } from './utils/accessibility';
 
@@ -22,6 +24,8 @@ const App: React.FC = () => {
             <Route path="/claim/*" element={<Claim />} />
             <Route path="/track" element={<Track />} />
             <Route path="/official" element={<Official />} />
+            <Route path="/prepare" element={<Prepare />} />
+            <Route path="/mesh" element={<Mesh />} />
           </Routes>
         </main>
         <Footer />

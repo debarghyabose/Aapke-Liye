@@ -14,7 +14,9 @@
     "largerTextAria": "Toggle Larger Text",
     "largerTextTitle": "Toggle Larger Text Mode",
     "openMenuAria": "Open navigation menu",
-    "closeMenuAria": "Close navigation menu"
+    "closeMenuAria": "Close navigation menu",
+    "prepare": "প্রস্তুতি (ভল্ট)",
+    "mesh": "মেশ রিলে"
   },
   "hero": {
     "title": "বন্যার জলে ঘর ভেসেছে? আপনার সরকারি ত্রাণ হারাবে না।",
@@ -197,7 +199,18 @@
     "draft3Desc": "Plot verification request supported by geo-tagged photos and neighbours' statements.",
     "draft4Title": "Crop & House Insurance Notice",
     "draft4Dept": "PMFBY / General Insurance",
-    "draft4Desc": "Formal 72-hour disaster intimation notice for crop inundation & building loss."
+    "draft4Desc": "Formal 72-hour disaster intimation notice for crop inundation & building loss.",
+    "savedHouseholdFound": "পূর্ব-নথিভুক্ত পারিবারিক তথ্য উপস্থিত",
+    "useMyHousehold": "আমার পরিবারের নথি ব্যবহার করুন",
+    "beforeAfterTitle": "বিপর্যয় পূর্ব ও পরবর্তী তুলনামূলক বিশ্লেষণ",
+    "beforeLabel": "পূর্বে (ভল্ট বেসলাইন)",
+    "afterLabel": "পরে (বর্তমান বন্যার ক্ষয়ক্ষতি)",
+    "beforeAfterSummary": "এআই প্রাক-বন্যা বেসলাইনের সাথে তুলনা করে ৮৫% কাঠামোগত ক্ষতি নিশ্চিত করেছে।",
+    "hillyAreaQ": "আপনার গ্রাম কি পাহাড়ি অঞ্চলে অবস্থিত?",
+    "hillyAreaHelp": "সরকারি এসডিআরএফ নিয়মে পাহাড়ি এলাকার সম্পূর্ণ ধ্বংসপ্রাপ্ত বাড়ির জন্য বেশি অনুদান (₹১,৩০,০০০ বনাম সমতলে ₹১,২০,০০০) দেওয়া হয়।",
+    "meshRelayNotice": "নেটওয়ার্ক নেই? প্রতিবেশীর হাতে পাঠান",
+    "meshRelayDesc": "টাওয়ার বন্ধ থাকলে এই সিলমোহরকৃত কিউআর কোডটি এমন কাউকে স্ক্যান করান যিনি সংযোগ এলাকায় যাচ্ছেন।",
+    "openMeshBtn": "মেশ কিউআর কোড খুলুন"
   },
   "track": {
     "title": "Track Your Relief Claim",
@@ -269,7 +282,8 @@
   "offline": {
     "onlineSync": "Connected back online. Offline recordings and photos have been synced.",
     "offlineAlert": "You are currently offline. Any recordings or photos will be saved locally on your phone and sent automatically when internet returns.",
-    "queuedItems": "({{count}} item{{plural}} queued)"
+    "queuedItems": "({{count}} item{{plural}} queued)",
+    "savedOnPhone": "এই ফোনে সংরক্ষিত, {{count}} টি আইটেম অপেক্ষমাণ"
   },
   "footer": {
     "team": "Team OPUS · IEM Kolkata",
@@ -299,5 +313,66 @@
     "timelineSubmitted": "Claim submitted via Aapke Liye voice app. GPS coordinates verified at Ghatal Block-II.",
     "timelineVerified": "Field Revenue Inspector matched photo GPS with Block flood inundation zone.",
     "timelineInspection": "Sub-Divisional Officer completed field dossier. Forwarded to District Magistrate office for SDRF fund release."
+  },
+  "prepare": {
+    "badge": "বন্যা-পূর্ব প্রস্তুতি ও সুরক্ষা",
+    "title": "দুর্যোগ নথি ভল্ট",
+    "subtitle": "বন্যা আসার আগেই পরিবারের পরিচয়পত্র ও অক্ষত ভিটের ছবি সুরক্ষিত রাখুন। জল এলে কোনো কাগজের জন্য ক্ষতিপূরণ আটকাবে না।",
+    "registeredSuccess": "পরিবার সফলভাবে নথিভুক্ত ও সুরক্ষিত টোকেন তৈরি হয়েছে!",
+    "docUploaded": "নথিটি এনক্রিপ্ট করে ভল্টে জমা রাখা হলো।",
+    "baselineUploaded": "প্রাক-বন্যা স্বাভাবিক ছবি সফলভাবে জমা রাখা হলো।",
+    "householdRegisteredTitle": "আপনার নথিভুক্ত পরিবার",
+    "householdRegisterTitle": "১. পরিবার নথিভুক্ত করুন",
+    "headName": "পরিবারের প্রধান বা আবেদনকারীর নাম",
+    "phone": "মোবাইল ফোন নম্বর",
+    "village": "গ্রাম / গ্রাম পঞ্চায়েত",
+    "district": "জেলা",
+    "rationCardNo": "রেশন কার্ড নম্বর (NFSA)",
+    "saveHousehold": "ভল্টে পরিবার সংরক্ষণ করুন",
+    "updateHousehold": "পরিবারের তথ্য সংশোধন করুন",
+    "startClaimWithThis": "এই তথ্যের ভিত্তিতে আবেদন শুরু করুন",
+    "docsTitle": "২. আমার সংরক্ষিত জরুরি কাগজপত্র",
+    "docsSubtitle": "এখানে আপলোড করা নথি সুরক্ষিত থাকে এবং দাবি যাচাইয়ের সময় উপস্থিত ধরা হয়।",
+    "digiLockerBtn": "ডিজিলকার থেকে আনুন (ডেমো)",
+    "docAadhaar": "আধার কার্ড",
+    "docRation": "রেশন কার্ড (NFSA / খাদ্য সাথী)",
+    "docLand": "জমির রেকর্ড (খতিয়ান / পরচা)",
+    "docBank": "ব্যাংক পাসবই (ডিবিটি লিঙ্কযুক্ত)",
+    "notUploaded": "এখনও কোনো কপি জমা নেই।",
+    "uploadBtn": "ফাইল আপলোড",
+    "baselineTitle": "৩. স্বাভাবিক সময়ের বাড়ির ছবি",
+    "baselineSubtitle": "স্বাভাবিক সময়ে ভিটেবাড়ি বা গোয়ালঘরের ছবি তুলে রাখুন। বন্যায় ক্ষতি হলে জেমিনি এই ছবির সাথে তুলনা করে ক্ষতি নির্ণয় করবে।",
+    "baselineActive": "বেসলাইন ছবি সুরক্ষিত আছে",
+    "baselineReady": "দাবি পর্যালোচনার সময় মুখোমুখি তুলনার জন্য প্রস্তুত।",
+    "replacePhoto": "ছবি পরিবর্তন করুন",
+    "noBaselinePhoto": "কোনো বেসলাইন ছবি নেই",
+    "baselineInstructions": "বাড়ি আস্ত থাকা অবস্থাতেই ছবি তুলে রাখুন। জল জমার পর এটি অকাট্য প্রমাণ হবে।",
+    "snapBaseline": "বেসলাইন ছবি তুলুন",
+    "digiLockerMockBanner": "ডেমো: ডিজিলকার সম্মতি পর্দা (নমুনা)",
+    "digiLockerImported": "ডিজিলকার থেকে নমুনা আধার ও রেশন কার্ড আপনার ভল্টে যোগ হয়েছে।",
+    "giveConsent": "সম্মতি দিচ্ছি (ডেমো ইমপোর্ট)"
+  },
+  "mesh": {
+    "badge": "ফোন-থেকে-ফোন জরুরি মেশ নেটওয়ার্ক",
+    "title": "জরুরি মেশ দাবি রিলে",
+    "subtitle": "টাওয়ার বিকল হলে জলবন্দি মানুষ কিউআর কোডের মাধ্যমে সিলমোহর করা দাবি চলমান প্রতিবেশী, ত্রাণ নৌকা বা কর্মীর ফোনে তুলে দিতে পারেন।",
+    "tabHand": "১. প্রতিবেশীর ফোনে পাঠান",
+    "tabCarry": "২. অন্যের দাবি এগিয়ে দিন",
+    "noClaimsOnDevice": "এই ফোনে কোনো দাবি পাওয়া যায়নি",
+    "noClaimsHelp": "আগে একটি দাবি তৈরি করুন (অফলাইনেও চলবে)। তৈরি হলে এখান থেকে সিলমোহর কিউআর কোড পাবেন।",
+    "selectClaimToHand": "যে দাবিটি পাঠাতে চান বেছে নিন:",
+    "cryptographicallySealed": "সরকারি সার্ভারের জন্য AES-256 এনক্রিপ্ট ও সিল করা",
+    "qrInstructions": "প্রতিবেশীকে অ্যাপের \"অন্যের দাবি এগিয়ে দিন\" অংশে গিয়ে এই কিউআর কোডটি স্ক্যান করতে বলুন।",
+    "copyEnvelopeText": "সিল করা টেক্সট কপি করুন",
+    "carryTitle": "প্রতিবেশীদের দাবি বহন করুন",
+    "carrySubtitle": "আপনি যদি পাকা রাস্তা, ক্যাম্প বা টাওয়ারের দিকে যান, প্রতিবেশীর কিউআর স্ক্যান করে রাখুন। নেটওয়ার্ক পেলেই ফোন নিজে থেকে পাঠিয়ে দেবে।",
+    "pasteScanLabel": "স্ক্যানের টেক্সট বা JSON এখানে পেস্ট করুন:",
+    "addCarriedClaim": "এই ফোনে দাবিটি রাখুন",
+    "claimsWaitingForSignal": "ফোনে জমাকৃত মোট দাবি ({{count}})",
+    "syncCarriedNow": "জমা দাবিগুলো এখনই সার্ভারে পাঠান",
+    "noCarriedEnvelopes": "আপাতত কোনো অন্যের দাবি জমা নেই।",
+    "invalidEnvelope": "ভুল কিউআর কোড বা মেশ তথ্য। অনুগ্রহ করে পরীক্ষা করুন।",
+    "importSuccess": "দাবিটি পৌঁছে দেওয়ার জন্য ফোনে সংরক্ষিত হলো!",
+    "deliverySuccess": "সমস্ত দাবি সার্ভারে পৌঁছেছে! সরকারি প্রাপ্তিস্বীকার রসিদ মিলেছে।"
   }
 }

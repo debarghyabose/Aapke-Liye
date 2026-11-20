@@ -14,7 +14,9 @@
     "largerTextAria": "Toggle Larger Text",
     "largerTextTitle": "Toggle Larger Text Mode",
     "openMenuAria": "Open navigation menu",
-    "closeMenuAria": "Close navigation menu"
+    "closeMenuAria": "Close navigation menu",
+    "prepare": "సన్నద్ధత (వాల్ట్)",
+    "mesh": "మెష్ రిలే"
   },
   "hero": {
     "title": "వరదల్లో ఇల్లు కోల్పోయారా? మీ ప్రభుత్వ పరిహారం పోదు.",
@@ -197,7 +199,18 @@
     "draft3Desc": "Plot verification request supported by geo-tagged photos and neighbours' statements.",
     "draft4Title": "Crop & House Insurance Notice",
     "draft4Dept": "PMFBY / General Insurance",
-    "draft4Desc": "Formal 72-hour disaster intimation notice for crop inundation & building loss."
+    "draft4Desc": "Formal 72-hour disaster intimation notice for crop inundation & building loss.",
+    "savedHouseholdFound": "ముందుగా నమోదైన కుటుంబ రికార్డు అందుబాటులో ఉంది",
+    "useMyHousehold": "నా కుటుంబ రికార్డులను ఉపయోగించుకోండి",
+    "beforeAfterTitle": "నష్టం ముందు / తరువాత పోలిక",
+    "beforeLabel": "ముందు (వాల్ట్ బేస్‌లైన్)",
+    "afterLabel": "తరువాత (ప్రస్తుత వరద నష్టం)",
+    "beforeAfterSummary": "విపత్తు పూర్వ బేస్‌లైన్‌తో పోల్చి AI 85% నిర్మాణ నష్టాన్ని ధృవీకరించింది.",
+    "hillyAreaQ": "మీ గ్రామం కొండ ప్రాంతంలో ఉందా?",
+    "hillyAreaHelp": "కొండ ప్రాంతాల్లో పూర్తిగా ధ్వంసమైన ఇళ్లకు ప్రభుత్వ SDRF నిబంధనల ప్రకారం అధిక పరిహారం (₹1,30,000 / మైదానాల్లో ₹1,20,000) లభిస్తుంది.",
+    "meshRelayNotice": "సిగ్నల్ లేదా? పొరుగువారికి అందించండి",
+    "meshRelayDesc": "మొబైల్ టవర్లు పనిచేయనప్పుడు, సిగ్నల్ ఉన్న ప్రాంతానికి వెళ్లే పొరుగువారికి ఈ సీల్ చేసిన QR కోడ్ ఇవ్వండి.",
+    "openMeshBtn": "మెష్ QR కోడ్ తెరవండి"
   },
   "track": {
     "title": "Track Your Relief Claim",
@@ -269,7 +282,8 @@
   "offline": {
     "onlineSync": "Connected back online. Offline recordings and photos have been synced.",
     "offlineAlert": "You are currently offline. Any recordings or photos will be saved locally on your phone and sent automatically when internet returns.",
-    "queuedItems": "({{count}} item{{plural}} queued)"
+    "queuedItems": "({{count}} item{{plural}} queued)",
+    "savedOnPhone": "ఈ ఫోన్‌లో భద్రపరచబడింది, {{count}} అంశం వేచి ఉంది"
   },
   "footer": {
     "team": "Team OPUS · IEM Kolkata",
@@ -299,5 +313,66 @@
     "timelineSubmitted": "Claim submitted via Aapke Liye voice app. GPS coordinates verified at Ghatal Block-II.",
     "timelineVerified": "Field Revenue Inspector matched photo GPS with Block flood inundation zone.",
     "timelineInspection": "Sub-Divisional Officer completed field dossier. Forwarded to District Magistrate office for SDRF fund release."
+  },
+  "prepare": {
+    "badge": "విపత్తు పూర్వ రక్షణ",
+    "title": "విపత్తు పత్రాల వాల్ట్",
+    "subtitle": "వరదలు రాకముందే కుటుంబ పత్రాలు, ఇంటి సాధారణ ఫోటోలను భద్రపరచండి. విపత్తు సమయంలో పత్రాల కోసం ఆలస్యం లేకుండా వెంటనే పరిహారం పొందండి.",
+    "registeredSuccess": "కుటుంబం విజయవంతంగా నమోదైంది మరియు టోకెన్ భద్రపరచబడింది!",
+    "docUploaded": "పత్రం సురక్షిత వాల్ట్‌లో భద్రపరచబడింది.",
+    "baselineUploaded": "పోలిక కోసం ఆస్తి బేస్‌లైన్ ఫోటో భద్రపరచబడింది.",
+    "householdRegisteredTitle": "మీ నమోదిత కుటుంబం",
+    "householdRegisterTitle": "1. మీ కుటుంబాన్ని నమోదు చేయండి",
+    "headName": "కుటుంబ యజమాని / దరఖాస్తుదారుని పేరు",
+    "phone": "మొబైల్ ఫోన్ నంబర్",
+    "village": "గ్రామం / గ్రామ పంచాయితీ",
+    "district": "జిల్లా",
+    "rationCardNo": "రేషన్ కార్డు నంబర్ (NFSA)",
+    "saveHousehold": "వాల్ట్‌లో భద్రపరచండి",
+    "updateHousehold": "వివరాలను నవీకరించండి",
+    "startClaimWithThis": "ఈ వివరాలతో దరఖాస్తు ప్రారంభించండి",
+    "docsTitle": "2. నా భద్రపరచిన పత్రాలు",
+    "docsSubtitle": "అప్‌లోడ్ చేసిన పత్రాలు ఎన్‌క్రిప్ట్ చేయబడి ధృవీకరణ సమయంలో అందుబాటులో ఉన్నట్లు పరిగణించబడతాయి.",
+    "digiLockerBtn": "డిజిలాకర్ నుండి దిగుమతి చేయండి (డెమో)",
+    "docAadhaar": "ఆధార్ కార్డు",
+    "docRation": "రేషన్ కార్డు (NFSA / PDS)",
+    "docLand": "భూమి రికార్డు (పట్టాదారు పాస్‌బుక్ / 1-B)",
+    "docBank": "బ్యాంక్ పాస్‌బుక్ (DBT లింక్)",
+    "notUploaded": "ఇంకా ఏ కాపీ అప్‌లోడ్ కాలేదు.",
+    "uploadBtn": "ఫైల్ అప్‌లోడ్ చేయండి",
+    "baselineTitle": "3. సాధారణ సమయ బేస్‌లైన్ ఫోటోలు",
+    "baselineSubtitle": "వరదలు లేని సాధారణ సమయంలో మీ ఇల్లు లేదా పశువుల పాక ఫోటో తీసి ఉంచండి. వరదల సమయంలో జెమిని ఈ ఫోటోతో పోల్చి నష్టాన్ని లెక్కిస్తుంది.",
+    "baselineActive": "బేస్‌లైన్ ఫోటో సిద్ధంగా ఉంది",
+    "baselineReady": "ధృవీకరణ సమయంలో పోలిక చేయడానికి సిద్ధంగా ఉంది.",
+    "replacePhoto": "ఫోటోను మార్చండి",
+    "noBaselinePhoto": "బేస్‌లైన్ ఫోటో ఏదీ భద్రపరచబడలేదు",
+    "baselineInstructions": "ఇల్లు చెక్కుచెదరకుండా ఉన్నప్పుడే ఫోటో తీయండి. ఇది భవిష్యత్తులో తిరుగులేని సాక్ష్యంగా నిలుస్తుంది.",
+    "snapBaseline": "బేస్‌లైన్ ఫోటో తీయండి",
+    "digiLockerMockBanner": "డెమో: డిజిలాకర్ సమ్మతి స్క్రీన్",
+    "digiLockerImported": "డిజిలాకర్ నమూనా పత్రాలు మీ వాల్ట్‌లో చేర్చబడ్డాయి.",
+    "giveConsent": "నేను సమ్మతిస్తున్నాను (డెమో దిగుమతి)"
+  },
+  "mesh": {
+    "badge": "ఫోన్-టు-ఫోన్ అత్యవసర మెష్",
+    "title": "ఎమర్జెన్సీ మెష్ క్లెయిమ్ రిలే",
+    "subtitle": "మొబైల్ టవర్లు ఆగిపోయినప్పుడు, బాధితులు తమ సీల్ చేసిన దరఖాస్తును QR కోడ్ ద్వారా ఇతరులకు అందించవచ్చు.",
+    "tabHand": "1. పొరుగువారికి అందించండి",
+    "tabCarry": "2. ఇతరుల క్లెయిమ్ తీసుకెళ్లండి",
+    "noClaimsOnDevice": "ఈ ఫోన్‌లో ఎలాంటి క్లెయిమ్ కనిపించలేదు",
+    "noClaimsHelp": "ముందుగా దరఖాస్తు చేసుకోండి (ఆఫ్‌లైన్‌లోనూ పనిచేస్తుంది). పూర్తయ్యాక ఇక్కడ QR కోడ్ పొందవచ్చు.",
+    "selectClaimToHand": "అందించాల్సిన క్లెయిమ్‌ను ఎంచుకోండి:",
+    "cryptographicallySealed": "ప్రభుత్వ సర్వర్ కోసం AES-256 సీల్ మరియు సంతకం చేయబడింది",
+    "qrInstructions": "మీ పొరుగువారిని యాప్‌లోని \"ఇతరుల క్లెయిమ్ తీసుకెళ్లండి\" కింద ఈ కోడ్‌ను స్కాన్ చేయమని చెప్పండి.",
+    "copyEnvelopeText": "సీల్ చేసిన వచనాన్ని కాపీ చేయండి",
+    "carryTitle": "పొరుగువారి క్లెయిమ్‌లను తీసుకెళ్లండి",
+    "carrySubtitle": "మీరు క్యాంప్ లేదా సిగ్నల్ ఉన్న ప్రదేశానికి వెళ్తుంటే, పొరుగువారి QR లను స్కాన్ చేయండి. సిగ్నల్ రాగానే ఫోన్ స్వయంగా పంపుతుంది.",
+    "pasteScanLabel": "స్కాన్ ఫలితం లేదా JSON ను ఇక్కడ అతికించండి:",
+    "addCarriedClaim": "ఈ ఫోన్‌లో భద్రపరచండి",
+    "claimsWaitingForSignal": "ఈ ఫోన్‌లో ఉన్న క్లెయిమ్‌లు ({{count}})",
+    "syncCarriedNow": "క్లెయిమ్‌లను ఇప్పుడే పంపండి",
+    "noCarriedEnvelopes": "ప్రస్తుతం ఇతర క్లెయిమ్‌లు ఏవీ లేవు.",
+    "invalidEnvelope": "చెల్లని QR కోడ్. దయచేసి మళ్లీ తనిఖీ చేయండి.",
+    "importSuccess": "క్లెయిమ్ సురక్షితంగా ఫోన్‌లో భద్రపరచబడింది!",
+    "deliverySuccess": "అన్ని క్లెయిమ్‌లు పంపబడ్డాయి! సంతకం చేసిన రసీదు అందింది."
   }
 }

@@ -14,7 +14,9 @@
     "largerTextAria": "Toggle Larger Text",
     "largerTextTitle": "Toggle Larger Text Mode",
     "openMenuAria": "Open navigation menu",
-    "closeMenuAria": "Close navigation menu"
+    "closeMenuAria": "Close navigation menu",
+    "prepare": "तैयारी (वॉल्ट)",
+    "mesh": "मेश रिले"
   },
   "hero": {
     "title": "बाढ़ में घर बह गया? आपकी राहत नहीं छूटेगी।",
@@ -197,7 +199,18 @@
     "draft3Desc": "Plot verification request supported by geo-tagged photos and neighbours' statements.",
     "draft4Title": "Crop & House Insurance Notice",
     "draft4Dept": "PMFBY / General Insurance",
-    "draft4Desc": "Formal 72-hour disaster intimation notice for crop inundation & building loss."
+    "draft4Desc": "Formal 72-hour disaster intimation notice for crop inundation & building loss.",
+    "savedHouseholdFound": "पूर्व-पंजीकृत परिवार रिकॉर्ड उपलब्ध",
+    "useMyHousehold": "मेरे परिवार के रिकॉर्ड का उपयोग करें",
+    "beforeAfterTitle": "क्षति पूर्व / पश्चात तुलना (Before/After)",
+    "beforeLabel": "पहले (वॉल्ट बेसलाइन)",
+    "afterLabel": "बाद में (वर्तमान बाढ़ क्षति)",
+    "beforeAfterSummary": "एआई ने पूर्व-आपदा बेसलाइन के मुकाबले 85% ढांचागत क्षति सत्यापित की।",
+    "hillyAreaQ": "क्या आपका गाँव पहाड़ी क्षेत्र में स्थित है?",
+    "hillyAreaHelp": "सरकारी एसडीआरएफ नियमों के अनुसार पहाड़ी क्षेत्रों में पूरी तरह नष्ट घरों के लिए अधिक राहत (₹1,30,000 बनाम ₹1,20,000) मिलती है।",
+    "meshRelayNotice": "सिग्नल नहीं है? पड़ोसी को सौंपें",
+    "meshRelayDesc": "यदि मोबाइल टॉवर बंद हैं, तो यह सीलबंद क्यूआर कोड किसी पड़ोसी या स्वयंसेवक को दें जो सिग्नल वाले क्षेत्र में जा रहा हो।",
+    "openMeshBtn": "मेश क्यूआर कोड खोलें"
   },
   "track": {
     "title": "Track Your Relief Claim",
@@ -269,7 +282,8 @@
   "offline": {
     "onlineSync": "Connected back online. Offline recordings and photos have been synced.",
     "offlineAlert": "You are currently offline. Any recordings or photos will be saved locally on your phone and sent automatically when internet returns.",
-    "queuedItems": "({{count}} item{{plural}} queued)"
+    "queuedItems": "({{count}} item{{plural}} queued)",
+    "savedOnPhone": "इस फोन पर सहेजा गया, {{count}} आइटम प्रतीक्षा में"
   },
   "footer": {
     "team": "Team OPUS · IEM Kolkata",
@@ -299,5 +313,66 @@
     "timelineSubmitted": "Claim submitted via Aapke Liye voice app. GPS coordinates verified at Ghatal Block-II.",
     "timelineVerified": "Field Revenue Inspector matched photo GPS with Block flood inundation zone.",
     "timelineInspection": "Sub-Divisional Officer completed field dossier. Forwarded to District Magistrate office for SDRF fund release."
+  },
+  "prepare": {
+    "badge": "आपदा पूर्व सुरक्षा उपाय",
+    "title": "आपदा दस्तावेज़ वॉल्ट",
+    "subtitle": "बाढ़ आने से पहले अपने परिवार के पहचान पत्र और घर की सामान्य फोटो सुरक्षित रखें। आपदा के समय बिना किसी कागजी देरी के तुरंत दावा करें।",
+    "registeredSuccess": "परिवार सफलतापूर्वक पंजीकृत और टोकन सुरक्षित!",
+    "docUploaded": "दस्तावेज़ एन्क्रिप्टेड वॉल्ट में सुरक्षित किया गया।",
+    "baselineUploaded": "तुलना के लिए सामान्य स्थिति की संपत्ति फोटो सुरक्षित की गई।",
+    "householdRegisteredTitle": "आपका पंजीकृत परिवार",
+    "householdRegisterTitle": "1. अपना परिवार पंजीकृत करें",
+    "headName": "परिवार के मुखिया / दावेदार का नाम",
+    "phone": "मोबाइल फोन नंबर",
+    "village": "गाँव / ग्राम पंचायत",
+    "district": "ज़िला",
+    "rationCardNo": "राशन कार्ड नंबर (NFSA)",
+    "saveHousehold": "वॉल्ट में परिवार सहेजें",
+    "updateHousehold": "परिवार का विवरण अपडेट करें",
+    "startClaimWithThis": "इस परिवार से दावा शुरू करें",
+    "docsTitle": "2. मेरे सुरक्षित दस्तावेज़",
+    "docsSubtitle": "अपलोड किए गए दस्तावेज़ एन्क्रिप्टेड रहते हैं और दावा सत्यापन के दौरान मान्य माने जाते हैं।",
+    "digiLockerBtn": "डिजिलॉकर से आयात करें (डेमो)",
+    "docAadhaar": "आधार कार्ड",
+    "docRation": "राशन कार्ड (NFSA / PDS)",
+    "docLand": "ज़मीन का रिकॉर्ड (खतियान / पर्चा)",
+    "docBank": "बैंक पासबुक (डीबीटी लिंक)",
+    "notUploaded": "अभी तक कोई प्रति अपलोड नहीं की गई।",
+    "uploadBtn": "फ़ाइल अपलोड करें",
+    "baselineTitle": "3. सामान्य समय की बेसलाइन फोटो",
+    "baselineSubtitle": "अपने घर, पशुशाला या खेत की सामान्य समय की फोटो लें। बाढ़ के समय जेमिनी वर्तमान फोटो से इसकी तुलना करता है।",
+    "baselineActive": "बेसलाइन फोटो सक्रिय",
+    "baselineReady": "सत्यापन के समय आमने-सामने तुलना के लिए तैयार।",
+    "replacePhoto": "फोटो बदलें",
+    "noBaselinePhoto": "कोई बेसलाइन फोटो सुरक्षित नहीं है",
+    "baselineInstructions": "अभी घर की अखंडित फोटो लें। यह आपदा के बाद अकाट्य प्रमाण बनती है।",
+    "snapBaseline": "बेसलाइन फोटो खींचें",
+    "digiLockerMockBanner": "डेमो: डिजिलॉकर सहमति स्क्रीन (नमूना)",
+    "digiLockerImported": "डिजिलॉकर के नमूना दस्तावेज़ आपके वॉल्ट में जुड़ गए हैं।",
+    "giveConsent": "मैं सहमति देता हूँ (डेमो आयात)"
+  },
+  "mesh": {
+    "badge": "फोन-से-फोन आपातकालीन मेश",
+    "title": "इमरजेंसी मेश क्लेम रिले",
+    "subtitle": "जब मोबाइल टॉवर बंद हों, तो संकटग्रस्त नागरिक अपना सीलबंद दावा क्यूआर कोड द्वारा किसी पड़ोसी, राहत दल या नाव को सौंप सकते हैं।",
+    "tabHand": "1. पड़ोसी को सौंपें",
+    "tabCarry": "2. दावा आगे पहुँचाएँ",
+    "noClaimsOnDevice": "इस फोन पर कोई दावा नहीं मिला",
+    "noClaimsHelp": "पहले राहत दावा दर्ज करें (ऑफ़लाइन भी)। पूरा होने पर आप यहाँ सीलबंद क्यूआर कोड बना सकते हैं।",
+    "selectClaimToHand": "सौंपने के लिए दावा चुनें:",
+    "cryptographicallySealed": "एसडीएमए सर्वर हेतु AES-256 सुरक्षित व हस्ताक्षरित",
+    "qrInstructions": "अपने पड़ोसी या राहत कार्यकर्ता से कहें कि वे आपके लिए ऐप में \"दावा आगे पहुँचाएँ\" के तहत इसे स्कैन करें। पहचान पूर्णतः सुरक्षित रहेगी।",
+    "copyEnvelopeText": "सीलबंद टेक्स्ट कॉपी करें",
+    "carryTitle": "पड़ोसियों के दावे आगे पहुँचाएँ",
+    "carrySubtitle": "यदि आप सड़क, राहत शिविर या मोबाइल टॉवर की ओर जा रहे हैं, तो पड़ोसियों का क्यूआर स्कैन करें। सिग्नल मिलते ही यह फोन स्वतः भेज देगा।",
+    "pasteScanLabel": "स्कैन परिणाम या सीलबंद JSON पेस्ट करें:",
+    "addCarriedClaim": "इस फोन में दावा सहेजें",
+    "claimsWaitingForSignal": "इस फोन पर लंबित दावे ({{count}})",
+    "syncCarriedNow": "लंबित दावे अभी अपलोड करें",
+    "noCarriedEnvelopes": "वर्तमान में इस फोन पर कोई अन्य दावा लंबित नहीं है।",
+    "invalidEnvelope": "अमान्य क्यूआर कोड या मेश डेटा। कृपया पुनः जाँचें।",
+    "importSuccess": "दावा सुरक्षित रूप से आगे पहुँचाने के लिए सहेज लिया गया!",
+    "deliverySuccess": "सभी रिले दावे अपलोड हो गए! हस्ताक्षरित रसीद प्राप्त हुई।"
   }
 }

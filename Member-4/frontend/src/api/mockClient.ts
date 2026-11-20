@@ -5,9 +5,12 @@ import {
   ClaimCreated,
   ClaimFields,
   ClaimOut,
+  Household,
   PhotoOut,
+  SealedClaimEnvelope,
   StaffClaimOut,
   StatusOut,
+  VaultDocument,
 } from '../types/api';
 import {
   MOCK_CLAIM_ID,
@@ -31,6 +34,11 @@ export async function createClaim(payload: ClaimCreate): Promise<ClaimCreated> {
     updated_at: new Date().toISOString(),
     status: 'Draft',
     recordings: [{ id: 1, status: 'processed' }],
+    fields: {
+      ...MOCK_SAMPLE_CLAIM.fields,
+      is_hilly: false,
+      household_id: payload.household_id || null,
+    },
   };
 
   return {
@@ -49,12 +57,9 @@ export async function uploadAudio(
   _audioBlob: Blob,
   onProgressMsg?: (msg: string) => void
 ): Promise<ClaimOut> {
-  // Simulate Gemini multimodal audio pipeline:
-  // 1. Acoustic speech processing
   if (onProgressMsg) onProgressMsg('Transcribing dialect & emotional speech…');
   await new Promise((res) => setTimeout(res, 800));
 
-  // 2. Multimodal extraction
   if (onProgressMsg) onProgressMsg('Gemini is extracting losses & matching SDRF norms…');
   await new Promise((res) => setTimeout(res, 900));
 
@@ -109,6 +114,12 @@ export async function uploadPhoto(
       time_valid: true,
       exif_valid: true,
       duplicate: false,
+      comparison: {
+        damage_score: 0.88,
+        damage_detected: true,
+        structural_loss_summary: 'Baseline intact brick roof compared against collapsed mud wall.',
+        baseline_matched: true,
+      },
     },
   };
 
@@ -131,6 +142,20 @@ export async function updateFields(
 ): Promise<ClaimOut> {
   await new Promise((res) => setTimeout(res, 200));
   currentClaimState.fields = { ...currentClaimState.fields, ...fields };
+
+  // Recalculate relief with hilly rate if is_hilly changed
+  if (fields.is_hilly !== undefined && currentClaimState.relief) {
+    const rate = fields.is_hilly ? 130000 : 120000;
+    currentClaimState.relief.breakdown.forEach((b) => {
+      if (b.category === 'house') {
+        b.rate = rate;
+        b.amount = rate * b.quantity;
+        b.item = fields.is_hilly ? 'House fully destroyed (hilly area)' : 'House fully destroyed';
+      }
+    });
+    currentClaimState.relief.total = currentClaimState.relief.breakdown.reduce((sum, item) => sum + item.amount, 0);
+  }
+
   return { ...currentClaimState };
 }
 

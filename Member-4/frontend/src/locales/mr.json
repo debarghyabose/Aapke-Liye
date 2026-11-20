@@ -14,7 +14,9 @@
     "largerTextAria": "Toggle Larger Text",
     "largerTextTitle": "Toggle Larger Text Mode",
     "openMenuAria": "Open navigation menu",
-    "closeMenuAria": "Close navigation menu"
+    "closeMenuAria": "Close navigation menu",
+    "prepare": "तयारी (व्हॉल्ट)",
+    "mesh": "मेश रिले"
   },
   "hero": {
     "title": "पुरात घर वाहून गेले? सरकारी मदत सुटणार नाही.",
@@ -197,7 +199,18 @@
     "draft3Desc": "Plot verification request supported by geo-tagged photos and neighbours' statements.",
     "draft4Title": "Crop & House Insurance Notice",
     "draft4Dept": "PMFBY / General Insurance",
-    "draft4Desc": "Formal 72-hour disaster intimation notice for crop inundation & building loss."
+    "draft4Desc": "Formal 72-hour disaster intimation notice for crop inundation & building loss.",
+    "savedHouseholdFound": "पूर्व-नोंदणीकृत कौटुंबिक माहिती उपलब्ध",
+    "useMyHousehold": "माझ्या कुटुंबाची माहिती वापरा",
+    "beforeAfterTitle": "नुकसान पूर्व आणि नंतर तुलना",
+    "beforeLabel": "पूर्वी (व्हॉल्ट बेसलाइन)",
+    "afterLabel": "नंतर (सध्याचे पूर नुकसान)",
+    "beforeAfterSummary": "एआयने पूर्व-आपत्ती बेसलाइनच्या तुलनेत ८५% स्ट्रक्चरल नुकसान सत्यापित केले.",
+    "hillyAreaQ": "तुमचे गाव डोंगराळ भागात आहे का?",
+    "hillyAreaHelp": "एसडीआरएफ नियमांनुसार डोंगराळ भागातील पूर्णपणे नष्ट झालेल्या घरांसाठी जास्त मदत (₹१,३०,००० विरूद्ध ₹१,२०,०००) दिली जाते.",
+    "meshRelayNotice": "सिग्नल नाही? शेजाऱ्याकडे सोपवा",
+    "meshRelayDesc": "मोबाइल टॉवर बंद असल्यास, हा सीलबंद क्यूआर कोड सिग्नल असलेल्या भागात जाणाऱ्या शेजाऱ्याकडे सोपवा.",
+    "openMeshBtn": "मेश क्यूआर कोड उघडा"
   },
   "track": {
     "title": "Track Your Relief Claim",
@@ -269,7 +282,8 @@
   "offline": {
     "onlineSync": "Connected back online. Offline recordings and photos have been synced.",
     "offlineAlert": "You are currently offline. Any recordings or photos will be saved locally on your phone and sent automatically when internet returns.",
-    "queuedItems": "({{count}} item{{plural}} queued)"
+    "queuedItems": "({{count}} item{{plural}} queued)",
+    "savedOnPhone": "या फोनवर सेव्ह केले, {{count}} आयटम प्रतीक्षेत"
   },
   "footer": {
     "team": "Team OPUS · IEM Kolkata",
@@ -299,5 +313,66 @@
     "timelineSubmitted": "Claim submitted via Aapke Liye voice app. GPS coordinates verified at Ghatal Block-II.",
     "timelineVerified": "Field Revenue Inspector matched photo GPS with Block flood inundation zone.",
     "timelineInspection": "Sub-Divisional Officer completed field dossier. Forwarded to District Magistrate office for SDRF fund release."
+  },
+  "prepare": {
+    "badge": "आपत्तीपूर्व सुरक्षा उपाय",
+    "title": "आपत्ती दस्तऐवज व्हॉल्ट",
+    "subtitle": "पूर येण्यापूर्वी आपल्या कुटुंबाची ओळखपत्रे आणि घराचे फोटो सुरक्षित ठेवा. आपत्तीच्या वेळी कागदपत्रांच्या विलंबाशिवाय लगेच दावा करा.",
+    "registeredSuccess": "कुटुंब यशस्वीरित्या नोंदणीकृत आणि टोकन सुरक्षित!",
+    "docUploaded": "दस्तऐवज सुरक्षित व्हॉल्टमध्ये सेव्ह केला.",
+    "baselineUploaded": "तुलनेसाठी बेसलाइन मालमत्ता फोटो सेव्ह केला.",
+    "householdRegisteredTitle": "आपले नोंदणीकृत कुटुंब",
+    "householdRegisterTitle": "१. कुटुंबाची नोंदणी करा",
+    "headName": "कुटुंबप्रमुख / अर्जदाराचे नाव",
+    "phone": "मोबाइल फोन नंबर",
+    "village": "गाव / ग्रामपंचायत",
+    "district": "जिल्हा",
+    "rationCardNo": "रेशन कार्ड क्रमांक (NFSA)",
+    "saveHousehold": "व्हॉल्टमध्ये कुटुंब जतन करा",
+    "updateHousehold": "कुटुंबाचा तपशील अपडेट करा",
+    "startClaimWithThis": "या माहितीने दावा सुरू करा",
+    "docsTitle": "२. माझी सुरक्षित कागदपत्रे",
+    "docsSubtitle": "अपलोड केलेले दस्तऐवज एनक्रिप्ट केलेले असतात आणि दाव्याच्या वेळी उपलब्ध मानले जातात.",
+    "digiLockerBtn": "डिजिलॉकरमधून आयात करा (डेमो)",
+    "docAadhaar": "आधार कार्ड",
+    "docRation": "रेशन कार्ड (NFSA / PDS)",
+    "docLand": "जमीन नोंद (७/१२ उतारा / खतावणी)",
+    "docBank": "बँक पासबुक (DBT लिंक)",
+    "notUploaded": "अद्याप प्रत अपलोड केलेली नाही.",
+    "uploadBtn": "फाइल अपलोड करा",
+    "baselineTitle": "३. सामान्य वेळेचा बेसलाइन फोटो",
+    "baselineSubtitle": "घर किंवा गोठ्याचा सामान्य वेळेचा फोटो काढून ठेवा. पुराच्या वेळी जेमिनी या फोटोशी तुलना करतो.",
+    "baselineActive": "बेसलाइन फोटो सक्रिय",
+    "baselineReady": "दावा तपासणीच्या वेळी समोरासमोर तुलनेसाठी सज्ज.",
+    "replacePhoto": "फोटो बदला",
+    "noBaselinePhoto": "कोणताही बेसलाइन फोटो सेव्ह नाही",
+    "baselineInstructions": "घर अखंड असतानाच फोटो काढा. आपत्तीनंतर हा पक्का पुरावा ठरतो.",
+    "snapBaseline": "बेसलाइन फोटो काढा",
+    "digiLockerMockBanner": "डेमो: डिजिलॉकर संमती स्क्रीन",
+    "digiLockerImported": "डिजिलॉकरचे नमुना दस्तऐवज व्हॉल्टमध्ये आयात केले.",
+    "giveConsent": "मी संमती देतो (डेमो आयात)"
+  },
+  "mesh": {
+    "badge": "फोन-ते-फोन आणीबाणी मेश",
+    "title": "आणीबाणी मेश क्लेम रिले",
+    "subtitle": "मोबाइल टॉवर बंद असताना नागरिक आपला सीलबंद दावा क्यूआर कोडद्वारे मदत पथक किंवा शेजाऱ्याकडे सोपवू शकतात.",
+    "tabHand": "१. शेजाऱ्याकडे सोपवा",
+    "tabCarry": "२. दावा पुढे पोहोचवा",
+    "noClaimsOnDevice": "या फोनवर कोणताही दावा सापडला नाही",
+    "noClaimsHelp": "प्रथम दावा दाखल करा (ऑफलाइनही चालतो). पूर्ण झाल्यावर येथे सीलबंद क्यूआर कोड तयार करता येईल.",
+    "selectClaimToHand": "सोपवण्यासाठी दावा निवडा:",
+    "cryptographicallySealed": "सरकारी सर्व्हरसाठी AES-256 एनक्रिप्टेड आणि स्वाक्षरीकृत",
+    "qrInstructions": "आपल्या शेजाऱ्यास अॅपमधील \"दावा पुढे पोहोचवा\" अंतर्गत हा कोड स्कॅन करण्यास सांगा.",
+    "copyEnvelopeText": "सीलबंद मजकूर कॉपी करा",
+    "carryTitle": "शेजाऱ्यांचे दावे पुढे पोहोचवा",
+    "carrySubtitle": "तुम्ही रस्ता किंवा शिबिराकडे जात असल्यास शेजाऱ्यांचे क्यूआर स्कॅन करा. सिग्नल मिळताच फोन ते स्वतः अपलोड करेल.",
+    "pasteScanLabel": "स्कॅन परिणाम किंवा सीलबंद मजकूर पेस्ट करा:",
+    "addCarriedClaim": "या फोनवर दावा सेव्ह करा",
+    "claimsWaitingForSignal": "या फोनवर प्रलंबित दावे ({{count}})",
+    "syncCarriedNow": "प्रलंबित दावे आता पाठवा",
+    "noCarriedEnvelopes": "या फोनवर सध्या इतर कोणताही दावा प्रलंबित नाही.",
+    "invalidEnvelope": "अवैध क्यूआर कोड किंवा डेटा. कृपया पुन्हा तपासा.",
+    "importSuccess": "दावा पुढे पाठवण्यासाठी सुरक्षितपणे सेव्ह केला!",
+    "deliverySuccess": "सर्व रिले दावे अपलोड झाले! स्वाक्षरीकृत पावती मिळाली."
   }
 }

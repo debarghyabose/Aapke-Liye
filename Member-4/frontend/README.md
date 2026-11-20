@@ -40,38 +40,55 @@ npm run dev
 ```
 The server will start on **http://localhost:5173** (or the next available port).
 
-### 4. Build for Production
+### 4. Build for Production & PWA
 ```bash
 npm run build
 ```
-Generates production artifacts in `dist/`.
+Generates production artifacts in `dist/`, including service worker (`sw.js`) and web app manifest (`manifest.webmanifest`).
+
+### 5. Run Verification & Test Suite
+```bash
+npm test
+npm run i18n:check
+```
 
 ---
 
 ## 📱 Features
 
 1. **Full 6-Step Claim Application (`/claim`)**:
-   - **Step 1 (Language)**: 6 native script tiles (English, বাংলা, हिंदी, मराठी, తెలుగు, தமிழ்) with Web Speech TTS pronunciation.
-   - **Step 2 (Speech)**: Large round record button with `MediaRecorder`, live timer, animated waveform visualizer, and instructions TTS.
+   - **Step 1 (Language & Household)**: 6 native script tiles (English, বাংলা, हिंदी, मराठी, తెలుగు, தமிழ்) with Web Speech TTS pronunciation and one-tap "Use my household" option.
+   - **Step 2 (Speech)**: Large round record button with `MediaRecorder`, live timer, animated waveform visualizer, and instructions TTS. Works offline by caching audio locally.
    - **Step 3 (Follow-up Questions)**: Gemini missing-field questions with audio playback and one-tap voice responses.
-   - **Step 4 (Photos)**: Camera input (`capture="environment"`), auto GPS geocoding + timestamp, Gemini structural damage scoring, EXIF and duplicate detection.
-   - **Step 5 (Review & Relief)**: Editable cards, SDRF/NDRF financial computation (letters 33-03/2020-NDM-I), matched government schemes (SDRF, PMFBY, PMAY-G), and legal proof substitution advice for lost documents.
-   - **Step 6 (Submitted & Reissuance Drafts)**: Claim ID, WhatsApp sharing, PDF download, and one-click draft letters for Aadhaar, ration card, land record re-issuance, and crop insurance.
+   - **Step 4 (Photos & Before/After)**: Camera input (`capture="environment"`), auto GPS geocoding + timestamp, Gemini structural damage scoring, EXIF and duplicate detection, plus side-by-side Before/After comparison against pre-disaster baseline.
+   - **Step 5 (Review & Relief)**: Editable cards, SDRF/NDRF financial computation (letters 33-03/2020-NDM-I), hilly-area toggle (`is_hilly`), matched government schemes (SDRF, PMFBY, PMAY-G), and legal proof substitution advice for lost documents.
+   - **Step 6 (Submitted, Reissuance Drafts & Mesh)**: Claim ID, WhatsApp sharing, PDF download, one-click draft letters for Aadhaar, ration card, land record re-issuance, and emergency mesh hand-off button.
 
-2. **Claim Tracking (`/track`)**:
+2. **Pre-Disaster Document Vault (`/prepare`)**:
+   - Register household and secure an on-device token.
+   - "My documents" cards: Upload Aadhaar, ration card, land records, bank passbook.
+   - DigiLocker mock consent flow: One-tap demo import of verified Aadhaar and NFSA ration card.
+   - Baseline photo capture of intact dwelling to prepare for before/after comparison.
+
+3. **Emergency Mesh Relay (`/mesh`)**:
+   - **Hand to a neighbour**: Cryptographically seals the claim into a compact envelope and displays an offline QR code.
+   - **Carry a claim**: Scans neighbours' QR codes and securely holds envelopes until the phone enters a connected mobile signal zone.
+   - Signed SDMA intake delivery receipt confirmation.
+
+4. **Claim Tracking (`/track`)**:
    - Search by Claim ID.
    - Step-by-step verification history: *Submitted → Verified → Approved → Paid*.
    - Multi-lingual audio playback.
    - Automatic RTI & grievance follow-up generator if claim exceeds 14 days without resolution.
 
-3. **Administration & Official Portal (`/official`)**:
+5. **Administration & Official Portal (`/official`)**:
    - District damage heatmap OpenStreetMap simulation.
    - Vulnerability priority list auto-sorting elderly, disabled, and single-mother households.
    - Verification inspector with cross-claim duplicate photo detection alerts and status action controls.
+   - Responsive layout: map above, queue below on mobile screens.
 
-4. **Universal Accessibility & Resilience**:
-   - WCAG AA compliant contrast and touch targets $\ge 56\text{px}$.
-   - High Contrast and Large Text modes.
+6. **Universal Accessibility, Offline & PWA**:
+   - Full PWA with service worker and web app manifest for offline opening and "Add to Home Screen".
    - IndexedDB offline queueing for zero-connectivity rural zones with automatic reconnection sync.
-   - Transparent Demo Mode when backend is offline or connecting.
-
+   - WCAG AA compliant contrast and touch targets $\ge 48\text{px}$.
+   - High Contrast and Large Text modes.

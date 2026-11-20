@@ -14,7 +14,9 @@
     "largerTextAria": "Toggle Larger Text",
     "largerTextTitle": "Toggle Larger Text Mode",
     "openMenuAria": "Open navigation menu",
-    "closeMenuAria": "Close navigation menu"
+    "closeMenuAria": "Close navigation menu",
+    "prepare": "Prepare",
+    "mesh": "Mesh"
   },
   "hero": {
     "title": "Lost your home to the water? Your relief shouldn't be lost too.",
@@ -197,7 +199,18 @@
     "draft3Desc": "Plot verification request supported by geo-tagged photos and neighbours' statements.",
     "draft4Title": "Crop & House Insurance Notice",
     "draft4Dept": "PMFBY / General Insurance",
-    "draft4Desc": "Formal 72-hour disaster intimation notice for crop inundation & building loss."
+    "draft4Desc": "Formal 72-hour disaster intimation notice for crop inundation & building loss.",
+    "savedHouseholdFound": "Pre-registered Household Available",
+    "useMyHousehold": "Use my household records",
+    "beforeAfterTitle": "Before / After Damage Comparison",
+    "beforeLabel": "BEFORE (Vault Baseline)",
+    "afterLabel": "AFTER (Current Flood)",
+    "beforeAfterSummary": "AI verified structural collapse relative to pre-disaster baseline.",
+    "hillyAreaQ": "Is your village in a hilly area?",
+    "hillyAreaHelp": "Government relief norms provide higher SDRF assistance (₹1,30,000 vs ₹1,20,000) for fully destroyed homes in hilly regions.",
+    "meshRelayNotice": "Zero Signal? Hand to a Neighbour",
+    "meshRelayDesc": "If network towers are knocked out, generate a sealed QR code to hand this claim to a moving neighbour or volunteer travelling to signal.",
+    "openMeshBtn": "Open Mesh QR Code"
   },
   "track": {
     "title": "Track Your Relief Claim",
@@ -269,7 +282,8 @@
   "offline": {
     "onlineSync": "Connected back online. Offline recordings and photos have been synced.",
     "offlineAlert": "You are currently offline. Any recordings or photos will be saved locally on your phone and sent automatically when internet returns.",
-    "queuedItems": "({{count}} item{{plural}} queued)"
+    "queuedItems": "({{count}} item{{plural}} queued)",
+    "savedOnPhone": "Saved on this phone, {{count}} item waiting"
   },
   "footer": {
     "team": "Team OPUS · IEM Kolkata",
@@ -299,5 +313,66 @@
     "timelineSubmitted": "Claim submitted via Aapke Liye voice app. GPS coordinates verified at Ghatal Block-II.",
     "timelineVerified": "Field Revenue Inspector matched photo GPS with Block flood inundation zone.",
     "timelineInspection": "Sub-Divisional Officer completed field dossier. Forwarded to District Magistrate office for SDRF fund release."
+  },
+  "prepare": {
+    "badge": "Pre-Disaster Safeguard",
+    "title": "Disaster Document Vault",
+    "subtitle": "Save your family identity papers and house baseline photos before floods arrive. When a disaster hits, you can file a claim instantly with zero lost document delays.",
+    "registeredSuccess": "Household successfully registered & token secured!",
+    "docUploaded": "Document saved to encrypted vault.",
+    "baselineUploaded": "Baseline property photo saved for before/after comparison.",
+    "householdRegisteredTitle": "Your Registered Household",
+    "householdRegisterTitle": "1. Register Your Household",
+    "headName": "Head of Household / Claimant Name",
+    "phone": "Mobile Phone Number",
+    "village": "Village / Gram Panchayat",
+    "district": "District",
+    "rationCardNo": "Ration Card Number (NFSA)",
+    "saveHousehold": "Save Household to Vault",
+    "updateHousehold": "Update Household Details",
+    "startClaimWithThis": "Use This Household to File Claim",
+    "docsTitle": "2. My Saved Documents",
+    "docsSubtitle": "Uploaded documents are encrypted and count as available during claim verification.",
+    "digiLockerBtn": "Import from DigiLocker (Demo)",
+    "docAadhaar": "Aadhaar Card",
+    "docRation": "Ration Card (NFSA / PDS)",
+    "docLand": "Land Record (Khatian / RoR)",
+    "docBank": "Bank Passbook (DBT linked)",
+    "notUploaded": "No copy saved yet.",
+    "uploadBtn": "Upload file",
+    "baselineTitle": "3. Baseline Property Photos",
+    "baselineSubtitle": "Take normal-time photos of your house, cattle shed, or fields. In flood time, Gemini compares current photos against this baseline.",
+    "baselineActive": "Baseline Photo Active",
+    "baselineReady": "Ready to provide side-by-side verification during disaster claim review.",
+    "replacePhoto": "Replace photo",
+    "noBaselinePhoto": "No baseline photo saved yet",
+    "baselineInstructions": "Photograph your dwelling now while it is intact. It serves as irrefutable before-evidence.",
+    "snapBaseline": "Snap Baseline Photo",
+    "digiLockerMockBanner": "Demo: DigiLocker Mock Consent Screen",
+    "digiLockerImported": "Sample DigiLocker documents synced into your vault.",
+    "giveConsent": "I Consent (Demo Import)"
+  },
+  "mesh": {
+    "badge": "Phone-to-Phone Emergency Mesh",
+    "title": "Emergency Mesh Claim Relay",
+    "subtitle": "When mobile towers are down, stranded victims can hand a cryptographically sealed claim to a moving neighbour, volunteer, or rescue boat via QR code until it reaches signal.",
+    "tabHand": "1. Hand to a Neighbour",
+    "tabCarry": "2. Carry a Claim",
+    "noClaimsOnDevice": "No filed claims found on this phone",
+    "noClaimsHelp": "Start a relief claim first (even offline). Once completed, you can generate a sealed relay QR code here.",
+    "selectClaimToHand": "Select Claim to Seal & Hand Over:",
+    "cryptographicallySealed": "AES-256 Sealed & Signed for SDMA Server",
+    "qrInstructions": "Ask your neighbour or relief worker to open Aapke Liye and scan this code under \"Carry a Claim\". Your identity remains encrypted until it reaches the government office.",
+    "copyEnvelopeText": "Copy Sealed Text",
+    "carryTitle": "Relay Neighbour Claims",
+    "carrySubtitle": "If you are travelling toward a road, relief camp, or mobile tower, scan your neighbours’ QR codes. This phone will hold them securely and upload them the moment mobile signal returns.",
+    "pasteScanLabel": "Scan result or paste sealed claim JSON:",
+    "addCarriedClaim": "Store Claim on This Phone",
+    "claimsWaitingForSignal": "Claims Held on This Phone ({{count}})",
+    "syncCarriedNow": "Sync Carried Claims",
+    "noCarriedEnvelopes": "No claims currently being carried on this device.",
+    "invalidEnvelope": "Invalid QR code or envelope JSON. Please check and try again.",
+    "importSuccess": "Claim envelope securely saved to this device for delivery!",
+    "deliverySuccess": "All carried claims uploaded! Signed receipts received from SDMA."
   }
 }

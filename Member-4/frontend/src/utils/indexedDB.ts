@@ -1,18 +1,27 @@
 // src/utils/indexedDB.ts
-// Offline IndexedDB queue for recording and photos
+// Offline IndexedDB queue & local storage for zero-connectivity disaster relief
 
-interface QueueItem {
+import { ClaimOut, SealedClaimEnvelope, Household, VaultDocument } from '../types/api';
+
+export type QueueItemType = 'claim_create' | 'text' | 'audio' | 'photo' | 'mesh_relay';
+
+export interface QueueItem {
   id: string;
-  type: 'audio' | 'photo';
+  type: QueueItemType;
   claimId: string;
-  blob: Blob;
+  blob?: Blob;
+  text?: string;
+  payload?: any;
   metadata?: Record<string, any>;
   createdAt: number;
 }
 
 const DB_NAME = 'AapkeLiyeOfflineDB';
-const DB_VERSION = 1;
-const STORE_NAME = 'offline_queue';
+const DB_VERSION = 2;
+const QUEUE_STORE = 'offline_queue';
+const CLAIMS_STORE = 'offline_claims';
+const MESH_STORE = 'mesh_envelopes';
+const VAULT_STORE = 'household_vault';
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -21,16 +30,27 @@ function openDB(): Promise<IDBDatabase> {
       return;
     }
     const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onupgradeneeded = () => {
+    request.onupgradeneeded = (event) => {
       const db = request.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+      if (!db.objectStoreNames.contains(QUEUE_STORE)) {
+        db.createObjectStore(QUEUE_STORE, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(CLAIMS_STORE)) {
+        db.createObjectStore(CLAIMS_STORE, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(MESH_STORE)) {
+        db.createObjectStore(MESH_STORE, { keyPath: 'claim_id' });
+      }
+      if (!db.objectStoreNames.contains(VAULT_STORE)) {
+        db.createObjectStore(VAULT_STORE, { keyPath: 'id' });
       }
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
 }
+
+// ---------- Offline Queue API ----------
 
 export async function queueOfflineItem(item: Omit<QueueItem, 'id' | 'createdAt'>): Promise<string> {
   const db = await openDB();
@@ -42,8 +62,8 @@ export async function queueOfflineItem(item: Omit<QueueItem, 'id' | 'createdAt'>
   };
 
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    const store = tx.objectStore(STORE_NAME);
+    const tx = db.transaction(QUEUE_STORE, 'readwrite');
+    const store = tx.objectStore(QUEUE_STORE);
     const req = store.add(fullItem);
     req.onsuccess = () => resolve(id);
     req.onerror = () => reject(req.error);
@@ -54,8 +74,8 @@ export async function getOfflineQueue(): Promise<QueueItem[]> {
   try {
     const db = await openDB();
     return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readonly');
-      const store = tx.objectStore(STORE_NAME);
+      const tx = db.transaction(QUEUE_STORE, 'readonly');
+      const store = tx.objectStore(QUEUE_STORE);
       const req = store.getAll();
       req.onsuccess = () => resolve(req.result || []);
       req.onerror = () => reject(req.error);
@@ -69,8 +89,8 @@ export async function getOfflineQueue(): Promise<QueueItem[]> {
 export async function removeQueueItem(id: string): Promise<void> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    const store = tx.objectStore(STORE_NAME);
+    const tx = db.transaction(QUEUE_STORE, 'readwrite');
+    const store = tx.objectStore(QUEUE_STORE);
     const req = store.delete(id);
     req.onsuccess = () => resolve();
     req.onerror = () => reject(req.error);
@@ -80,11 +100,166 @@ export async function removeQueueItem(id: string): Promise<void> {
 export async function clearOfflineQueue(): Promise<void> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    const store = tx.objectStore(STORE_NAME);
+    const tx = db.transaction(QUEUE_STORE, 'readwrite');
+    const store = tx.objectStore(QUEUE_STORE);
     const req = store.clear();
     req.onsuccess = () => resolve();
     req.onerror = () => reject(req.error);
   });
 }
 
+export async function updateQueueClaimId(oldId: string, newId: string): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(QUEUE_STORE, 'readwrite');
+    const store = tx.objectStore(QUEUE_STORE);
+    const req = store.getAll();
+    req.onsuccess = () => {
+      const items: QueueItem[] = req.result || [];
+      items.forEach((item) => {
+        if (item.claimId === oldId) {
+          item.claimId = newId;
+          store.put(item);
+        }
+      });
+      resolve();
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// ---------- Offline Claim Drafts API ----------
+
+export async function saveOfflineClaim(claim: ClaimOut): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(CLAIMS_STORE, 'readwrite');
+    const store = tx.objectStore(CLAIMS_STORE);
+    const req = store.put(claim);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function getOfflineClaim(id: string): Promise<ClaimOut | null> {
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(CLAIMS_STORE, 'readonly');
+      const store = tx.objectStore(CLAIMS_STORE);
+      const req = store.get(id);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function getAllOfflineClaims(): Promise<ClaimOut[]> {
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(CLAIMS_STORE, 'readonly');
+      const store = tx.objectStore(CLAIMS_STORE);
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+  } catch {
+    return [];
+  }
+}
+
+export async function deleteOfflineClaim(id: string): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(CLAIMS_STORE, 'readwrite');
+    const store = tx.objectStore(CLAIMS_STORE);
+    const req = store.delete(id);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// ---------- Mesh Relay Store ----------
+
+export async function saveMeshEnvelope(envelope: SealedClaimEnvelope): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(MESH_STORE, 'readwrite');
+    const store = tx.objectStore(MESH_STORE);
+    const req = store.put(envelope);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function getMeshEnvelopes(): Promise<SealedClaimEnvelope[]> {
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(MESH_STORE, 'readonly');
+      const store = tx.objectStore(MESH_STORE);
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+  } catch {
+    return [];
+  }
+}
+
+export async function removeMeshEnvelope(claimId: string): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(MESH_STORE, 'readwrite');
+    const store = tx.objectStore(MESH_STORE);
+    const req = store.delete(claimId);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// ---------- Household Vault Store ----------
+
+export async function saveLocalHousehold(household: Household): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(VAULT_STORE, 'readwrite');
+    const store = tx.objectStore(VAULT_STORE);
+    const req = store.put(household);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function getLocalHousehold(id: string): Promise<Household | null> {
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(VAULT_STORE, 'readonly');
+      const store = tx.objectStore(VAULT_STORE);
+      const req = store.get(id);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function getAllLocalHouseholds(): Promise<Household[]> {
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(VAULT_STORE, 'readonly');
+      const store = tx.objectStore(VAULT_STORE);
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+  } catch {
+    return [];
+  }
+}

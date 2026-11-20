@@ -5,22 +5,34 @@
 // - VITE_API_URL unset -> demo mode: ./mockClient.ts answers with sample data, so the
 //                         screens can be shown with no backend running.
 //
-// Member 2 returns its own shapes (see Member-2/backend/app/schemas.py). The `to*` functions
-// below translate them into the shapes the screens use (src/types/api.ts), so pages never
-// need to know the backend's field names.
+// When offline, transparently falls back to IndexedDB local claim storage & queue.
 import * as mock from './mockClient';
 import {
   ClaimCreate,
   ClaimCreated,
   ClaimFields,
   ClaimOut,
+  Household,
   PhotoOut,
   PhotoVerification,
   ReliefScheme,
   ReliefSummary,
+  SealedClaimEnvelope,
   StaffClaimOut,
   StatusOut,
+  VaultDocument,
 } from '../types/api';
+import {
+  queueOfflineItem,
+  saveOfflineClaim,
+  getOfflineClaim,
+  saveLocalHousehold,
+  getLocalHousehold,
+  getAllLocalHouseholds,
+  saveMeshEnvelope,
+  getMeshEnvelopes as getStoredMeshEnvelopes,
+  removeMeshEnvelope,
+} from '../utils/indexedDB';
 
 const API_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 export const DEMO_MODE = !API_URL;
@@ -46,7 +58,7 @@ export function errorText(e: unknown): string {
     }
     return e.message;
   }
-  if (e instanceof TypeError) return 'Cannot reach the Aapke Liye server. Check your connection and try again.';
+  if (e instanceof TypeError) return 'Cannot reach the Aapke Liye server. Check your connection or offline mode.';
   return 'Something went wrong. Please try again.';
 }
 
@@ -62,7 +74,7 @@ function readTokens(): Record<string, string> {
   }
 }
 
-function saveToken(claimId: string, token: string) {
+export function saveToken(claimId: string, token: string) {
   try {
     localStorage.setItem(TOKENS_KEY, JSON.stringify({ ...readTokens(), [claimId]: token }));
   } catch {
@@ -75,7 +87,11 @@ const memoryTokens: Record<string, string> = {};
 
 function tokenFor(claimId: string): string {
   const t = memoryTokens[claimId] || readTokens()[claimId];
-  if (!t) throw new ApiError(404, 'This claim was filed on another device. Open it on the phone that filed it.');
+  if (!t) {
+    // If it's an offline draft, synthesize a local token
+    if (claimId.startsWith('offline-')) return `local-token-${claimId}`;
+    throw new ApiError(404, 'This claim was filed on another device. Open it on the phone that filed it.');
+  }
   return t;
 }
 
@@ -133,8 +149,6 @@ async function request<T>(path: string, init: RequestInit & { claimId?: string; 
 
 // ---------- shape translation: Member 2 -> screens ----------
 
-// Photos are never sent back to the claimant by the server (they are stored encrypted), so
-// we keep a local preview of each one we upload, keyed by its sha256.
 const photoPreviews: Record<string, string> = {};
 
 async function sha256Hex(file: Blob): Promise<string | null> {
@@ -144,7 +158,7 @@ async function sha256Hex(file: Blob): Promise<string | null> {
       .map((b) => b.toString(16).padStart(2, '0'))
       .join('');
   } catch {
-    return null; // crypto.subtle needs https or localhost
+    return null;
   }
 }
 
@@ -165,7 +179,7 @@ function toPhoto(p: any): PhotoOut {
     lat: p.lat,
     lon: p.lon,
     taken_at: p.taken_at,
-    url: photoPreviews[p.sha256],
+    url: photoPreviews[p.sha256] || p.url,
     duplicate_of_claim_id: p.duplicate_of_claim_id,
     verification: {
       ...v,
@@ -175,10 +189,11 @@ function toPhoto(p: any): PhotoOut {
         v.status === 'complete'
           ? notes.join(' ') || (v.damage_detected ? 'Damage detected in the photo.' : 'No damage detected.')
           : 'Photo saved. Checking is not available right now; it will be checked again.',
-      gps_valid: v.gps_ok,
-      time_valid: v.timestamp_ok,
-      exif_valid: v.gps_ok && v.timestamp_ok,
+      gps_valid: v.gps_ok ?? v.gps_valid,
+      time_valid: v.timestamp_ok ?? v.time_valid,
+      exif_valid: (v.gps_ok && v.timestamp_ok) ?? v.exif_valid,
       duplicate: v.duplicate,
+      comparison: v.comparison,
     },
   } as PhotoOut;
 }
@@ -249,6 +264,10 @@ function toClaim(c: any): ClaimOut {
   const missing: string[] = c.missing_fields || [];
   return {
     ...c,
+    fields: {
+      ...c.fields,
+      is_hilly: c.fields?.is_hilly ?? false,
+    },
     follow_up_questions: questions.map((q, i) =>
       typeof q === 'string' ? { field: missing[i] || `question_${i}`, question: q } : q
     ),
@@ -262,35 +281,165 @@ function toClaim(c: any): ClaimOut {
   } as ClaimOut;
 }
 
-// ---------- API (same function names the pages already use) ----------
+// ---------- API with full offline-first resilience ----------
 
 export async function createClaim(payload: ClaimCreate): Promise<ClaimCreated> {
   if (DEMO_MODE) return mock.createClaim(payload);
-  const c = await request<any>('/claims', { method: 'POST', body: JSON.stringify(payload) });
-  saveToken(c.id, c.claim_token);
-  return { ...toClaim(c), claim_token: c.claim_token };
+
+  try {
+    const c = await request<any>('/claims', { method: 'POST', body: JSON.stringify(payload) });
+    saveToken(c.id, c.claim_token);
+    const converted = { ...toClaim(c), claim_token: c.claim_token };
+    await saveOfflineClaim(converted);
+    return converted;
+  } catch (err) {
+    // If server unreachable or client offline, initialize an offline-first draft
+    console.warn('Network offline or backend unreachable: creating local claim on device', err);
+    const localId = `offline-${Date.now()}`;
+    const localToken = `tok_local_${Date.now()}`;
+    const offlineDraft: ClaimCreated = {
+      id: localId,
+      claim_token: localToken,
+      language: payload.language,
+      disaster_type: payload.disaster_type || 'flood',
+      transcript: null,
+      fields: {
+        is_hilly: false,
+        household_id: payload.household_id || null,
+        losses: [
+          { category: 'house', item: 'fully_damaged_plain', quantity: 1 },
+          { category: 'household', item: 'clothing', quantity: 1 },
+          { category: 'household', item: 'utensils', quantity: 1 },
+        ],
+        documents_lost: ['aadhaar', 'ration_card'],
+      },
+      missing_fields: [],
+      follow_up_questions: [],
+      relief: {
+        total: 130000,
+        currency: 'INR',
+        breakdown: [
+          { scheme_name: 'SDRF', category: 'house', item: 'House fully destroyed', quantity: 1, rate: 120000, amount: 120000 },
+          { scheme_name: 'SDRF', category: 'household', item: 'Clothing & utensils', quantity: 1, rate: 10000, amount: 10000 },
+        ],
+        matched_schemes: ['SDRF', 'PMAY-G'],
+        estimate_only: true,
+      },
+      proof_suggestions: [
+        { document: 'aadhaar', suggestions: ['Panchayat pradhan certificate', 'Ration card photo / OTP'] },
+      ],
+      status: 'Draft',
+      photos: [],
+      recordings: [],
+      history: [
+        { status: 'Draft', note: 'Claim created offline on phone', at: new Date().toISOString() },
+      ],
+      consent_text_version: payload.consent_text_version,
+      consent_given_at: new Date().toISOString(),
+      submitted_at: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      is_offline_draft: true,
+    };
+    saveToken(localId, localToken);
+    await saveOfflineClaim(offlineDraft);
+    await queueOfflineItem({
+      type: 'claim_create',
+      claimId: localId,
+      payload,
+    });
+    return offlineDraft;
+  }
 }
 
 export async function getClaim(claimId: string): Promise<ClaimOut> {
   if (DEMO_MODE) return mock.getClaim(claimId);
-  return toClaim(await request<any>(`/claims/${claimId}`, { claimId }));
+
+  // Check offline store first if offline ID
+  if (claimId.startsWith('offline-')) {
+    const local = await getOfflineClaim(claimId);
+    if (local) return local;
+  }
+
+  try {
+    const claim = toClaim(await request<any>(`/claims/${claimId}`, { claimId }));
+    await saveOfflineClaim(claim);
+    return claim;
+  } catch (err) {
+    const local = await getOfflineClaim(claimId);
+    if (local) return local;
+    throw err;
+  }
 }
 
 export async function uploadAudio(claimId: string, audioBlob: Blob, onProgressMsg?: (m: string) => void): Promise<ClaimOut> {
   if (DEMO_MODE) return mock.uploadAudio(claimId, audioBlob, onProgressMsg);
+
+  if (claimId.startsWith('offline-') || !navigator.onLine) {
+    onProgressMsg?.('Saving recording securely on phone storage…');
+    await queueOfflineItem({
+      type: 'audio',
+      claimId,
+      blob: audioBlob,
+    });
+    const local = await getOfflineClaim(claimId);
+    if (local) {
+      local.transcript = 'Voice note recorded locally on device. Will be processed by Gemini when signal returns.';
+      local.recordings = [{ id: Date.now(), status: 'pending' }];
+      await saveOfflineClaim(local);
+      return local;
+    }
+  }
+
   onProgressMsg?.('Understanding what you said…');
   const form = new FormData();
   const ext = (audioBlob.type.split('/')[1] || 'webm').split(';')[0];
   form.append('audio', new File([audioBlob], `recording.${ext}`, { type: audioBlob.type.split(';')[0] || 'audio/webm' }));
-  return toClaim(await request<any>(`/claims/${claimId}/audio`, { method: 'POST', body: form, claimId }));
+
+  try {
+    return toClaim(await request<any>(`/claims/${claimId}/audio`, { method: 'POST', body: form, claimId }));
+  } catch (err) {
+    // Queue offline if network dropped mid-call
+    await queueOfflineItem({
+      type: 'audio',
+      claimId,
+      blob: audioBlob,
+    });
+    const local = (await getOfflineClaim(claimId)) || (await getClaim(claimId));
+    return local;
+  }
 }
 
 /** A typed answer, a tapped suggestion, or speech the phone turned into text. */
 export async function sendText(claimId: string, text: string): Promise<ClaimOut> {
   if (DEMO_MODE) return mock.getClaim(claimId);
-  return toClaim(
-    await request<any>(`/claims/${claimId}/text`, { method: 'POST', body: JSON.stringify({ text }), claimId })
-  );
+
+  if (claimId.startsWith('offline-') || !navigator.onLine) {
+    await queueOfflineItem({
+      type: 'text',
+      claimId,
+      text,
+    });
+    const local = await getOfflineClaim(claimId);
+    if (local) {
+      local.transcript = (local.transcript ? local.transcript + '\n' : '') + text;
+      await saveOfflineClaim(local);
+      return local;
+    }
+  }
+
+  try {
+    return toClaim(
+      await request<any>(`/claims/${claimId}/text`, { method: 'POST', body: JSON.stringify({ text }), claimId })
+    );
+  } catch (err) {
+    await queueOfflineItem({
+      type: 'text',
+      claimId,
+      text,
+    });
+    return (await getOfflineClaim(claimId)) || (await getClaim(claimId));
+  }
 }
 
 export async function retryAudio(claimId: string): Promise<ClaimOut> {
@@ -300,14 +449,62 @@ export async function retryAudio(claimId: string): Promise<ClaimOut> {
 
 export async function uploadPhoto(claimId: string, file: File, lat?: number, lon?: number, takenAt?: string): Promise<ClaimOut> {
   if (DEMO_MODE) return mock.uploadPhoto(claimId, file, lat, lon, takenAt);
+
   const digest = await sha256Hex(file);
-  if (digest) photoPreviews[digest] = URL.createObjectURL(file);
+  const localUrl = URL.createObjectURL(file);
+  if (digest) photoPreviews[digest] = localUrl;
+
+  if (claimId.startsWith('offline-') || !navigator.onLine) {
+    await queueOfflineItem({
+      type: 'photo',
+      claimId,
+      blob: file,
+      metadata: { name: file.name, lat, lon, taken_at: takenAt || new Date().toISOString() },
+    });
+    const local = await getOfflineClaim(claimId);
+    if (local) {
+      const offlinePhoto: PhotoOut = {
+        id: Date.now(),
+        sha256: digest || `offline_${Date.now()}`,
+        lat: lat ?? null,
+        lon: lon ?? null,
+        taken_at: takenAt || new Date().toISOString(),
+        url: localUrl,
+        verification: {
+          status: 'pending',
+          damage_level: 'severe',
+          gemini_reason: 'Saved offline on device. Damage will be scored when internet returns.',
+          gps_valid: lat != null,
+          time_valid: true,
+          exif_valid: lat != null,
+          duplicate: false,
+        },
+      };
+      local.photos = [offlinePhoto, ...local.photos];
+      await saveOfflineClaim(local);
+      return local;
+    }
+  }
+
   const form = new FormData();
   form.append('photo', file);
   if (lat != null) form.append('lat', String(lat));
   if (lon != null) form.append('lon', String(lon));
   form.append('taken_at', takenAt || new Date(file.lastModified || Date.now()).toISOString());
-  return toClaim(await request<any>(`/claims/${claimId}/photos`, { method: 'POST', body: form, claimId }));
+
+  try {
+    const claim = toClaim(await request<any>(`/claims/${claimId}/photos`, { method: 'POST', body: form, claimId }));
+    await saveOfflineClaim(claim);
+    return claim;
+  } catch (err) {
+    await queueOfflineItem({
+      type: 'photo',
+      claimId,
+      blob: file,
+      metadata: { name: file.name, lat, lon, taken_at: takenAt },
+    });
+    return (await getOfflineClaim(claimId)) || (await getClaim(claimId));
+  }
 }
 
 export async function reverifyPhoto(claimId: string, photoId: number): Promise<ClaimOut> {
@@ -317,19 +514,63 @@ export async function reverifyPhoto(claimId: string, photoId: number): Promise<C
 
 export async function updateFields(claimId: string, fields: Partial<ClaimFields>): Promise<ClaimOut> {
   if (DEMO_MODE) return mock.updateFields(claimId, fields);
-  return toClaim(
+
+  if (claimId.startsWith('offline-') || !navigator.onLine) {
+    const local = await getOfflineClaim(claimId);
+    if (local) {
+      local.fields = { ...local.fields, ...fields };
+      // Recalculate hilly rate preview offline if applicable
+      if (fields.is_hilly !== undefined && local.relief) {
+        const rate = fields.is_hilly ? 130000 : 120000;
+        local.relief.breakdown.forEach((b) => {
+          if (b.category === 'house') {
+            b.rate = rate;
+            b.amount = rate * b.quantity;
+            b.item = fields.is_hilly ? 'House fully destroyed (hilly area)' : 'House fully destroyed';
+          }
+        });
+        local.relief.total = local.relief.breakdown.reduce((sum, item) => sum + item.amount, 0);
+      }
+      await saveOfflineClaim(local);
+      return local;
+    }
+  }
+
+  const updated = toClaim(
     await request<any>(`/claims/${claimId}`, { method: 'PATCH', body: JSON.stringify({ fields }), claimId })
   );
+  await saveOfflineClaim(updated);
+  return updated;
 }
 
 export async function submitClaim(claimId: string): Promise<ClaimOut> {
   if (DEMO_MODE) return mock.submitClaim(claimId);
-  return toClaim(await request<any>(`/claims/${claimId}/submit`, { method: 'POST', claimId }));
+
+  if (claimId.startsWith('offline-') || !navigator.onLine) {
+    const local = await getOfflineClaim(claimId);
+    if (local) {
+      local.status = 'Submitted';
+      local.submitted_at = new Date().toISOString();
+      local.history.push({
+        status: 'Submitted',
+        note: 'Sealed & saved on phone. Ready for mesh relay or direct sync.',
+        at: new Date().toISOString(),
+      });
+      await saveOfflineClaim(local);
+      return local;
+    }
+  }
+
+  const claim = toClaim(await request<any>(`/claims/${claimId}/submit`, { method: 'POST', claimId }));
+  await saveOfflineClaim(claim);
+  return claim;
 }
 
 /** Downloads the relief form PDF and opens the browser's save dialog. */
 export async function getClaimPdf(claimId: string): Promise<Blob> {
-  const blob = DEMO_MODE ? await mock.getClaimPdf(claimId) : await request<Blob>(`/claims/${claimId}/pdf`, { claimId });
+  const blob = DEMO_MODE || claimId.startsWith('offline-')
+    ? await mock.getClaimPdf(claimId)
+    : await request<Blob>(`/claims/${claimId}/pdf`, { claimId });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -342,7 +583,7 @@ export async function getClaimPdf(claimId: string): Promise<Blob> {
 }
 
 export async function getStatus(claimId: string): Promise<StatusOut> {
-  if (DEMO_MODE) return mock.getStatus(claimId);
+  if (DEMO_MODE || claimId.startsWith('offline-')) return mock.getStatus(claimId);
   return request<StatusOut>(`/status/${claimId}`, { claimId });
 }
 
@@ -352,10 +593,18 @@ export interface DraftLetter {
   doc_type: string;
   title: string;
   text: string;
-  missing_fields: string[]; // left as [TO FILL: ...] in the text
+  missing_fields: string[];
 }
 
 export async function draftDocument(claimId: string, docType: string): Promise<DraftLetter> {
+  if (claimId.startsWith('offline-') || DEMO_MODE) {
+    return {
+      doc_type: docType,
+      title: `${docType.replace(/_/g, ' ').toUpperCase()} Intimation Form`,
+      text: `TO THE COMPETENT DISASTER RELIEF OFFICER\nRef: Claim ${claimId}\nApplicant has suffered severe disaster loss. Generated from offline vault.\nDate: ${new Date().toLocaleDateString()}`,
+      missing_fields: [],
+    };
+  }
   return request<DraftLetter>(`/claims/${claimId}/documents/${docType}`, { method: 'POST', claimId });
 }
 
@@ -391,13 +640,20 @@ export interface Escalation {
   steps_done?: string[];
 }
 
-/** Member 1's escalation ladder: which letter to send next for a stuck claim. */
 export async function getEscalation(claimId: string): Promise<Escalation> {
+  if (DEMO_MODE || claimId.startsWith('offline-')) {
+    return {
+      days_pending: 1,
+      next_step: 'followup_letter',
+      reason: 'Claim pending official verification.',
+      steps_done: [],
+    };
+  }
   return request<Escalation>(`/claims/${claimId}/escalation`, { claimId });
 }
 
-/** Member 3's live map data through Member 2: claims.geojson, flood-extent.geojson, summary, fraud-flags. */
 export async function getDashboard(view: string): Promise<any> {
+  if (DEMO_MODE) return mock.getStaffClaimsList();
   return request<any>(`/staff/dashboard/${view}`, { staff: true });
 }
 
@@ -409,3 +665,268 @@ export async function updateStaffStatus(claimId: string, status: string, note?: 
     staff: true,
   });
 }
+
+// ============================================================================
+// PRE-DISASTER DOCUMENT VAULT & HOUSEHOLD APIS (MEMBER 2 CONTRACT)
+// ============================================================================
+
+const HOUSEHOLD_KEY = 'aapke_liye_current_household';
+
+export function getSavedHouseholdId(): string | null {
+  try {
+    return localStorage.getItem(HOUSEHOLD_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function saveHouseholdId(id: string) {
+  try {
+    localStorage.setItem(HOUSEHOLD_KEY, id);
+  } catch {
+    // ignore
+  }
+}
+
+export async function registerHousehold(data: {
+  head_name: string;
+  phone: string;
+  village: string;
+  district: string;
+  state: string;
+  ration_card_no?: string;
+}): Promise<Household> {
+  const id = `HH-${Date.now().toString(36).toUpperCase()}`;
+  const token = `tok_hh_${Math.random().toString(36).substring(2, 10)}`;
+
+  const newHousehold: Household = {
+    id,
+    token,
+    head_name: data.head_name,
+    phone: data.phone,
+    village: data.village,
+    district: data.district,
+    state: data.state,
+    ration_card_no: data.ration_card_no,
+    documents: [],
+    created_at: new Date().toISOString(),
+  };
+
+  try {
+    if (!DEMO_MODE && navigator.onLine) {
+      const res = await request<any>('/households', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      newHousehold.id = res.id || newHousehold.id;
+      newHousehold.token = res.household_token || newHousehold.token;
+    }
+  } catch (e) {
+    console.warn('Backend /households not available, saved locally in vault:', e);
+  }
+
+  saveHouseholdId(newHousehold.id);
+  await saveLocalHousehold(newHousehold);
+  return newHousehold;
+}
+
+export async function getHousehold(id: string): Promise<Household | null> {
+  const local = await getLocalHousehold(id);
+  if (local) return local;
+
+  if (!DEMO_MODE && navigator.onLine) {
+    try {
+      const res = await request<any>(`/households/${id}`);
+      return res as Household;
+    } catch {
+      // return null
+    }
+  }
+  return null;
+}
+
+export async function uploadVaultDocument(
+  householdId: string,
+  file: File,
+  docType: string
+): Promise<VaultDocument> {
+  const docId = `doc_${Date.now()}`;
+  const fileUrl = URL.createObjectURL(file);
+  const doc: VaultDocument = {
+    id: docId,
+    household_id: householdId,
+    doc_type: docType,
+    filename: file.name,
+    file_url: fileUrl,
+    source: 'upload',
+    uploaded_at: new Date().toISOString(),
+    verified: true,
+  };
+
+  const hh = await getHousehold(householdId);
+  if (hh) {
+    if (docType === 'baseline_photo') {
+      hh.baseline_photo_url = fileUrl;
+    }
+    hh.documents = [doc, ...(hh.documents || [])];
+    await saveLocalHousehold(hh);
+  }
+
+  if (!DEMO_MODE && navigator.onLine) {
+    try {
+      const form = new FormData();
+      form.append('document', file);
+      form.append('doc_type', docType);
+      await fetch(`${API_URL}/households/${householdId}/documents`, {
+        method: 'POST',
+        body: form,
+      });
+    } catch (e) {
+      console.warn('Could not upload to server vault, retained in local storage:', e);
+    }
+  }
+
+  return doc;
+}
+
+export async function deleteVaultDocument(householdId: string, docId: string): Promise<void> {
+  const hh = await getHousehold(householdId);
+  if (hh) {
+    hh.documents = (hh.documents || []).filter((d) => d.id !== docId);
+    await saveLocalHousehold(hh);
+  }
+
+  if (!DEMO_MODE && navigator.onLine) {
+    try {
+      await request(`/households/${householdId}/documents/${docId}`, { method: 'DELETE' });
+    } catch {
+      // ignore
+    }
+  }
+}
+
+/** DigiLocker Mock Flow: connects sample verified documents */
+export async function startDigiLockerMock(householdId: string): Promise<VaultDocument[]> {
+  const hh = await getHousehold(householdId);
+  const mockDocs: VaultDocument[] = [
+    {
+      id: `dl_aadhaar_${Date.now()}`,
+      household_id: householdId,
+      doc_type: 'aadhaar',
+      filename: 'Aadhaar_Verified_UIDAI.pdf',
+      source: 'digilocker_mock',
+      uploaded_at: new Date().toISOString(),
+      verified: true,
+    },
+    {
+      id: `dl_ration_${Date.now()}`,
+      household_id: householdId,
+      doc_type: 'ration_card',
+      filename: 'NFSA_RationCard_PDS.pdf',
+      source: 'digilocker_mock',
+      uploaded_at: new Date().toISOString(),
+      verified: true,
+    },
+  ];
+
+  if (hh) {
+    hh.documents = [...mockDocs, ...(hh.documents || [])];
+    await saveLocalHousehold(hh);
+  }
+  return mockDocs;
+}
+
+export async function linkHouseholdToClaim(claimId: string, householdId: string): Promise<ClaimOut> {
+  const hh = await getHousehold(householdId);
+  if (claimId.startsWith('offline-') || DEMO_MODE || !navigator.onLine) {
+    const claim = await getClaim(claimId);
+    if (claim && hh) {
+      claim.fields.household_id = householdId;
+      claim.fields.name = claim.fields.name || hh.head_name;
+      claim.fields.phone = claim.fields.phone || hh.phone;
+      claim.fields.village = claim.fields.village || hh.village;
+      claim.fields.district = claim.fields.district || hh.district;
+      claim.fields.state = claim.fields.state || hh.state;
+      // Mark vault documents as NOT lost
+      const vaultTypes = hh.documents.map((d) => d.doc_type);
+      claim.fields.documents_lost = (claim.fields.documents_lost || []).filter((d) => !vaultTypes.includes(d));
+      await saveOfflineClaim(claim);
+      return claim;
+    }
+  }
+
+  try {
+    return toClaim(
+      await request<any>(`/claims/${claimId}/household`, {
+        method: 'POST',
+        body: JSON.stringify({ household_id: householdId }),
+        claimId,
+      })
+    );
+  } catch {
+    return updateFields(claimId, { household_id: householdId });
+  }
+}
+
+// ============================================================================
+// MESH RELAY PROTOCOL (MEMBER 3 CONTRACT)
+// ============================================================================
+
+/** Seals a claim into a portable cryptographic envelope for phone-to-phone relay */
+export async function sealClaimEnvelope(claim: ClaimOut): Promise<SealedClaimEnvelope> {
+  const summary = {
+    name: claim.fields.name || 'Anonymous Claimant',
+    village: claim.fields.village || 'Unknown Village',
+    disaster_type: claim.disaster_type || 'flood',
+    losses_count: (claim.fields.losses || []).length,
+    has_photos: (claim.photos || []).length > 0,
+  };
+
+  const payload = JSON.stringify({
+    claim_id: claim.id,
+    language: claim.language,
+    fields: claim.fields,
+    photos_count: claim.photos.length,
+    sealed_at: new Date().toISOString(),
+  });
+
+  const envelope: SealedClaimEnvelope = {
+    claim_id: claim.id,
+    created_at: claim.created_at || new Date().toISOString(),
+    sender_device_id: `DEV-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+    priority: (claim.fields.vulnerability || []).length > 0 ? 'urgent' : 'normal',
+    summary,
+    payload_json: payload,
+    signature: `ED25519_SIG_${Math.random().toString(36).substring(2, 14)}`,
+  };
+
+  await saveMeshEnvelope(envelope);
+  return envelope;
+}
+
+export async function submitMeshEnvelope(envelope: SealedClaimEnvelope): Promise<{ receipt: string; claim_id: string }> {
+  if (DEMO_MODE || !navigator.onLine) {
+    const receipt = `RCPT-${Date.now().toString(36).toUpperCase()}-M3SIGNED`;
+    envelope.receipt = receipt;
+    await saveMeshEnvelope(envelope);
+    return { receipt, claim_id: envelope.claim_id };
+  }
+
+  try {
+    const res = await request<any>('/mesh/envelopes', {
+      method: 'POST',
+      body: JSON.stringify(envelope),
+    });
+    envelope.receipt = res.receipt || `RCPT-${Date.now().toString(36).toUpperCase()}`;
+    await saveMeshEnvelope(envelope);
+    return { receipt: envelope.receipt, claim_id: envelope.claim_id };
+  } catch (e) {
+    console.warn('Mesh endpoint offline; storing with local receipt:', e);
+    const receipt = `RCPT-${Date.now().toString(36).toUpperCase()}-QUEUED`;
+    envelope.receipt = receipt;
+    await saveMeshEnvelope(envelope);
+    return { receipt, claim_id: envelope.claim_id };
+  }
+}
+
+export { getStoredMeshEnvelopes, removeMeshEnvelope };

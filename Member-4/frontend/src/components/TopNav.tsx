@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Languages, Eye, Type, Menu, X } from 'lucide-react';
+import { Languages, Eye, Type, Menu, X, ShieldCheck, Radio } from 'lucide-react';
 import { useA11y } from '../utils/accessibility';
 
 const LANGUAGES = [
@@ -56,7 +56,7 @@ export const TopNav: React.FC = () => {
           boxSizing: 'border-box',
         }}
       >
-        {/* Left: Prominent, Elegant Brand Logo */}
+        {/* Left: Prominent Brand Logo */}
         <Link
           to="/"
           style={{
@@ -129,11 +129,40 @@ export const TopNav: React.FC = () => {
               fontWeight: 800,
               fontSize: 'clamp(0.82rem, 0.9vw, 0.92rem)',
               whiteSpace: 'nowrap',
-              transition: 'color 0.15s ease',
             }}
           >
             {t('nav.howItWorks', 'How it works')}
           </a>
+
+          <Link
+            to="/prepare"
+            style={{
+              color: '#000000',
+              textDecoration: 'none',
+              fontWeight: 800,
+              fontSize: 'clamp(0.82rem, 0.9vw, 0.92rem)',
+              whiteSpace: 'nowrap',
+              borderBottom: location.pathname === '/prepare' ? '2.5px solid #F46036' : 'none',
+              paddingBottom: '2px',
+            }}
+          >
+            {t('nav.prepare', 'Prepare')}
+          </Link>
+
+          <Link
+            to="/mesh"
+            style={{
+              color: '#000000',
+              textDecoration: 'none',
+              fontWeight: 800,
+              fontSize: 'clamp(0.82rem, 0.9vw, 0.92rem)',
+              whiteSpace: 'nowrap',
+              borderBottom: location.pathname === '/mesh' ? '2.5px solid #F46036' : 'none',
+              paddingBottom: '2px',
+            }}
+          >
+            {t('nav.mesh', 'Mesh')}
+          </Link>
 
           <Link
             to="/official"
@@ -336,6 +365,20 @@ export const TopNav: React.FC = () => {
           >
             {t('nav.howItWorks', 'How it works')}
           </a>
+          <Link
+            to="/prepare"
+            onClick={() => setMobileMenuOpen(false)}
+            style={{ color: '#000000', textDecoration: 'none', fontWeight: 800, fontSize: '1.25rem', minHeight: '48px', display: 'flex', alignItems: 'center' }}
+          >
+            {t('nav.prepare', 'Prepare (Vault)')}
+          </Link>
+          <Link
+            to="/mesh"
+            onClick={() => setMobileMenuOpen(false)}
+            style={{ color: '#000000', textDecoration: 'none', fontWeight: 800, fontSize: '1.25rem', minHeight: '48px', display: 'flex', alignItems: 'center' }}
+          >
+            {t('nav.mesh', 'Mesh Relay')}
+          </Link>
           <Link
             to="/official"
             onClick={() => setMobileMenuOpen(false)}

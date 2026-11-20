@@ -1,6 +1,7 @@
 // src/pages/Claim.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import {
   Volume2,
   Mic,
@@ -21,6 +22,7 @@ import {
   Sparkles,
   ShieldCheck,
   Check,
+  Radio,
 } from 'lucide-react';
 import { speakText } from '../utils/tts';
 import {
@@ -37,8 +39,11 @@ import {
   errorText,
   draftDocument,
   saveTextFile,
+  getSavedHouseholdId,
+  getHousehold,
+  linkHouseholdToClaim,
 } from '../api/client';
-import { ClaimOut } from '../types/api';
+import { ClaimOut, Household } from '../types/api';
 import { getLocalizedSampleClaim } from '../mocks/sampleData';
 import { VoiceWaveform } from '../components/VoiceWaveform';
 import { queueOfflineItem } from '../utils/indexedDB';
@@ -78,11 +83,31 @@ function emptyClaim(): ClaimOut {
 
 export const Claim: React.FC = () => {
   const { i18n, t } = useTranslation();
+  const navigate = useNavigate();
   const [step, setStep] = useState<number>(1);
   const [selectedLang, setSelectedLang] = useState<string>((i18n.language || 'bn').split('-')[0]);
   const [claim, setClaim] = useState<ClaimOut>(() => (DEMO_MODE ? getLocalizedSampleClaim(t) : emptyClaim()));
   const [loading, setLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Household pre-registration state
+  const [savedHousehold, setSavedHousehold] = useState<Household | null>(null);
+  const [useHousehold, setUseHousehold] = useState<boolean>(true);
+
+  useEffect(() => {
+    const loadHh = async () => {
+      try {
+        const hhId = getSavedHouseholdId();
+        if (hhId) {
+          const hh = await getHousehold(hhId);
+          if (hh) setSavedHousehold(hh);
+        }
+      } catch (e) {
+        console.warn('Could not load saved household in claim:', e);
+      }
+    };
+    loadHh();
+  }, []);
 
   // Update claim when language changes if still using sample
   useEffect(() => {
@@ -138,7 +163,16 @@ export const Claim: React.FC = () => {
         disaster_type: 'flood',
         consent: true,
         consent_text_version: 'v1',
+        household_id: (useHousehold && savedHousehold) ? savedHousehold.id : null,
       });
+      if (useHousehold && savedHousehold) {
+        created.fields.household_id = savedHousehold.id;
+        created.fields.name = created.fields.name || savedHousehold.head_name;
+        created.fields.phone = created.fields.phone || savedHousehold.phone;
+        created.fields.village = created.fields.village || savedHousehold.village;
+        created.fields.district = created.fields.district || savedHousehold.district;
+        created.fields.state = created.fields.state || savedHousehold.state;
+      }
       setClaim(created);
       setStep(2);
     } catch (e) {
@@ -439,6 +473,7 @@ export const Claim: React.FC = () => {
     saveFields({ vulnerability: Array.from(now) });
   };
   const setCropInsured = (value: boolean) => saveFields({ crop_insured: value });
+  const setHillyArea = (value: boolean) => saveFields({ is_hilly: value });
 
   const [draftBusy, setDraftBusy] = useState<string | null>(null);
   const handleDownloadDraft = async (docType: string) => {
@@ -755,6 +790,42 @@ export const Claim: React.FC = () => {
               );
             })}
           </div>
+
+          {savedHousehold && (
+            <div
+              style={{
+                backgroundColor: '#F0FDF4',
+                border: '1.5px solid var(--primary)',
+                borderRadius: '12px',
+                padding: '16px',
+                marginBottom: '20px',
+                textAlign: 'left',
+                maxWidth: '640px',
+                marginInline: 'auto',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <ShieldCheck size={20} style={{ color: 'var(--primary)' }} />
+                  <span style={{ fontWeight: 800, color: 'var(--primary)', fontSize: '0.98rem' }}>
+                    {t('claim.savedHouseholdFound', 'Pre-registered Household Available')}
+                  </span>
+                </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={useHousehold}
+                    onChange={(e) => setUseHousehold(e.target.checked)}
+                    style={{ width: '18px', height: '18px', accentColor: 'var(--primary)' }}
+                  />
+                  <span>{t('claim.useMyHousehold', 'Use my household records')}</span>
+                </label>
+              </div>
+              <p style={{ margin: '6px 0 0 0', fontSize: '0.85rem', color: 'var(--muted)' }}>
+                {savedHousehold.head_name} · {savedHousehold.village}, {savedHousehold.district} ({savedHousehold.documents?.length || 0} papers in vault)
+              </p>
+            </div>
+          )}
 
           <button
             onClick={confirmLanguageAndStart}
@@ -1221,6 +1292,52 @@ export const Claim: React.FC = () => {
                       <strong>{t('claim.geminiAssessment', 'Gemini Assessment:')}</strong>{' '}
                       {photo.verification.gemini_reason}
                     </div>
+
+                    {/* Before/After side-by-side comparison */}
+                    {(savedHousehold?.baseline_photo_url || photo.verification?.comparison) && (
+                      <div
+                        style={{
+                          marginTop: '12px',
+                          padding: '12px',
+                          backgroundColor: '#FDFBF7',
+                          border: '1.5px solid var(--border)',
+                          borderRadius: '10px',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                          <Sparkles size={16} style={{ color: 'var(--accent)' }} />
+                          <span style={{ fontWeight: 800, fontSize: '0.86rem', color: 'var(--secondary)' }}>
+                            {t('claim.beforeAfterTitle', 'Before / After Damage Comparison')}
+                          </span>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                          <div>
+                            <span style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: 'var(--muted)', marginBottom: '3px' }}>
+                              {t('claim.beforeLabel', 'BEFORE (Vault Baseline)')}
+                            </span>
+                            <img
+                              src={savedHousehold?.baseline_photo_url || '/Mother_speaking_into_phone_81a00bd8.jpg'}
+                              alt="Before baseline"
+                              style={{ width: '100%', height: '80px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--border)' }}
+                            />
+                          </div>
+                          <div>
+                            <span style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: 'var(--accent)', marginBottom: '3px' }}>
+                              {t('claim.afterLabel', 'AFTER (Current Flood)')}
+                            </span>
+                            <img
+                              src={photo.url || '/hero.webp'}
+                              alt="After damage"
+                              style={{ width: '100%', height: '80px', objectFit: 'cover', borderRadius: '6px', border: '1.5px solid var(--accent)' }}
+                            />
+                          </div>
+                        </div>
+                        <div style={{ fontSize: '0.82rem', color: 'var(--primary)', fontWeight: 700 }}>
+                          {photo.verification?.comparison?.structural_loss_summary ||
+                            t('claim.beforeAfterSummary', 'AI verified structural collapse relative to pre-disaster baseline.')}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -1501,6 +1618,42 @@ export const Claim: React.FC = () => {
                 </div>
               )}
 
+              {/* Hilly area question (is_hilly) */}
+              <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px dashed var(--border)' }}>
+                <h4 style={{ margin: '0 0 6px 0', fontSize: '1.05rem', fontWeight: 800 }}>
+                  {t('claim.hillyAreaQ', 'Is your village in a hilly area?')}
+                </h4>
+                <p style={{ margin: '0 0 10px 0', fontSize: '0.88rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                  {t(
+                    'claim.hillyAreaHelp',
+                    'Government relief norms provide higher SDRF assistance (₹1,30,000 vs ₹1,20,000) for fully destroyed homes in hilly regions.'
+                  )}
+                </p>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  {[
+                    [true, t('common.yes', 'Yes')],
+                    [false, t('common.no', 'No / not sure')],
+                  ].map(([val, text]) => (
+                    <button
+                      key={String(val)}
+                      type="button"
+                      aria-pressed={claim.fields.is_hilly === val}
+                      onClick={() => setHillyArea(val as boolean)}
+                      className="btn-outline-pill"
+                      style={{
+                        minHeight: '48px',
+                        padding: '10px 22px',
+                        fontWeight: 800,
+                        border: claim.fields.is_hilly === val ? '2.5px solid var(--primary)' : undefined,
+                        backgroundColor: claim.fields.is_hilly === val ? 'rgba(42, 123, 76, 0.12)' : undefined,
+                      }}
+                    >
+                      {text as string}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {(claim.relief?.may_also_qualify || []).length > 0 && (
                 <div style={{ marginTop: '18px' }}>
                   <h4 style={{ margin: '0 0 8px 0', fontSize: '1.05rem', fontWeight: 800 }}>
@@ -1768,6 +1921,59 @@ export const Claim: React.FC = () => {
                   </button>
                 </div>
               ))}
+            </div>
+
+            {/* Mesh Relay Option */}
+            <div
+              style={{
+                marginTop: '28px',
+                padding: '20px',
+                backgroundColor: '#FFF8E1',
+                borderRadius: '12px',
+                border: '1.5px solid #FFC107',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '14px',
+              }}
+            >
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <Radio size={20} style={{ color: '#E65100' }} />
+                  <span style={{ fontWeight: 800, fontSize: '1.05rem', color: '#E65100' }}>
+                    {t('claim.meshRelayNotice', 'Zero Signal? Hand to a Neighbour')}
+                  </span>
+                </div>
+                <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-muted)', maxWidth: '520px' }}>
+                  {t(
+                    'claim.meshRelayDesc',
+                    'If network towers are knocked out, generate a sealed QR code to hand this claim to a moving neighbour or volunteer travelling to signal.'
+                  )}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => navigate('/mesh')}
+                className="btn-primary"
+                style={{
+                  minHeight: '48px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '12px 22px',
+                  borderRadius: '8px',
+                  fontWeight: 700,
+                  backgroundColor: '#E65100',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                <Radio size={18} />
+                <span>{t('claim.openMeshBtn', 'Open Mesh QR Code')}</span>
+              </button>
             </div>
           </div>
         </div>

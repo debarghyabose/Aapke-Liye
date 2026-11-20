@@ -14,7 +14,9 @@
     "largerTextAria": "Toggle Larger Text",
     "largerTextTitle": "Toggle Larger Text Mode",
     "openMenuAria": "Open navigation menu",
-    "closeMenuAria": "Close navigation menu"
+    "closeMenuAria": "Close navigation menu",
+    "prepare": "தயாரிப்பு (வால்ட்)",
+    "mesh": "மெஷ் ரிலே"
   },
   "hero": {
     "title": "வெள்ளத்தில் வீடா போனது? உங்கள் நிவாரணம் போகாது.",
@@ -197,7 +199,18 @@
     "draft3Desc": "Plot verification request supported by geo-tagged photos and neighbours' statements.",
     "draft4Title": "Crop & House Insurance Notice",
     "draft4Dept": "PMFBY / General Insurance",
-    "draft4Desc": "Formal 72-hour disaster intimation notice for crop inundation & building loss."
+    "draft4Desc": "Formal 72-hour disaster intimation notice for crop inundation & building loss.",
+    "savedHouseholdFound": "முன் பதிவு செய்யப்பட்ட குடும்ப விபரம் உள்ளது",
+    "useMyHousehold": "எனது குடும்ப விபரங்களைப் பயன்படுத்தவும்",
+    "beforeAfterTitle": "சேதத்திற்கு முன்/பின் ஒப்பீடு",
+    "beforeLabel": "முன்பு (வால்ட் பேஸ்லைன்)",
+    "afterLabel": "பின்பு (தற்போதைய வெள்ளச் சேதம்)",
+    "beforeAfterSummary": "பேரிடருக்கு முந்தைய நிலைமையோடு ஒப்பிட்டு 85% கட்டமைப்பு சேதத்தை AI உறுதிப்படுத்தியுள்ளது.",
+    "hillyAreaQ": "உங்கள் கிராமம் மலைப்பாங்கான பகுதியில் உள்ளதா?",
+    "hillyAreaHelp": "மலைப்பகுதிகளில் முழுமையாக சேதமடைந்த வீடுகளுக்கு அரசு SDRF விதிகளின்படி கூடுதல் நிவாரணம் (₹1,30,000 / சமவெளி ₹1,20,000) வழங்கப்படுகிறது.",
+    "meshRelayNotice": "சிக்னல் இல்லையா? அண்டை வீட்டாரிடம் ஒப்படைக்கவும்",
+    "meshRelayDesc": "மொபைல் டவர்கள் செயல்படாதபோது, சிக்னல் இருக்கும் பகுதிக்கு செல்லும் அண்டை வீட்டாரிடம் இந்த முத்திரையிடப்பட்ட QR குறியீட்டை ஒப்படைக்கவும்.",
+    "openMeshBtn": "மெஷ் QR குறியீட்டைத் திறக்கவும்"
   },
   "track": {
     "title": "Track Your Relief Claim",
@@ -269,7 +282,8 @@
   "offline": {
     "onlineSync": "Connected back online. Offline recordings and photos have been synced.",
     "offlineAlert": "You are currently offline. Any recordings or photos will be saved locally on your phone and sent automatically when internet returns.",
-    "queuedItems": "({{count}} item{{plural}} queued)"
+    "queuedItems": "({{count}} item{{plural}} queued)",
+    "savedOnPhone": "இந்த போனில் சேமிக்கப்பட்டது, {{count}} உருப்படி காத்திருக்கிறது"
   },
   "footer": {
     "team": "Team OPUS · IEM Kolkata",
@@ -299,5 +313,66 @@
     "timelineSubmitted": "Claim submitted via Aapke Liye voice app. GPS coordinates verified at Ghatal Block-II.",
     "timelineVerified": "Field Revenue Inspector matched photo GPS with Block flood inundation zone.",
     "timelineInspection": "Sub-Divisional Officer completed field dossier. Forwarded to District Magistrate office for SDRF fund release."
+  },
+  "prepare": {
+    "badge": "பேரிடர் முன் பாதுகாப்பு",
+    "title": "பேரிடர் ஆவண வால்ட்",
+    "subtitle": "வெள்ளம் வருவதற்கு முன்பே குடும்ப ஆவணங்கள் மற்றும் வீட்டின் அடிப்படை புகைப்படங்களை பாதுகாக்கவும். ஆவண இழப்பு தாமதமின்றி உடனே நிவாரணம் பெறலாம்.",
+    "registeredSuccess": "குடும்பம் வெற்றிகரமாக பதிவு செய்யப்பட்டு டோக்கன் பெறப்பட்டது!",
+    "docUploaded": "ஆவணம் மறைகுறியாக்கப்பட்ட வால்ட்டில் சேமிக்கப்பட்டது.",
+    "baselineUploaded": "ஒப்பீட்டிற்கான அடிப்படை சொத்து புகைப்படம் சேமிக்கப்பட்டது.",
+    "householdRegisteredTitle": "உங்கள் பதிவு செய்யப்பட்ட குடும்பம்",
+    "householdRegisterTitle": "1. உங்கள் குடும்பத்தை பதிவு செய்யவும்",
+    "headName": "குடும்பத் தலைவர் / விண்ணப்பதாரர் பெயர்",
+    "phone": "மொபைல் எண்",
+    "village": "கிராமம் / ஊராட்சி",
+    "district": "மாவட்டம்",
+    "rationCardNo": "ரேஷன் அட்டை எண் (NFSA)",
+    "saveHousehold": "வால்ட்டில் சேமிக்கவும்",
+    "updateHousehold": "விபரங்களை புதுப்பிக்கவும்",
+    "startClaimWithThis": "இந்த குடும்ப விபரங்களுடன் கோரலைத் தொடங்கவும்",
+    "docsTitle": "2. எனது சேமிக்கப்பட்ட ஆவணங்கள்",
+    "docsSubtitle": "பதிவேற்றப்பட்ட ஆவணங்கள் மறைகுறியாக்கப்பட்டு சரிபார்ப்பின் போது தயாராக எடுத்துக்கொள்ளப்படும்.",
+    "digiLockerBtn": "டிஜிலாக்கரில் இருந்து பெறவும் (டெமோ)",
+    "docAadhaar": "ஆதார் அட்டை",
+    "docRation": "ரேஷன் அட்டை (NFSA / PDS)",
+    "docLand": "நிலப் பட்டா / சிட்டா",
+    "docBank": "வங்கி கணக்கு புத்தகம்",
+    "notUploaded": "இன்னும் பதிவேற்றப்படவில்லை.",
+    "uploadBtn": "கோப்பைப் பதிவேற்றவும்",
+    "baselineTitle": "3. இயல்பான காலத்து அடிப்படை புகைப்படங்கள்",
+    "baselineSubtitle": "வெள்ளத்திற்கு முன்பு வீடு அல்லது மாட்டுக்கொட்டகையின் புகைப்படத்தை எடுத்து வைக்கவும். வெள்ளத்தின் போது ஜெமினி இதன் மூலம் சேதத்தை ஒப்பிடும்.",
+    "baselineActive": "அடிப்படை புகைப்படம் உள்ளது",
+    "baselineReady": "சரிபார்ப்பின் போது ஒப்பீடு செய்ய தயாராக உள்ளது.",
+    "replacePhoto": "புகைப்படத்தை மாற்றவும்",
+    "noBaselinePhoto": "அடிப்படை புகைப்படம் இல்லை",
+    "baselineInstructions": "வீடு சேதமடையாத போது புகைப்படம் எடுக்கவும். இது பின்னால் மறுக்க முடியாத ஆதாரமாகும்.",
+    "snapBaseline": "அடிப்படை புகைப்படம் எடுக்கவும்",
+    "digiLockerMockBanner": "டெமோ: டிஜிலாக்கர் ஒப்புதல் திரை",
+    "digiLockerImported": "டிஜிலாக்கர் மாதிரி ஆவணங்கள் உங்கள் வால்ட்டில் இணைக்கப்பட்டன.",
+    "giveConsent": "நான் ஒப்புக்கொள்கிறேன் (டெமோ இறக்குமதி)"
+  },
+  "mesh": {
+    "badge": "போன்-டு-போன் அவசர மெஷ்",
+    "title": "அவசர மெஷ் கோரல் ரிலே",
+    "subtitle": "மொபைல் கோபுரங்கள் செயலிழந்தால், பொதுமக்கள் தங்கள் முத்திரையிடப்பட்ட கோரிக்கையை QR குறியீடு மூலம் பிறரிடம் ஒப்படைக்கலாம்.",
+    "tabHand": "1. அண்டை வீட்டாரிடம் ஒப்படைக்க",
+    "tabCarry": "2. பிறர் கோரலை எடுத்துச் செல்ல",
+    "noClaimsOnDevice": "இந்த போனில் எந்தக் கோரலும் இல்லை",
+    "noClaimsHelp": "முதலில் நிவாரணக் கோரலை உருவாக்கவும் (ஆஃப்லைனிலும் இயங்கும்). பின்னர் இங்கு QR குறியீடு பெறலாம்.",
+    "selectClaimToHand": "ஒப்படைக்க வேண்டிய கோரலைத் தேர்ந்தெடுக்கவும்:",
+    "cryptographicallySealed": "SDMA சர்வருக்காக AES-256 மறைகுறியாக்கப்பட்டு கையொப்பமிடப்பட்டது",
+    "qrInstructions": "அண்டை வீட்டாரிடம் சென்று \"பிறர் கோரலை எடுத்துச் செல்ல\" என்பதன் கீழ் இதை ஸ்கேன் செய்யச் சொல்லவும்.",
+    "copyEnvelopeText": "முத்திரையிடப்பட்ட உரையை நகலெடுக்கவும்",
+    "carryTitle": "அண்டை வீட்டாரின் கோரல்களை எடுத்துச் செல்லவும்",
+    "carrySubtitle": "நீங்கள் முகாம் அல்லது சாலை நோக்கி சென்றால், பிறர் QR ஐ ஸ்கேன் செய்யவும். சிக்னல் கிடைத்ததும் போன் தானாகவே பதிவேற்றும்.",
+    "pasteScanLabel": "ஸ்கேன் முடிவு அல்லது JSON ஒட்டவும்:",
+    "addCarriedClaim": "இந்த போனில் சேமிக்கவும்",
+    "claimsWaitingForSignal": "இந்த போனில் உள்ள கோரல்கள் ({{count}})",
+    "syncCarriedNow": "கோரல்களை இப்போது பதிவேற்றவும்",
+    "noCarriedEnvelopes": "தற்போது பிறர் கோரல்கள் எதுவும் இல்லை.",
+    "invalidEnvelope": "தவறான QR குறியீடு. மீண்டும் சரிபார்க்கவும்.",
+    "importSuccess": "கோரல் வெற்றிகரமாக போனில் சேமிக்கப்பட்டது!",
+    "deliverySuccess": "அனைத்து கோரல்களும் பதிவேற்றப்பட்டன! கையொப்பமிட்ட ரசீது பெறப்பட்டது."
   }
 }
