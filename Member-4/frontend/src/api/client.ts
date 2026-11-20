@@ -217,7 +217,10 @@ function toRelief(r: any): ReliefSummary | null {
       quantity: l.quantity,
       rate: l.rate,
       amount: l.amount,
-      description: l.note || undefined,
+      description:
+        [l.claimed_amount ? `You reported ₹${Math.round(l.claimed_amount).toLocaleString('en-IN')}` : null, l.note]
+          .filter(Boolean)
+          .join(' · ') || undefined,
     })),
     ...(r.unmatched || []).map((u: any) => ({
       scheme_name: 'Not covered',
@@ -236,6 +239,7 @@ function toRelief(r: any): ReliefSummary | null {
     breakdown,
     matched_schemes: ['SDRF', ...others.map((s) => (s.scheme_code === 'PMAY_G_DISASTER' ? 'PMAY-G' : s.scheme_code))],
     estimate_only: r.estimate_only,
+    claimed_total: r.claimed_total ?? null,
     may_also_qualify: others,
   } as ReliefSummary;
 }

@@ -73,7 +73,11 @@ def _apply_ai(claim: Claim, ai: dict):
     overwrite what is already known."""
     claim.fields = {**(claim.fields or {}), **_clean_ai_fields(ai.get("fields") or {})}
     claim.transcript = ai.get("transcript") or claim.transcript
-    claim.missing_fields = [m for m in ai.get("missing_fields", []) if not claim.fields.get(m)]
+    # A field Member 1 still asks for stays missing if our value for it is empty or invalid
+    # (e.g. phone "80"); it is dropped only when the claim already holds a valid value.
+    _, invalid = submission_problems(claim.fields)
+    claim.missing_fields = [m for m in ai.get("missing_fields", [])
+                            if not claim.fields.get(m) or m in invalid]
     claim.follow_up_questions = ai.get("follow_up_questions", []) if claim.missing_fields else []
     claim.disaster_type = claim.fields.get("disaster_type") or claim.disaster_type
     if ai.get("ai_state"):

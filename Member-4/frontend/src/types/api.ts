@@ -6,6 +6,7 @@ export interface Loss {
   item: string;
   quantity: number;
   damage_percent?: number | null;
+  claimed_amount?: number | null;
 }
 
 export interface ClaimFields {
@@ -100,6 +101,7 @@ export interface ReliefSummary {
   breakdown: ReliefScheme[];
   matched_schemes: string[]; // ["SDRF", "PMFBY", "PMAY-G"]
   estimate_only?: boolean; // rules still marked "sample" by Member 5
+  claimed_total?: number | null; // what the person said they lost (₹); SDRF pays fixed rates
   may_also_qualify?: Array<{
     scheme_code: string;
     scheme_name?: string;
