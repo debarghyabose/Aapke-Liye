@@ -27,6 +27,12 @@ VISION_API_KEY = os.getenv("VISION_API_KEY", "")  # Anthropic key, for VISION_PR
 VISION_MODEL = os.getenv("VISION_MODEL", "claude-opus-5-5")
 VISION_EFFORT = os.getenv("VISION_EFFORT", "medium")  # low | medium | high
 
+# SQLite file with every photo check (dashboard data + duplicate fingerprints).
+DB_PATH = os.getenv("MEMBER3_DB_PATH", "member3.db")
+# If set, /dashboard/* requires the header X-Dashboard-Key with this value.
+# Leave empty only on your own computer: the dashboard shows exact victim locations.
+DASHBOARD_API_KEY = os.getenv("DASHBOARD_API_KEY", "")
+
 # Photos whose perceptual hashes differ by this many bits or fewer count as the same photo.
 PHASH_MAX_DISTANCE = 8
 # Two claims from the same phone this close together (metres) count as the same claim.

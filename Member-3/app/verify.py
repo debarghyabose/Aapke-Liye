@@ -18,6 +18,7 @@ from starlette.concurrency import run_in_threadpool
 
 from app import sync
 from app.exif_check import distance_km, gps_in_zone, read_exif, timestamp_valid
+from app.store import get_store
 from app.vision import assess_damage
 
 router = APIRouter()
@@ -88,15 +89,17 @@ async def verify(
     notes: list[str] = []
 
     # --- GPS: trust the photo's own EXIF location first, then the phone's.
+    gap: Optional[float] = None
     if exif["lat"] is not None:
-        use_lat, use_lon = exif["lat"], exif["lon"]
+        use_lat, use_lon, gps_source = exif["lat"], exif["lon"], "exif"
         if device_lat is not None and device_lon is not None:
             gap = distance_km(use_lat, use_lon, device_lat, device_lon)
             if gap > GPS_MISMATCH_KM:
                 notes.append(f"Photo GPS is {gap:.0f} km from the phone's reported location")
     else:
         use_lat, use_lon = device_lat, device_lon
-        if device_lat is not None and device_lon is not None:
+        gps_source = "phone" if device_lat is not None and device_lon is not None else "none"
+        if gps_source == "phone":
             notes.append("Photo has no GPS data; used the phone's location")
     in_zone = gps_in_zone(use_lat, use_lon)
     if in_zone is None:
@@ -120,8 +123,12 @@ async def verify(
         notes.append("Photo was taken before the disaster or in the future")
 
     # --- Duplicate: same (or near-identical) photo already used by another claim.
-    match = sync.dup_index.find_photo(data)
-    duplicate = match is not None and match != claim_id
+    try:
+        fingerprint = sync.dup_index.phash(data)
+    except Exception:
+        raise HTTPException(422, "photo is not a readable image") from None
+    duplicate_of, hash_distance = sync.dup_index.closest_other_claim(fingerprint, claim_id)
+    duplicate = duplicate_of is not None
     if duplicate:
         notes.append("Same photo was already submitted with another claim")
 
@@ -140,11 +147,21 @@ async def verify(
         notes.append(f"Suggested SDRF category: {damage.sdrf_category}")
 
     detected = damage.type not in ("none", "unknown") and damage.severity > 0
-    sync.dup_index.add(claim_id or "unknown-claim", "", None, None, [data])
+    score = round(damage.severity if detected else 0.0, 2)
+    sync.dup_index.add_hash(fingerprint, claim_id)
+    get_store().record(
+        claim_id=claim_id, lat=use_lat, lon=use_lon, gps_source=gps_source,
+        gps_mismatch_km=None if gap is None else round(gap, 2),
+        gps_ok=bool(in_zone), timestamp_ok=bool(time_ok),
+        damage_type=damage.type, severity=score, sdrf_category=damage.sdrf_category,
+        real_photo=None if damage.real_photo is None else int(damage.real_photo),
+        duplicate_of=duplicate_of, hash_distance=hash_distance,
+        phash=str(fingerprint), notes=notes,
+    )
 
     return VerifyResponse(
         damage_detected=detected,
-        damage_score=round(damage.severity if detected else 0.0, 2),
+        damage_score=score,
         gps_ok=bool(in_zone),
         timestamp_ok=bool(time_ok),
         duplicate=duplicate,
