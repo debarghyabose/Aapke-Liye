@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import config, sync, whatsapp
+from app import config, ivr, sync, whatsapp
 from app.dashboard import router as dashboard_router
 from app.geodata import get_geo
 from app.store import get_store
@@ -37,6 +37,9 @@ async def lifespan(app: FastAPI):
                  config.PUBLIC_BASE_URL or "(set PUBLIC_BASE_URL)", config.MEMBER2_API_URL)
         if config.WHATSAPP_STATUS_POLL_SECONDS > 0:
             poller = asyncio.create_task(whatsapp.status_loop())
+    if ivr.enabled():
+        log.info("IVR line on: set your Twilio number's \"A call comes in\" to %s/ivr/voice",
+                 config.PUBLIC_BASE_URL or "(set PUBLIC_BASE_URL)")
     yield
     if poller:
         poller.cancel()
@@ -55,6 +58,7 @@ app.include_router(verify_router)
 app.include_router(dashboard_router)
 app.include_router(sync_router)
 app.include_router(whatsapp.router)
+app.include_router(ivr.router)
 
 
 @app.get("/health")

@@ -249,6 +249,29 @@ Notes:
 - A tunnel makes the whole service public, `/verify` included: stop it after testing. In
   production, put the service behind a proper HTTPS address.
 
+## IVR line (phone call)
+
+For feature phones and people who cannot read: call the line, press **1/2/3** for English,
+हिन्दी or বাংলা, press **1** to agree, hear the claim number, then speak the claim after the beep and
+press **#**. The recording goes to Member 2 (Member 1's speech AI), like the app; if nothing is
+missing, the claim is submitted automatically, then the recording is deleted from Twilio.
+**Calling again** from the same phone tells the claim's status; if details are missing it names
+them and the caller presses **1** to record them (**9** starts a new claim). Code: `app/ivr.py`.
+
+**Try it on this computer (no phone):** with Member 2 running, `python scripts/try_ivr.py`
+(three scripted calls) or `python scripts/try_ivr.py --call` (you press the keys).
+
+**With a real phone (Twilio):** same `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` and `PUBLIC_BASE_URL`
+as the WhatsApp bot. Get a Twilio phone number (Console → Phone Numbers → Buy a number; the trial
+includes one), and set its "A call comes in" webhook to `<PUBLIC_BASE_URL>/ivr/voice` (POST).
+
+Limits to know:
+- A trial number is a US number: calling it from India is an international call, and only
+  numbers verified in the Twilio console can call it. For real users, use an Indian number
+  (paid Twilio account with KYC) or an Indian provider such as Exotel; only the webhook layer
+  in `app/ivr.py` would change.
+- Status is told when the person calls back. SMS status updates need DLT registration in India.
+
 ## API
 
 **`POST /verify`**, called by Member 2 for every claim photo.
@@ -272,7 +295,7 @@ Multipart `photo` (required), plus `lat`, `lon`, `taken_at` (ISO 8601), `claim_i
 | ✅ Satellite verification | Flood maps + satellite building damage grading (real Copernicus EMS data) and crop before/after from Sentinel-2 NDVI. ISRO Bhuvan layers need a login; house-level before/after needs ISRO Cartosat (roadmap) |
 | ✅ Advanced fraud detection | Flag the same photo, house or person claiming twice (see "Fraud checks" below) |
 | ✅ WhatsApp bot | File a claim by sending a voice note on WhatsApp (Twilio; see "WhatsApp bot" above) |
-| IVR / missed-call line | Feature-phone users call in and speak their claim |
+| ✅ IVR line | Feature-phone users call in and speak their claim; calling again tells the status (see "IVR line" above). Missed-call callback: roadmap |
 | ✅ Status updates (WhatsApp) | Each status change is sent on WhatsApp in the user's language. SMS/voice: roadmap |
 | ✅ Dashboard data | Provide the map and damage data for the government dashboard that Member 5 designs (see "Dashboard data" below) |
 
