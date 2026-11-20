@@ -9,8 +9,8 @@ Make claims trustworthy for officials, make sure no claim is lost when the netwo
 - [x] **Damage vision:** AI checks the damage photos (Gemini free tier, or Claude)
 - [x] **Basic verification:** check that the GPS location and timestamp look right
 - [x] **Basic duplicate check:** flag the same photo or claim sent twice (also catches re-saved copies)
-- [ ] **Offline sync:** queue uploads so nothing is lost when the network drops
-  (`offline-client/queue.js` is built; still to point it at Member 2's API with Member 4)
+- [x] **Offline sync:** queue uploads so nothing is lost when the network drops
+  (`offline-client/queue.js`, sends to Member 2's backend; see "Offline queue" below)
 
 ## Run it
 
@@ -27,6 +27,42 @@ uvicorn app.main:app --port 8002 --reload
 - API docs: http://localhost:8002/docs
 - Tests (never use real API quota): `python -m pytest -q`
 - Try the AI on your own photo: `python scripts/try_photo.py path\to\photo.jpg`
+
+## Offline queue (for Member 4's frontend)
+
+`offline-client/queue.js` is a plain ES module with no build step. Every claim step is saved
+on the phone first (IndexedDB) and sent to Member 2's backend when the connection is back:
+**create claim → voice recording → photos**, in order. Nothing is lost if the signal drops.
+
+```js
+import { createOfflineQueue } from "./queue.js";
+const q = createOfflineQueue({ apiBase: "http://localhost:8000" });   // Member 2's backend
+
+const localId = await q.startClaim({ language: "hi", disaster_type: "flood",
+                                     consent: true, consent_text_version: "v1" });
+await q.addAudio(localId, audioBlob, "recording.webm");
+await q.addPhoto(localId, photoBlob, { lat, lon, taken_at: new Date().toISOString() });
+
+q.on("change", async () => render(await q.list()));    // progress: { jobs, pending, failed }
+q.on("claim-created", ({ claimId }) => showClaimId(claimId));
+q.on("failed", ({ error }) => showError(error));         // the server refused it: tell the user
+const { claimId, token } = await q.getClaim(localId);   // filled once the claim reached the server
+```
+
+- **Works offline right away.** `startClaim` returns a local id at once, even with no signal.
+- **Retries by itself** with growing waits (2 s, 4 s, 8 s … up to 5 min), and immediately when
+  the phone comes back online. It respects `Retry-After`.
+- **Safe to retry.** Member 2 ignores a photo uploaded twice. If Member 1's AI is down, the
+  recording is already kept on the server, so the queue asks for `/audio/retry` instead of
+  uploading again.
+- **Doesn't retry forever on real errors.** A 4xx reply (for example a claim already submitted)
+  is marked `failed`, with a readable message for the user.
+- The claim token is stored on the device only and is never included in `list()`.
+
+**Demo:** `cd offline-client; python -m http.server 3000`, then open
+http://localhost:3000/demo.html (Member 2's backend allows browser calls from port 3000).
+Stop the backend or turn off Wi-Fi, start a claim and add a photo, then reconnect: everything
+uploads by itself.
 
 ## API
 
