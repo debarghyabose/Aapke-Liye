@@ -45,6 +45,13 @@ def severity_band(score_100: int) -> str:
     return "none"
 
 
+def satellite_confirms_damage(check: dict) -> bool:
+    """Satellite evidence of damage at this spot: a graded building (Copernicus EMS) or a
+    Sentinel-2 vegetation loss / flooded field. Then being outside the flood map is not
+    suspicious (cyclone wind and rain damage, for example)."""
+    return bool(check.get("satellite_damage_grade")) or check.get("ndvi_status") in ("vegetation_loss", "water_after")
+
+
 def flags_for(check: dict) -> list[str]:
     flags = []
     if check["duplicate_of"]:
@@ -57,9 +64,7 @@ def flags_for(check: dict) -> list[str]:
         flags.append("possible_same_house")
     if (check.get("phone_other_claims") or 0) > config.PHONE_MAX_OTHER_CLAIMS_24H:
         flags.append("phone_many_claims")
-    # Outside the flood map is not suspicious when satellite grading shows the building damaged
-    # (cyclone wind damage, for example).
-    if check.get("in_flood") is False and not check.get("satellite_damage_grade"):
+    if check.get("in_flood") is False and not satellite_confirms_damage(check):
         flags.append("outside_flood_extent")
     if check.get("building_found") is False:
         flags.append("no_building_at_location")
@@ -231,7 +236,7 @@ def fraud_flags() -> dict:
             items.append({**base, "type": "phone_many_claims", "other_claims": c["phone_other_claims"],
                           "action": "One phone number filed many claims in 24 h: confirm it is an NGO or "
                                     "volunteer filing for several families"})
-        if c.get("in_flood") is False and not c.get("satellite_damage_grade"):
+        if c.get("in_flood") is False and not satellite_confirms_damage(c):
             items.append({**base, "type": "outside_flood_extent", "distance_km": c.get("flood_distance_km"),
                           "flood_map": c.get("flood_map"),
                           "action": "Satellite flood map shows no flooding here: check the damage cause "
