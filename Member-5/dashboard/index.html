@@ -368,6 +368,8 @@
         const flood = await m3get("/dashboard/flood-extent.geojson").catch(() => null);
         if (!live) SWAP_IDS.forEach((id) => { SAMPLE_TEXT[id] = document.getElementById(id).innerHTML; });
         live = { summary, claims, heat, fraud, flood };
+        // Remember the key for this tab only (cleared when the tab closes), so reloads keep working.
+        try { sessionStorage.setItem("m3-key", document.getElementById("m3-key").value); } catch {}
         renderLive();
         clearInterval(liveTimer);
         liveTimer = setInterval(() => connectLive(true), 30000);   // refresh every 30 s
@@ -426,7 +428,15 @@
       setHTML("vpi-table-head", "<tr><th>Damage</th><th>Claim</th><th>Photos</th><th>Loss found</th><th>Flags</th><th>Action</th></tr>");
       document.getElementById("vpi-table-body").innerHTML = claims.features.length ? claims.features.map((f) => {
         const p = f.properties;
-        const loss = (p.sdrf_categories.length ? p.sdrf_categories : p.damage_types).map(esc).join(", ") || "No damage visible";
+        let loss = (p.sdrf_categories.length ? p.sdrf_categories : p.damage_types).map(esc).join(", ") || "No damage visible";
+        // Satellite evidence from Member 3 (Copernicus EMS grading, Sentinel-2 crop check)
+        const sat = [];
+        if (p.satellite_damage_grade) sat.push(`🛰️ Copernicus: ${esc(p.satellite_damage_grade)}`);
+        if (p.in_flood === true) sat.push("🛰️ Inside flood map");
+        const cs = p.crop_satellite;
+        if (cs && cs.before != null && cs.after != null) sat.push(`🛰️ Crop NDVI ${esc(cs.before)} → ${esc(cs.after)}`);
+        else if (cs && cs.status === "pending") sat.push("🛰️ Crop check running…");
+        if (sat.length) loss += `<br><span style="font-size: 0.75rem; color: #93c5fd;">${sat.join(" · ")}</span>`;
         const flags = p.flags.map((x) => `<span class="badge badge-red">${esc(FLAG_TEXT[x] || x)}</span>`).join(" ") || '<span class="badge badge-green">OK</span>';
         return `<tr>
           <td><span class="badge ${p.damage_score >= 70 ? "badge-red" : "badge-yellow"}">${esc(p.damage_score)}</span></td>
@@ -479,8 +489,10 @@
         ctx.fillText("No located photos yet", canvas.width / 2 - 70, canvas.height / 2);
         return;
       }
-      // Fit the view to the claims, and to the flood map when it is shown.
-      const pts = cells.map((c) => c.geometry.coordinates).concat(showFlood ? rings.flat() : []);
+      // Fit the view to the claims (flood maps can cover far-away areas too); only when there
+      // are no claims yet, fit the flood map. Flood outlines outside the view are clipped.
+      const claimPts = cells.map((c) => c.geometry.coordinates);
+      const pts = claimPts.length ? claimPts : rings.flat();
       const lons = pts.map((p) => p[0]), lats = pts.map((p) => p[1]);
       const minLon = Math.min(...lons), maxLon = Math.max(...lons), minLat = Math.min(...lats), maxLat = Math.max(...lats);
       // Same scale east-west and north-south (1 km looks the same both ways), centred.
@@ -500,6 +512,7 @@
         });
       }
       const showHeat = document.getElementById("toggleHeat").checked;
+      const placed = [];   // label boxes already drawn: skip labels that would overlap
       cells.forEach((c) => {
         const p = c.properties, cx = x(c.geometry.coordinates[0]), cy = y(c.geometry.coordinates[1]);
         const r = Math.min(60, 14 + 10 * Math.sqrt(p.claims));
@@ -508,8 +521,15 @@
           grad.addColorStop(0, bandColor(p.max_damage_score)); grad.addColorStop(1, "rgba(0,0,0,0)");
           ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
         }
-        ctx.fillStyle = "#fff"; ctx.font = "bold 11px sans-serif";
-        ctx.fillText(`${p.claims} claim${p.claims === 1 ? "" : "s"} · max ${p.max_damage_score}`, cx - 40, cy + 4);
+        ctx.fillStyle = bandColor(p.max_damage_score).replace(/[\d.]+\)$/, "1)");
+        ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2); ctx.fill();   // exact spot
+        const label = `${p.claims} claim${p.claims === 1 ? "" : "s"} · max ${p.max_damage_score}`;
+        ctx.font = "bold 11px sans-serif";
+        const w = ctx.measureText(label).width, lx = cx + 7, ly = cy + 4;
+        if (!placed.some((b) => lx < b[2] && lx + w > b[0] && ly - 11 < b[3] && ly > b[1])) {
+          ctx.fillStyle = "#fff"; ctx.fillText(label, lx, ly);
+          placed.push([lx, ly - 11, lx + w, ly]);
+        }
       });
       ctx.fillStyle = "#94a3b8"; ctx.font = "10px sans-serif";
       ctx.fillText(`${minLat.toFixed(3)}°N–${maxLat.toFixed(3)}°N, ${minLon.toFixed(3)}°E–${maxLon.toFixed(3)}°E`, 8, canvas.height - 8);
@@ -518,6 +538,7 @@
     window.addEventListener("load", () => {
       renderTable();
       drawMap();
+      try { const k = sessionStorage.getItem("m3-key"); if (k) document.getElementById("m3-key").value = k; } catch {}
       connectLive(true);   // use live data automatically if Member 3 is running
     });
     window.addEventListener("resize", drawMap);

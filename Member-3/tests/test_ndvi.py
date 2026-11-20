@@ -130,3 +130,20 @@ def test_after_window_never_starts_before_the_disaster(crop, photo_factory, monk
     send(photo_factory(seed=8, lat=19.86, lon=85.81, taken_at=datetime(2019, 5, 5, 9, 0)))
     after_start = src.calls[1][0]
     assert after_start == datetime(2019, 5, 3)
+
+
+def test_confirmed_crop_loss_clears_outside_flood_flag(crop, photo_factory, tmp_path, monkeypatch):
+    """Cyclone wind/rain: field outside the flood map, but Sentinel-2 shows vegetation loss."""
+    import json
+    from app import geodata
+
+    flood = tmp_path / "flood.geojson"
+    flood.write_text(json.dumps({"type": "FeatureCollection", "features": [{"type": "Feature", "properties": {},
+        "geometry": {"type": "Polygon", "coordinates": [[[85.75, 19.80], [85.80, 19.80], [85.80, 19.83], [85.75, 19.83], [85.75, 19.80]]]}}]}))
+    monkeypatch.setattr(config, "FLOOD_MAP_FILES", [str(flood)])
+    geodata.reload_geo()
+    crop(reading(0.80, "2019-03-24"), reading(0.26, "2019-05-13"))
+    send(photo_factory(seed=9, lat=19.84, lon=85.70, taken_at=T))          # ~5 km from the flood map
+    props = claim_props()
+    assert props["in_flood"] is False and props["crop_satellite"]["status"] == "vegetation_loss"
+    assert "outside_flood_extent" not in props["flags"]
