@@ -174,6 +174,17 @@ Aapke-Liye/
 
 ---
 
+## 🚀 Current sprint: who builds what
+
+| Member | Task | Details |
+|---|---|---|
+| **Member 1** | Gemini speech (replacing Whisper) + live before/after photo comparison | [Member-1/README.md](Member-1/README.md) |
+| **Member 2** | Document vault + DigiLocker (mock) + hilly-area rate + before/after hook | [Member-2/README.md](Member-2/README.md) |
+| **Member 3** | Mesh "lite" (sealed claim passed phone to phone by QR code) + WhatsApp/IVR live via tunnel | [Member-3/README.md](Member-3/README.md) |
+| **Member 4** | Full offline app (PWA) + `/prepare`, mesh and before/after screens + mobile UI | [Member-4/README.md](Member-4/README.md) |
+
+Each member pushes a branch and opens a pull request; the team lead merges them into the final web app with mobile UI. Full plan: [docs/next-features-plan.md](docs/next-features-plan.md).
+
 ## ▶️ Run the whole product
 
 One command starts all four services on Windows (Python 3.12 and Node.js needed):

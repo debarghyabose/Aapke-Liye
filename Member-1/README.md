@@ -4,6 +4,20 @@ Part of **Aapke Liye**. Turns a disaster victim's voice note, in English, Hindi,
 Marathi, Telugu or Tamil, into a structured relief claim, asks for what is missing, and
 drafts follow-up documents.
 
+## 🚀 Current sprint (2 hours) — your tasks
+
+### Gemini speech + before/after (Google AI 20%)
+- [ ] **Gemini hears the voice note.** In `asr.py`, add `ASR_PROVIDER=gemini|whisper` (default `gemini`). Send the 16 kHz WAV to Gemini as audio and ask for the transcript plus language. Keep Whisper as the fallback when Gemini fails or there's no key. *Even better:* one Gemini call from audio straight to claim fields (skips a step, faster).
+- [ ] Return `asr_provider: "gemini"` in the turn response, so it shows on stage and in `/health`.
+- [ ] **Before/after:** make `/v1/damage/compare` real with Gemini (it already exists, tested in mock mode only). Member 2 will call it when a claim photo has a baseline photo from the vault.
+- [ ] Tests: provider switch, fallback to Whisper, compare in mock and live.
+- **Done when:** a Hindi voice note is transcribed by Gemini (Whisper turned off) and the claim fills in.
+
+**Rules:** work on your own branch `member-1/<feature>`, edit only your own folder (ask the owner otherwise), never commit `.env`, run your tests before pushing, then open a pull request into `main`. The team lead merges all four and builds the final web app (with mobile UI).
+Full plan, timeline, demo script and what to cut if time runs out: [docs/next-features-plan.md](../docs/next-features-plan.md)
+
+---
+
 ## Status
 
 ### Phase 1: Core demo

@@ -2,6 +2,22 @@
 
 **Name:** Debanik Dey · **GitHub:** [DEBANIK07](https://github.com/DEBANIK07)
 
+## 🚀 Current sprint (2 hours) — your tasks
+
+### Mesh "lite" (no Android needed today)
+A native phone-to-phone mesh takes weeks. For today, the same idea with what a browser can do: a **sealed claim passed by QR code or file** to a neighbour's phone, which uploads it when it has signal.
+- [ ] `GET /mesh/public-key` and `POST /mesh/envelopes` in Member 3's service. Generate the key pair once (keys in `.env`). Decrypt the envelope, reject expired or too-large ones (limits in `Member-5/rules/mesh_policy.json`), ignore duplicates by `claim_id`, then file the claim through Member 2's normal `/claims` APIs (as `whatsapp.py` already does).
+- [ ] `GET /mesh/receipts/{claim_id}` → a signed receipt, so the first phone can show "Delivered".
+- [ ] A small browser helper for Member 4: `sealClaim(claim, publicKey)` (WebCrypto: AES-GCM for the data, RSA-OAEP or X25519 for the key) → envelope JSON (+ text for a QR code).
+- [ ] Tests: tampered, expired, duplicate and oversized envelopes rejected; valid envelope becomes a claim.
+- [ ] **WhatsApp + IVR live (20 min):** run `cloudflared tunnel --url http://localhost:8002` (or `ngrok http 8002`), put the https URL in `PUBLIC_BASE_URL` in `Member-3/.env`, and set the Twilio WhatsApp sandbox webhook to `<url>/webhook` and the voice number to `<url>/voice`. This makes the computer reachable from the internet while the tunnel runs; stop it after the demo.
+- **Done when:** phone A (airplane mode) shows a QR code, phone B scans it, turns on data, and the claim appears on `/official`.
+
+**Rules:** work on your own branch `member-3/<feature>`, edit only your own folder (ask the owner otherwise), never commit `.env`, run your tests before pushing, then open a pull request into `main`. The team lead merges all four and builds the final web app (with mobile UI).
+Full plan, timeline, demo script and what to cut if time runs out: [docs/next-features-plan.md](../docs/next-features-plan.md)
+
+---
+
 ## Your job
 Make claims trustworthy for officials, make sure no claim is lost when the network drops, and reach people without smartphones.
 
