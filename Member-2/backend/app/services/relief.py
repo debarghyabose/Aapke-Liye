@@ -65,7 +65,7 @@ def _unit_word(cat: dict) -> str:
     return cat["unit"].replace("per ", "")
 
 
-def calculate_relief(losses: list[dict]) -> dict:
+def calculate_relief(losses: list[dict], crop_insured: bool | None = None) -> dict:
     """
     losses: [{"category": "house", "item": "fully_damaged_plain", "quantity": 1,
               "damage_percent": 100}, ...]
@@ -155,7 +155,7 @@ def calculate_relief(losses: list[dict]) -> dict:
 
     return {"rules_version": rules["version"], "estimate_only": rules_are_sample(),
             "lines": lines, "unmatched": unmatched, "total": total,
-            "may_also_qualify": other_schemes(losses)}
+            "may_also_qualify": other_schemes(losses, crop_insured)}
 
 
 @lru_cache
@@ -164,7 +164,7 @@ def load_scheme(name: str) -> dict:
     return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
 
 
-def other_schemes(losses: list[dict]) -> list[dict]:
+def other_schemes(losses: list[dict], crop_insured: bool | None = None) -> list[dict]:
     """Schemes the family may also qualify for (Member 5's multi-scheme rules). Not added to
     the SDRF total: each needs its own application and eligibility checks."""
     out = []
@@ -175,6 +175,22 @@ def other_schemes(losses: list[dict]) -> list[dict]:
         out.append({"scheme_code": "PMAY_G_DISASTER", "scheme_name": pmay.get("scheme_name"),
                     "authority": pmay.get("ministry"), "estimated_amount": amount,
                     "conditions": pmay.get("eligibility_conditions", [])})
+    pmfby = load_scheme("pmfby")
+    crops = [l for l in losses or [] if l.get("category") == "crop"
+             and l.get("damage_percent") not in (None, 0)]
+    if pmfby and crop_insured and crops:
+        per_ha = pmfby.get("sum_insured_per_hectare", {}).get("paddy", 65000)
+        indemnity = float(pmfby.get("default_indemnity_level", 0.8))
+        amount = sum(round(float(l.get("quantity") or 0) * per_ha * float(l["damage_percent"]) / 100
+                           * indemnity) for l in crops)
+        out.append({"scheme_code": "PMFBY", "scheme_name": pmfby.get("scheme_name"),
+                    "authority": pmfby.get("ministry"), "estimated_amount": amount,
+                    "conditions": [
+                        f"Report the loss to the insurer or bank within "
+                        f"{pmfby.get('localized_calamity_window_hours', 72)} hours",
+                        "Sum insured per hectare is set each year for your district; this uses "
+                        "a sample value",
+                        f"Assumes {round(indemnity * 100)}% indemnity level"]})
     return out
 
 

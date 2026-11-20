@@ -14,7 +14,7 @@ from starlette.concurrency import run_in_threadpool
 from .. import storage
 from ..config import SUPPORTED_LANGUAGES, settings
 from ..db import get_db
-from ..models import AudioRecording, Claim, Photo, StatusEvent, audit, now
+from ..models import AudioRecording, AuditLog, Claim, Photo, StatusEvent, audit, now
 from ..schemas import (ClaimCreate, ClaimCreated, ClaimFields, ClaimFieldsUpdate, ClaimOut,
                        ClaimText, iso_utc)
 from ..security import claim_for_claimant, hash_token, limiter, new_claim_token
@@ -48,7 +48,8 @@ def _require_draft(claim: Claim):
 
 def _refresh_derived(claim: Claim):
     """Recompute relief amount and proof suggestions whenever fields change."""
-    claim.relief = calculate_relief(claim.fields.get("losses", []))
+    claim.relief = calculate_relief(claim.fields.get("losses", []),
+                                    claim.fields.get("crop_insured"))
     claim.proof_suggestions = suggest_proofs(claim.fields.get("documents_lost", []))
 
 
@@ -325,3 +326,28 @@ async def draft_document(request: Request, doc_type: str,
     await db.commit()
     return {"doc_type": doc_type, "title": out.get("title"), "text": out.get("text", ""),
             "missing_fields": out.get("missing_fields", [])}
+
+
+ESCALATION_STEPS = ("followup_letter", "grievance", "rti_application")
+
+
+@router.get("/{claim_id}/escalation")
+async def escalation(claim: Claim = Depends(claim_for_claimant),
+                     db: AsyncSession = Depends(get_db)):
+    """Which letter to send next for a claim stuck without approval (Member 1's ladder:
+    follow-up, then grievance, then RTI). Letters already drafted count as done."""
+    if not claim.submitted_at or claim.status not in ("Submitted", "Verified"):
+        return {"days_pending": 0, "next_step": None,
+                "reason": "Only submitted claims waiting for approval are escalated"}
+    submitted = claim.submitted_at
+    if submitted.tzinfo is None:
+        submitted = submitted.replace(tzinfo=now().tzinfo)
+    days = (now() - submitted).days
+    drafted = (await db.scalars(select(AuditLog.detail).where(
+        AuditLog.claim_id == claim.id, AuditLog.action == "document_drafted"))).all()
+    done = [s for s in ESCALATION_STEPS if any((d or {}).get("doc_type") == s for d in drafted)]
+    try:
+        out = await integrations.next_escalation(days, done)
+    except ServiceUnavailable:
+        raise HTTPException(503, "Escalation advice is not available right now")
+    return {"days_pending": days, "steps_done": done, **out}

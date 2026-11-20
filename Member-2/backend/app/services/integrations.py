@@ -133,3 +133,31 @@ async def draft_document(doc_type: str, m1_claim: dict, extra: dict) -> dict:
     return await _post(f"{settings.member1_ai_url}/v1/documents/draft",
                        json={"doc_type": doc_type, "claim": m1_claim, "extra": extra,
                              "language": "en"})
+
+
+DASHBOARD_VIEWS = {"summary", "claims.geojson", "heatmap.geojson", "flood-extent.geojson",
+                   "fraud-flags"}
+
+
+async def dashboard(view: str, params: dict | None = None) -> dict:
+    """Member 3's live dashboard data (map points, flood extent, fraud flags) for officials."""
+    if not settings.member3_verify_url or not settings.member3_dashboard_key:
+        raise ServiceUnavailable("MEMBER3_VERIFY_URL / MEMBER3_DASHBOARD_KEY not set")
+    timeout = httpx.Timeout(settings.service_timeout, connect=5.0)
+    headers = {"X-Request-ID": request_id_var.get(), "X-Dashboard-Key": settings.member3_dashboard_key}
+    try:
+        async with httpx.AsyncClient(timeout=timeout, headers=headers) as client:
+            r = await client.get(f"{settings.member3_verify_url}/dashboard/{view}", params=params)
+    except httpx.TransportError as e:
+        raise ServiceUnavailable(f"dashboard: {type(e).__name__}") from None
+    if r.status_code >= 400:
+        raise ServiceUnavailable(f"dashboard: HTTP {r.status_code}")
+    return r.json()
+
+
+async def next_escalation(days_pending: int, steps_done: list[str]) -> dict:
+    """Member 1's escalation ladder: which letter to send next for a stuck claim."""
+    if settings.use_mock_member1 or not settings.member1_ai_url:
+        raise ServiceUnavailable("escalation needs Member 1")
+    return await _post(f"{settings.member1_ai_url}/v1/escalation/next",
+                       json={"days_pending": days_pending, "steps_done": steps_done})

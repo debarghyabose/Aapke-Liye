@@ -19,6 +19,8 @@ export interface ClaimFields {
   losses?: Loss[] | null;
   documents_lost?: string[] | null;
   bank_account_available?: boolean | null;
+  vulnerability?: string[] | null; // elderly | disabled | single_mother | child_under_5
+  crop_insured?: boolean | null; // PMFBY
   [key: string]: any;
 }
 
@@ -145,6 +147,7 @@ export interface StaffClaimOut extends ClaimOut {
     is_elderly?: boolean;
     is_disabled?: boolean;
     is_single_mother?: boolean;
+    has_child_under_5?: boolean;
   };
 }
 

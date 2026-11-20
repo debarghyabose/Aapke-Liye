@@ -45,6 +45,7 @@ class Settings:
     storage_dir: Path = BASE_DIR / "storage"
     member1_ai_url: str = ""
     member3_verify_url: str = ""
+    member3_dashboard_key: str = ""   # Member 3's DASHBOARD_API_KEY, for the officials' map
     service_timeout: float = 30.0
     cors_origins: list[str] = field(default_factory=list)
     storage_encryption_keys: list[str] = field(default_factory=list)
@@ -76,6 +77,7 @@ class Settings:
             storage_dir=Path(env.get("STORAGE_DIR") or BASE_DIR / "storage"),
             member1_ai_url=env.get("MEMBER1_AI_URL", "").strip().rstrip("/"),
             member3_verify_url=env.get("MEMBER3_VERIFY_URL", "").strip().rstrip("/"),
+            member3_dashboard_key=env.get("MEMBER3_DASHBOARD_KEY", "").strip(),
             service_timeout=float(env.get("SERVICE_TIMEOUT_SECONDS") or 30),
             cors_origins=_list(env.get("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000")),
             storage_encryption_keys=_list(env.get("STORAGE_ENCRYPTION_KEY")),

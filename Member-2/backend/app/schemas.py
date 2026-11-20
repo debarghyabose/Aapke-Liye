@@ -1,7 +1,7 @@
 from datetime import date, datetime, timezone
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, PlainSerializer, field_serializer
+from pydantic import model_validator, BaseModel, Field, PlainSerializer, field_serializer
 
 
 def iso_utc(d: datetime) -> str:
@@ -50,6 +50,10 @@ class ClaimFields(BaseModel):
     documents_lost: Annotated[list[Annotated[str, Field(max_length=60)]],
                               Field(max_length=20)] | None = None
     bank_account_available: bool | None = None
+    # Who in the household needs help first (officials sort these claims to the top).
+    vulnerability: Annotated[list[Literal["elderly", "disabled", "single_mother", "child_under_5"]],
+                             Field(max_length=4)] | None = None
+    crop_insured: bool | None = None   # PMFBY: enables the crop insurance estimate
 
 
 class ClaimCreate(BaseModel):
@@ -151,3 +155,12 @@ class ClaimCreated(ClaimOut):
 
 class StaffClaimOut(ClaimOut):
     photos: list[StaffPhotoOut] = []
+    vulnerability_flags: dict = {}
+
+    @model_validator(mode="after")
+    def _vulnerability(self):
+        v = set((self.fields or {}).get("vulnerability") or [])
+        self.vulnerability_flags = {"is_elderly": "elderly" in v, "is_disabled": "disabled" in v,
+                                    "is_single_mother": "single_mother" in v,
+                                    "has_child_under_5": "child_under_5" in v}
+        return self

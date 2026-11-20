@@ -423,6 +423,23 @@ export const Claim: React.FC = () => {
     }
   };
 
+  // Review-screen answers that go straight to the claim (and recalculate relief).
+  const saveFields = async (fields: Record<string, any>) => {
+    try {
+      setErrorMsg(null);
+      setClaim(await updateFields(claim.id, fields));
+    } catch (e) {
+      fail(e);
+    }
+  };
+  const toggleVulnerability = (code: string) => {
+    const now = new Set(claim.fields.vulnerability || []);
+    if (now.has(code)) now.delete(code);
+    else now.add(code);
+    saveFields({ vulnerability: Array.from(now) });
+  };
+  const setCropInsured = (value: boolean) => saveFields({ crop_insured: value });
+
   const [draftBusy, setDraftBusy] = useState<string | null>(null);
   const handleDownloadDraft = async (docType: string) => {
     if (DEMO_MODE) return handleDownloadPdf();
@@ -1386,6 +1403,103 @@ export const Claim: React.FC = () => {
               </div>
             ))}
           </div>
+
+          {/* Household needs + crop insurance (live mode) */}
+          {!DEMO_MODE && (
+            <div
+              style={{
+                backgroundColor: '#FFFFFF',
+                border: '1.5px solid var(--border)',
+                borderRadius: '16px',
+                padding: '20px',
+                marginBottom: '28px',
+              }}
+            >
+              <h4 style={{ margin: '0 0 6px 0', fontSize: '1.12rem', fontWeight: 800 }}>
+                {t('claim.vulnerableTitle', 'Does anyone in your family need help first?')}
+              </h4>
+              <p style={{ margin: '0 0 12px 0', fontSize: '0.92rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                {t('claim.vulnerableHint', 'Officials visit these families first. Tap all that apply.')}
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                {[
+                  ['elderly', t('claim.vElderly', 'Elderly person (60+)')],
+                  ['disabled', t('claim.vDisabled', 'Person with a disability')],
+                  ['single_mother', t('claim.vSingleMother', 'Single mother / woman-headed home')],
+                  ['child_under_5', t('claim.vChild', 'Child under 5')],
+                ].map(([code, text]) => {
+                  const on = (claim.fields.vulnerability || []).includes(code);
+                  return (
+                    <button
+                      key={code}
+                      aria-pressed={on}
+                      onClick={() => toggleVulnerability(code)}
+                      style={{
+                        padding: '10px 18px',
+                        minHeight: '48px',
+                        borderRadius: '999px',
+                        border: on ? '2.5px solid var(--primary)' : '1.5px solid var(--border)',
+                        backgroundColor: on ? 'rgba(26, 75, 117, 0.1)' : 'var(--bg-alt)',
+                        fontWeight: on ? 800 : 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {on ? '✓ ' : ''}
+                      {text}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {(claim.fields.losses || []).some((l) => l.category === 'crop') && (
+                <div style={{ marginTop: '18px' }}>
+                  <h4 style={{ margin: '0 0 10px 0', fontSize: '1.05rem', fontWeight: 800 }}>
+                    {t('claim.cropInsuredQ', 'Was your crop insured under PMFBY (crop insurance)?')}
+                  </h4>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    {[
+                      [true, t('common.yes', 'Yes')],
+                      [false, t('common.no', 'No / not sure')],
+                    ].map(([val, text]) => (
+                      <button
+                        key={String(val)}
+                        aria-pressed={claim.fields.crop_insured === val}
+                        onClick={() => setCropInsured(val as boolean)}
+                        className="btn-outline-pill"
+                        style={{
+                          minHeight: '48px',
+                          padding: '10px 22px',
+                          fontWeight: 800,
+                          border: claim.fields.crop_insured === val ? '2.5px solid var(--primary)' : undefined,
+                        }}
+                      >
+                        {text as string}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {(claim.relief?.may_also_qualify || []).length > 0 && (
+                <div style={{ marginTop: '18px' }}>
+                  <h4 style={{ margin: '0 0 8px 0', fontSize: '1.05rem', fontWeight: 800 }}>
+                    {t('claim.alsoQualify', 'You may also qualify for (separate applications):')}
+                  </h4>
+                  <ul style={{ margin: 0, paddingLeft: '20px', fontWeight: 600 }}>
+                    {(claim.relief?.may_also_qualify || []).map((s) => (
+                      <li key={s.scheme_code} style={{ marginBottom: '6px' }}>
+                        <strong>{s.scheme_name || s.scheme_code}</strong>
+                        {s.estimated_amount ? ` · about ₹${s.estimated_amount.toLocaleString('en-IN')}` : ''}
+                        {s.conditions?.length ? (
+                          <div style={{ fontSize: '0.86rem', color: 'var(--text-muted)' }}>{s.conditions.join(' · ')}</div>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Proof Substitution Suggestions */}
           {claim.proof_suggestions && claim.proof_suggestions.length > 0 && (

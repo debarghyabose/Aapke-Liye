@@ -55,7 +55,9 @@ def read_env(path: Path) -> dict[str, str]:
 def main() -> None:
     print("Aapke Liye: local setup")
     staff_key = secrets.token_urlsafe(24)
-    dashboard_key = secrets.token_urlsafe(24)
+    # One dashboard key shared by Member 3 (checks it) and Member 2 (sends it for /official).
+    dashboard_key = (read_env(ROOT / "Member-3/.env").get("DASHBOARD_API_KEY")
+                     or secrets.token_urlsafe(24))
 
     write(ROOT / "Member-1/.env", env_lines(ROOT / "Member-1/.env.example", {
         "CLAIM_AI_MODE": "live" if GEMINI else "mock",
@@ -73,6 +75,7 @@ def main() -> None:
         "MEMBER3_VERIFY_URL": "http://localhost:8002",
         "SERVICE_TIMEOUT_SECONDS": "120",   # first Whisper run can be slow
         "CORS_ORIGINS": "http://localhost:5173,http://127.0.0.1:5173",
+        "MEMBER3_DASHBOARD_KEY": dashboard_key,
     }))
 
     write(ROOT / "Member-3/.env", env_lines(ROOT / "Member-3/.env.example", {

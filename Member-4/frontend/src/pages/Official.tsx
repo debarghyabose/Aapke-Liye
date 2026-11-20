@@ -19,6 +19,7 @@ import {
   setStaffKey,
 } from '../api/client';
 import { StaffClaimOut } from '../types/api';
+import { LiveMap } from '../components/LiveMap';
 import { MOCK_STAFF_CLAIMS } from '../mocks/sampleData';
 
 export const Official: React.FC = () => {
@@ -30,6 +31,7 @@ export const Official: React.FC = () => {
   const [staffActionSuccess, setStaffActionSuccess] = useState<string | null>(null);
   const [staffError, setStaffError] = useState<string | null>(null);
   const [keyInput, setKeyInput] = useState<string>(getStaffKey());
+  const [mapRefresh, setMapRefresh] = useState<number>(0);
 
   useEffect(() => {
     loadClaims();
@@ -123,6 +125,7 @@ export const Official: React.FC = () => {
             e.preventDefault();
             setStaffKey(keyInput);
             loadClaims();
+            setMapRefresh((n) => n + 1);
           }}
           style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '16px' }}
         >
@@ -234,10 +237,16 @@ export const Official: React.FC = () => {
                 </h3>
               </div>
               <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                {t('official.heatmapSub', 'OpenStreetMap · Paschim Medinipur')}
+                {DEMO_MODE
+                  ? t('official.heatmapSub', 'OpenStreetMap · Paschim Medinipur')
+                  : t('official.heatmapLive', 'Live · OpenStreetMap + Copernicus EMS flood map')}
               </span>
             </div>
 
+            {!DEMO_MODE ? (
+              <LiveMap onSelectClaim={handleSelectClaim} refreshKey={mapRefresh} />
+            ) : (
+            <>
             {/* Interactive SVG Map Canvas */}
             <div
               style={{
@@ -346,6 +355,8 @@ export const Official: React.FC = () => {
                 {t('official.legendInundation', 'Severe Inundation')}
               </div>
             </div>
+            </>
+            )}
           </div>
 
           {/* Priority List (Elderly, Disabled, Single Mothers) */}

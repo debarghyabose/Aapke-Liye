@@ -380,6 +380,23 @@ export async function getStaffClaimsList(): Promise<StaffClaimOut[]> {
   return list.map((c) => toClaim(c) as StaffClaimOut);
 }
 
+export interface Escalation {
+  days_pending: number;
+  next_step: 'followup_letter' | 'grievance' | 'rti_application' | null;
+  reason: string;
+  steps_done?: string[];
+}
+
+/** Member 1's escalation ladder: which letter to send next for a stuck claim. */
+export async function getEscalation(claimId: string): Promise<Escalation> {
+  return request<Escalation>(`/claims/${claimId}/escalation`, { claimId });
+}
+
+/** Member 3's live map data through Member 2: claims.geojson, flood-extent.geojson, summary, fraud-flags. */
+export async function getDashboard(view: string): Promise<any> {
+  return request<any>(`/staff/dashboard/${view}`, { staff: true });
+}
+
 export async function updateStaffStatus(claimId: string, status: string, note?: string): Promise<StatusOut | null> {
   if (DEMO_MODE) return null;
   return request<StatusOut>(`/status/${claimId}`, {

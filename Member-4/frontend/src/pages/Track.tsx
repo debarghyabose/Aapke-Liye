@@ -18,6 +18,8 @@ import {
   getClaimPdf,
   draftDocument,
   saveTextFile,
+  getEscalation,
+  Escalation,
 } from '../api/client';
 import { StatusOut } from '../types/api';
 import { MOCK_CLAIM_ID, MOCK_STATUS } from '../mocks/sampleData';
@@ -33,6 +35,8 @@ export const Track: React.FC = () => {
   const [statusData, setStatusData] = useState<StatusOut | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [trackError, setTrackError] = useState<string | null>(null);
+  const [escalation, setEscalation] = useState<Escalation | null>(null);
+  const NEXT_LETTER: Record<string, string> = { followup_letter: 'bdo', grievance: 'grievance', rti_application: 'rti' };
   // Legal follow-up letters are offered once a claim has waited 14 days without approval.
   const submittedAt = statusData?.timeline.find((e) => e.status === 'Submitted')?.at;
   const isStuckMoreThan14Days =
@@ -40,7 +44,8 @@ export const Track: React.FC = () => {
     (!!statusData &&
       ['Submitted', 'Verified'].includes(statusData.status) &&
       !!submittedAt &&
-      Date.now() - new Date(submittedAt).getTime() > 14 * 24 * 60 * 60 * 1000);
+      (Date.now() - new Date(submittedAt).getTime() > 14 * 24 * 60 * 60 * 1000 || !!escalation?.next_step));
+  const recommended = escalation?.next_step ? NEXT_LETTER[escalation.next_step] : null;
   const [selectedGrievanceDraft, setSelectedGrievanceDraft] = useState<string | null>(null);
   const [draftText, setDraftText] = useState<string | null>(null);
   const [draftFile, setDraftFile] = useState<string>('letter.txt');
@@ -80,6 +85,7 @@ export const Track: React.FC = () => {
       setTrackError(null);
       const data = await getStatus(id);
       setStatusData(data);
+      if (!DEMO_MODE) getEscalation(id).then(setEscalation).catch(() => setEscalation(null));
     } catch (e) {
       if (DEMO_MODE) setStatusData(MOCK_STATUS);
       else {
@@ -446,6 +452,11 @@ export const Track: React.FC = () => {
                       <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text)', marginBottom: '6px' }}>
                         {letter.name}
                       </div>
+                      {recommended === letter.id && (
+                        <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--accent)', marginBottom: '6px' }}>
+                          ★ {t('track.recommended', 'Recommended next step')} · {escalation?.reason}
+                        </div>
+                      )}
                       <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
                         {letter.desc}
                       </div>

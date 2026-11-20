@@ -140,3 +140,45 @@ def test_draft_document(client, services):
     assert client.post(f"/claims/{cid}/documents/grievance").status_code == 404   # no token
     services.m1_draft.side_effect = __import__("tests.conftest", fromlist=["DOWN"]).DOWN
     assert client.post(f"/claims/{cid}/documents/grievance", headers=h).status_code == 503
+
+
+# ---------- vulnerability, PMFBY, escalation, officials' map ----------
+
+def test_vulnerable_claims_first_in_queue(client):
+    plain, _ = submitted_claim(client)
+    cid, h = new_claim(client)
+    client.post(f"/claims/{cid}/audio", headers=h, files={"audio": ("a.webm", WEBM, "audio/webm")})
+    client.patch(f"/claims/{cid}", headers=h, json={"fields": {
+        "phone": "9800000000", "date_of_incident": "2026-11-15", "vulnerability": ["elderly"]}})
+    assert client.post(f"/claims/{cid}/submit", headers=h).status_code == 200
+    queue = client.get("/staff/claims", headers=STAFF).json()
+    assert queue[0]["id"] == cid and queue[0]["vulnerability_flags"]["is_elderly"] is True
+    bad = client.patch(f"/claims/{cid}", headers=h, json={"fields": {"vulnerability": ["rich"]}})
+    assert bad.status_code in (409, 422)
+
+
+def test_pmfby_only_when_crop_insured():
+    losses = [{"category": "crop", "item": "rainfed", "quantity": 1, "damage_percent": 50}]
+    assert not [s for s in calculate_relief(losses)["may_also_qualify"] if s["scheme_code"] == "PMFBY"]
+    pm = [s for s in calculate_relief(losses, True)["may_also_qualify"] if s["scheme_code"] == "PMFBY"]
+    assert pm[0]["estimated_amount"] == round(1 * 65000 * 0.5 * 0.8)
+
+
+def test_escalation_uses_member1_ladder(client, services):
+    services.post("http://member1.test/v1/escalation/next").respond(json={
+        "next_step": None, "reason": "wait until day 30 before followup_letter"})
+    draft_id, dh = new_claim(client)
+    assert client.get(f"/claims/{draft_id}/escalation", headers=dh).json()["next_step"] is None
+    cid, h = submitted_claim(client)
+    r = client.get(f"/claims/{cid}/escalation", headers=h).json()
+    assert r["days_pending"] == 0 and "day 30" in r["reason"]
+
+
+def test_staff_dashboard_proxy(client, services, monkeypatch):
+    from app.config import settings
+    monkeypatch.setattr(settings, "member3_dashboard_key", "dash-key")
+    route = services.get("http://member3.test/dashboard/summary").respond(json={"claims": 3})
+    assert client.get("/staff/dashboard/summary").status_code == 401
+    assert client.get("/staff/dashboard/summary", headers=STAFF).json() == {"claims": 3}
+    assert route.calls[0].request.headers["X-Dashboard-Key"] == "dash-key"
+    assert client.get("/staff/dashboard/secrets", headers=STAFF).status_code == 404
