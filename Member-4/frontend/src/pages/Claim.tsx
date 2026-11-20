@@ -35,6 +35,8 @@ import {
   sendText,
   DEMO_MODE,
   errorText,
+  draftDocument,
+  saveTextFile,
 } from '../api/client';
 import { ClaimOut } from '../types/api';
 import { getLocalizedSampleClaim } from '../mocks/sampleData';
@@ -281,8 +283,10 @@ export const Claim: React.FC = () => {
     setPhotoUploading(true);
     setErrorMsg(null);
 
-    let lat = 22.6683;
-    let lon = 87.7214;
+    // Live mode never invents a location: without the phone's GPS, Member 3 uses the photo's
+    // own EXIF location (or reports that none is available). Demo mode keeps a sample point.
+    let lat: number | undefined = DEMO_MODE ? 22.6683 : undefined;
+    let lon: number | undefined = DEMO_MODE ? 87.7214 : undefined;
     try {
       const pos: any = await new Promise((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 4000 });
@@ -290,7 +294,7 @@ export const Claim: React.FC = () => {
       lat = pos.coords.latitude;
       lon = pos.coords.longitude;
     } catch {
-      // Use block GPS fallback
+      // no phone location: see above
     }
 
     try {
@@ -308,8 +312,8 @@ export const Claim: React.FC = () => {
             {
               id: Date.now(),
               sha256: 'offline-cached',
-              lat,
-              lon,
+              lat: lat ?? null,
+              lon: lon ?? null,
               taken_at: new Date().toISOString(),
               url: URL.createObjectURL(file),
               verification: {
@@ -341,8 +345,8 @@ export const Claim: React.FC = () => {
           {
             id: Date.now(),
             sha256: 'mock-sha',
-            lat,
-            lon,
+            lat: lat ?? null,
+            lon: lon ?? null,
             taken_at: new Date().toISOString(),
             url: URL.createObjectURL(file),
             verification: {
@@ -418,6 +422,22 @@ export const Claim: React.FC = () => {
       fail(e, () => window.open('/sample-claim.pdf', '_blank'));
     }
   };
+
+  const [draftBusy, setDraftBusy] = useState<string | null>(null);
+  const handleDownloadDraft = async (docType: string) => {
+    if (DEMO_MODE) return handleDownloadPdf();
+    setDraftBusy(docType);
+    setErrorMsg(null);
+    try {
+      const d = await draftDocument(claim.id, docType);
+      saveTextFile(d.text, `${docType}-${claim.id}.txt`);
+    } catch (e) {
+      setErrorMsg(errorText(e));
+    } finally {
+      setDraftBusy(null);
+    }
+  };
+  const hasCropLoss = (claim.fields.losses || []).some((l) => l.category === 'crop');
 
   const copyClaimId = () => {
     navigator.clipboard.writeText(claim.id);
@@ -1531,6 +1551,7 @@ export const Claim: React.FC = () => {
             >
               {[
                 {
+                  docType: 'aadhaar_reissue',
                   title: t('claim.draft1Title', 'Aadhaar Re-print Request'),
                   dept: t('claim.draft1Dept', 'UIDAI / Aadhaar Seva Kendra'),
                   desc: t(
@@ -1539,6 +1560,7 @@ export const Claim: React.FC = () => {
                   ),
                 },
                 {
+                  docType: 'ration_card_reissue',
                   title: t('claim.draft2Title', 'Ration Card Duplicate Application'),
                   dept: t('claim.draft2Dept', 'Dept. of Food & Supplies'),
                   desc: t(
@@ -1547,6 +1569,7 @@ export const Claim: React.FC = () => {
                   ),
                 },
                 {
+                  docType: 'land_record_reissue',
                   title: t('claim.draft3Title', 'Land Record (RoR) Certificate'),
                   dept: t('claim.draft3Dept', 'Block Land Reforms Office (BL&LRO)'),
                   desc: t(
@@ -1555,6 +1578,7 @@ export const Claim: React.FC = () => {
                   ),
                 },
                 {
+                  docType: hasCropLoss ? 'insurance_crop' : 'insurance_home',
                   title: t('claim.draft4Title', 'Crop & House Insurance Notice'),
                   dept: t('claim.draft4Dept', 'PMFBY / General Insurance'),
                   desc: t(
@@ -1587,7 +1611,8 @@ export const Claim: React.FC = () => {
                     </p>
                   </div>
                   <button
-                    onClick={handleDownloadPdf}
+                    onClick={() => handleDownloadDraft(draft.docType)}
+                    disabled={draftBusy !== null}
                     className="btn-outline-pill"
                     style={{
                       marginTop: '16px',
@@ -1601,7 +1626,10 @@ export const Claim: React.FC = () => {
                       gap: '6px',
                     }}
                   >
-                    <FileText size={16} /> {t('claim.downloadDraft', 'Download Ready Draft')}
+                    <FileText size={16} />{' '}
+                    {draftBusy === draft.docType
+                      ? t('claim.drafting', 'Preparing letter…')
+                      : t('claim.downloadDraft', 'Download Ready Draft')}
                   </button>
                 </div>
               ))}

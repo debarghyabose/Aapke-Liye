@@ -342,6 +342,31 @@ export async function getStatus(claimId: string): Promise<StatusOut> {
   return request<StatusOut>(`/status/${claimId}`, { claimId });
 }
 
+// ---------- ready-to-sign letters (Member 1 fills Member 5's legal templates) ----------
+
+export interface DraftLetter {
+  doc_type: string;
+  title: string;
+  text: string;
+  missing_fields: string[]; // left as [TO FILL: ...] in the text
+}
+
+export async function draftDocument(claimId: string, docType: string): Promise<DraftLetter> {
+  return request<DraftLetter>(`/claims/${claimId}/documents/${docType}`, { method: 'POST', claimId });
+}
+
+/** Saves text as a .txt file (opens the browser's save dialog). */
+export function saveTextFile(text: string, filename: string) {
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
 // ---------- officials ----------
 
 export async function getStaffClaim(claimId: string): Promise<StaffClaimOut> {

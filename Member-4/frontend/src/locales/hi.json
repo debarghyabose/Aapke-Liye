@@ -53,7 +53,7 @@
     "step4Tag": "DIRECT TO BANK",
     "step4Title": "4. Track until paid",
     "step4Desc": "Download your official PDF application. Track your verification timeline step-by-step until DBT relief reaches your bank account.",
-    "stepOf": "Step {{num}} of 4",
+    "stepOf": "Step {{num}} of 6",
     "next": "Next →",
     "complete": "Complete! ✓",
     "bannerTime": "Takes less than 3 minutes. No internet or documents needed to start.",

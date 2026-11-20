@@ -10,7 +10,15 @@ import {
   Check,
   ShieldAlert,
 } from 'lucide-react';
-import { getStatus, DEMO_MODE, errorText, claimsOnThisDevice, getClaimPdf } from '../api/client';
+import {
+  getStatus,
+  DEMO_MODE,
+  errorText,
+  claimsOnThisDevice,
+  getClaimPdf,
+  draftDocument,
+  saveTextFile,
+} from '../api/client';
 import { StatusOut } from '../types/api';
 import { MOCK_CLAIM_ID, MOCK_STATUS } from '../mocks/sampleData';
 import { speakText } from '../utils/tts';
@@ -34,6 +42,28 @@ export const Track: React.FC = () => {
       !!submittedAt &&
       Date.now() - new Date(submittedAt).getTime() > 14 * 24 * 60 * 60 * 1000);
   const [selectedGrievanceDraft, setSelectedGrievanceDraft] = useState<string | null>(null);
+  const [draftText, setDraftText] = useState<string | null>(null);
+  const [draftFile, setDraftFile] = useState<string>('letter.txt');
+  const [drafting, setDrafting] = useState<boolean>(false);
+  const LETTER_DOC: Record<string, string> = { bdo: 'followup_letter', grievance: 'grievance', rti: 'rti_application' };
+
+  const openLetter = async (id: string, name: string) => {
+    setSelectedGrievanceDraft(name);
+    setDraftText(null);
+    if (DEMO_MODE || !statusData) return;
+    setDrafting(true);
+    setTrackError(null);
+    try {
+      const d = await draftDocument(statusData.claim_id, LETTER_DOC[id]);
+      setDraftText(d.text);
+      setDraftFile(`${LETTER_DOC[id]}-${statusData.claim_id}.txt`);
+    } catch (e) {
+      setTrackError(errorText(e));
+      setSelectedGrievanceDraft(null);
+    } finally {
+      setDrafting(false);
+    }
+  };
 
   useEffect(() => {
     if (initialId) {
@@ -422,7 +452,7 @@ export const Track: React.FC = () => {
                     </div>
 
                     <button
-                      onClick={() => setSelectedGrievanceDraft(letter.name)}
+                      onClick={() => openLetter(letter.id, letter.name)}
                       className="btn-outline-pill"
                       style={{
                         padding: '8px 16px',
@@ -472,16 +502,20 @@ export const Track: React.FC = () => {
                       border: '1px solid var(--border)',
                     }}
                   >
-                    {t('track.letterTemplate', {
+                    {!DEMO_MODE
+                      ? drafting
+                        ? t('track.drafting', 'Preparing your letter…')
+                        : draftText
+                      : t('track.letterTemplate', {
                       claimId: statusData.claim_id,
                       name: DEMO_MODE ? 'Sunita Mondal' : '__________',
                       defaultValue: `To,\nThe Block Development Officer (BDO) / Sub-Divisional Magistrate,\nDistrict Disaster Relief Cell.\n\nSubject: Urgent Sanction of SDRF Relief Claim [Ref: ${statusData.claim_id}]\n\nRespected Sir/Madam,\nI, Sunita Mondal, submitted my disaster relief claim on 15/10/2026 for total house damage and crop loss. More than 14 days have elapsed since field inspection. As per standard SDRF relief norms, kindly release the pending DBT compensation to avoid ongoing distress to my family.\n\nClaim ID: ${statusData.claim_id}\nAttached: Geo-tagged photo verification receipt.`,
-                    })}
+                        })}
                   </pre>
                   <button
                     onClick={() => {
                       if (DEMO_MODE) window.open('/sample-claim.pdf', '_blank');
-                      else getClaimPdf(statusData.claim_id).catch((e) => setTrackError(errorText(e)));
+                      else if (draftText) saveTextFile(draftText, draftFile);
                     }}
                     className="btn-pill btn-orange-pill"
                     style={{ minHeight: '44px', padding: '8px 26px', fontSize: '0.92rem', marginTop: '14px' }}

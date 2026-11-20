@@ -18,7 +18,7 @@ from ..models import AudioRecording, Claim, Photo, StatusEvent, audit, now
 from ..schemas import (ClaimCreate, ClaimCreated, ClaimFields, ClaimFieldsUpdate, ClaimOut,
                        ClaimText, iso_utc)
 from ..security import claim_for_claimant, hash_token, limiter, new_claim_token
-from ..services import integrations
+from ..services import integrations, member1_adapter
 from ..services.integrations import ServiceUnavailable
 from ..services.pdf_builder import build_claim_pdf
 from ..services.relief import calculate_relief, suggest_proofs
@@ -295,3 +295,33 @@ async def download_pdf(claim: Claim = Depends(claim_for_claimant),
                     headers={"Content-Disposition":
                              f'attachment; filename="relief-claim-{claim.id}.pdf"',
                              "Cache-Control": "no-store"})
+
+
+@router.post("/{claim_id}/documents/{doc_type}",
+             responses={503: {"description": "Member 1 unavailable"}})
+@limiter.limit(settings.rate_limit_upload)
+async def draft_document(request: Request, doc_type: str,
+                         claim: Claim = Depends(claim_for_claimant),
+                         db: AsyncSession = Depends(get_db)):
+    """A ready-to-sign letter (Aadhaar / ration card / land record reissue, insurance notice,
+    follow-up, grievance, RTI) filled from this claim with Member 5's legal templates."""
+    if doc_type not in integrations.DOC_TYPES:
+        raise HTTPException(404, "Unknown document type")
+    m1_claim = member1_adapter.to_member1_claim(claim.id, claim.language, claim.fields or {},
+                                                claim.ai_state)
+    extra = {"claim_id": claim.id}
+    if claim.submitted_at:
+        extra["application_date"] = claim.submitted_at.strftime("%d-%m-%Y")
+    if (claim.relief or {}).get("total"):
+        extra["sdrf_estimate"] = f"Rs. {claim.relief['total']:,}"
+    try:
+        out = await integrations.draft_document(doc_type, m1_claim, extra)
+    except ServiceUnavailable as e:
+        audit(db, claim.id, "document_draft_failed", doc_type=doc_type, error=str(e))
+        await db.commit()
+        raise HTTPException(503, "Letter drafting is not available right now. Please try again.",
+                            headers={"Retry-After": "60"})
+    audit(db, claim.id, "document_drafted", doc_type=doc_type)
+    await db.commit()
+    return {"doc_type": doc_type, "title": out.get("title"), "text": out.get("text", ""),
+            "missing_fields": out.get("missing_fields", [])}

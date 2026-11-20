@@ -111,3 +111,32 @@ def test_staff_list_shows_submitted_claims_only(client):
     assert sub_id in ids and draft_id not in ids
     only = client.get("/staff/claims?status=Paid", headers=STAFF).json()
     assert all(c["status"] == "Paid" for c in only)
+
+
+# ---------- ready-to-sign letters (Member 1 drafting) ----------
+
+def test_member1_claim_uses_latest_review_edits():
+    from app.services.member1_adapter import to_member1_claim
+    c = to_member1_claim("AL-X", "bn", {"name": "Rina D.", "date_of_incident": "2026-11-15"},
+                         AI_RESPONSE["claim"])
+    assert c["session_id"] == "AL-X" and c["claimant"]["name"] == "Rina D."
+    assert c["incident_date"] == "2026-11-15" and c["losses"] == AI_RESPONSE["claim"]["losses"]
+    typed = to_member1_claim("AL-Y", "en", {"losses": [
+        {"category": "livestock", "item": "milch_large", "quantity": 2}]}, None)
+    assert typed["losses"] == [{"type": "livestock", "description": "milch large", "count": 2}]
+
+
+def test_draft_document(client, services):
+    services.m1_draft = services.post("http://member1.test/v1/documents/draft").respond(json={
+        "doc_type": "rti_application", "title": "RTI", "text": "To, the PIO ... Rina Das",
+        "missing_fields": ["office_name"], "template_source": "x"})
+    cid, h = submitted_claim(client)
+    r = client.post(f"/claims/{cid}/documents/rti_application", headers=h)
+    assert r.status_code == 200 and "Rina Das" in r.json()["text"]
+    sent = json.loads(services.m1_draft.calls[0].request.content)
+    assert sent["doc_type"] == "rti_application" and sent["claim"]["session_id"] == cid
+    assert sent["extra"]["claim_id"] == cid and "application_date" in sent["extra"]
+    assert client.post(f"/claims/{cid}/documents/bogus", headers=h).status_code == 404
+    assert client.post(f"/claims/{cid}/documents/grievance").status_code == 404   # no token
+    services.m1_draft.side_effect = __import__("tests.conftest", fromlist=["DOWN"]).DOWN
+    assert client.post(f"/claims/{cid}/documents/grievance", headers=h).status_code == 503

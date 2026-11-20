@@ -135,3 +135,33 @@ def to_member2_answer(turn: dict) -> dict:
         "follow_up_questions": [question] if question else [],
         "ai_state": m1_claim,
     }
+
+
+# Member 2 / SDRF category -> Member 1 loss type (only used when the AI state has no losses,
+# e.g. losses typed on the Review screen).
+CATEGORY_TO_TYPE = {"house": "house", "crop": "crop", "livestock": "livestock",
+                    "household": "belongings", "ex_gratia": "death"}
+
+
+def to_member1_claim(claim_id: str, language: str, fields: dict, ai_state: dict | None) -> dict:
+    """The claim in Member 1's format for letter drafting: Member 1's own state from the
+    conversation, with the claimant's latest Review-screen edits laid on top."""
+    c = dict(ai_state or {})
+    c["session_id"] = claim_id
+    c["language"] = language
+    c["claimant"] = {**(c.get("claimant") or {}),
+                     **{k: fields[k] for k in ("name", "phone") if fields.get(k)}}
+    c["location"] = {**(c.get("location") or {}),
+                     **{k: fields[k] for k in ("village", "district", "state") if fields.get(k)}}
+    if fields.get("date_of_incident"):
+        c["incident_date"] = fields["date_of_incident"]
+    if fields.get("disaster_type"):
+        c["disaster_type"] = fields["disaster_type"]
+    if fields.get("documents_lost"):
+        c["documents_lost"] = fields["documents_lost"]
+    if not c.get("losses") and fields.get("losses"):
+        c["losses"] = [{"type": CATEGORY_TO_TYPE.get(l.get("category"), "other"),
+                        "description": str(l.get("item", "")).replace("_", " "),
+                        "count": int(l["quantity"]) if l.get("category") == "livestock" else None}
+                       for l in fields["losses"]]
+    return c

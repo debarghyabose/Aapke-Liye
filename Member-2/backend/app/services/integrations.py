@@ -119,3 +119,17 @@ async def speak(text: str, language: str) -> bytes:
         return base64.b64decode(out["audio_base64"])
     except (KeyError, ValueError):
         raise ServiceUnavailable("Member 1 text-to-speech reply is unusable") from None
+
+
+DOC_TYPES = {"aadhaar_reissue", "ration_card_reissue", "land_record_reissue", "insurance_home",
+             "insurance_vehicle", "insurance_crop", "followup_letter", "grievance",
+             "rti_application"}
+
+
+async def draft_document(doc_type: str, m1_claim: dict, extra: dict) -> dict:
+    """Member 1 fills Member 5's legal template from the claim (POST /v1/documents/draft)."""
+    if settings.use_mock_member1 or not settings.member1_ai_url:
+        raise ServiceUnavailable("letter drafting needs Member 1")
+    return await _post(f"{settings.member1_ai_url}/v1/documents/draft",
+                       json={"doc_type": doc_type, "claim": m1_claim, "extra": extra,
+                             "language": "en"})
