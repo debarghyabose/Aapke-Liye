@@ -24,6 +24,7 @@ class FakeMessages:
 def fake(monkeypatch):
     def install(**kw):
         messages = FakeMessages(**kw)
+        monkeypatch.setattr(config, "VISION_PROVIDER", "claude")
         monkeypatch.setattr(config, "VISION_API_KEY", "test-key")
         monkeypatch.setattr(vision, "_client", SimpleNamespace(messages=messages))
         return messages

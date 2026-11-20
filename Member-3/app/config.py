@@ -11,7 +11,12 @@ ZONE_LON = float(os.getenv("DISASTER_ZONE_LON", "88.3639"))
 ZONE_RADIUS_KM = float(os.getenv("DISASTER_ZONE_RADIUS_KM", "50"))
 DISASTER_START = datetime.fromisoformat(os.getenv("DISASTER_START_DATE", "2026-11-01"))
 
-VISION_API_KEY = os.getenv("VISION_API_KEY", "")
+VISION_PROVIDER = os.getenv("VISION_PROVIDER", "gemini").strip().lower()  # gemini | claude
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
+
+VISION_API_KEY = os.getenv("VISION_API_KEY", "")  # Anthropic key, for VISION_PROVIDER=claude
 VISION_MODEL = os.getenv("VISION_MODEL", "claude-opus-5-5")
 VISION_EFFORT = os.getenv("VISION_EFFORT", "medium")  # low | medium | high
 
