@@ -174,6 +174,34 @@ Aapke-Liye/
 
 ---
 
+## ▶️ Run the whole product
+
+One command starts all four services on Windows (Python 3.12 and Node.js needed):
+
+```powershell
+.\start-all.ps1
+```
+
+It creates each member's virtual environment, writes the local `.env` files with generated keys (`scripts/setup_dev.py`), and opens one window per service. It prints the staff key for the Officials screen.
+
+| Service | Port | Role |
+|---|---|---|
+| Member 4 app | http://localhost:5173 | What claimants and officials use |
+| Member 2 backend | http://localhost:8000 | The only API the app calls. `/health` shows every connection |
+| Member 1 claim AI | http://localhost:8001 | Called by Member 2 (`POST /v1/claim/turn`) |
+| Member 3 verification | http://localhost:8002 | Called by Member 2 (`POST /verify`); WhatsApp, IVR, dashboard API |
+
+How the pieces connect:
+- **App → Member 2:** `Member-4/frontend/src/api/client.ts`. With `VITE_API_URL` unset, the app runs in demo mode on sample data instead.
+- **Member 2 → Member 1:** `Member-2/backend/app/services/member1_adapter.py` turns spoken losses ("2 cows died") into SDRF rule codes. It also stores Member 1's conversation state per claim so follow-up answers build on earlier ones.
+- **Member 5 → Members 1 and 2:** the rules in `Member-5/rules/` are copied to `Member-2/backend/rules/`, and the templates in `Member-5/templates/` to `Member-1/app/templates/`. Check the copies with `python Member-5/cli.py status`.
+
+**AI modes:**
+- With no `GEMINI_API_KEY`, Member 1 uses keyword rules. Type answers in the app; voice needs live mode.
+- For the real AI, set the key, rerun `python scripts/setup_dev.py --force`, and install ffmpeg (`winget install ffmpeg`) for Whisper.
+
+---
+
 ## 👥 Team & work split
 
 | Member | Role | Key deliverables |

@@ -3,12 +3,15 @@ Calls to teammates' services (async, with timeouts and 2 retries).
 
 CONTRACTS (share these with the team):
 
-Member 1  POST {MEMBER1_AI_URL}/process   multipart: audio=<file>, language=<code>
-  -> {"transcript": str,
-      "fields": {"name", "phone", "village", "district", "state", "disaster_type",
-                 "date_of_incident", "losses": [{"category","item","quantity","damage_percent"}],
-                 "documents_lost": [str], "bank_account_available": bool},
-      "missing_fields": [str], "follow_up_questions": [str]}
+Member 1  POST {MEMBER1_AI_URL}/v1/claim/turn   JSON: {"session_id": <claim id>, "language",
+          "audio_base64" | "text", "claim": <Member 1's claim from the previous turn or null>}
+  -> {"claim": {...}, "transcript", "missing_fields": [dotted paths], "next_question": {...}}
+  member1_adapter.py turns that into what the claims router uses:
+  {"transcript": str,
+   "fields": {"name", "phone", "village", "district", "state", "disaster_type",
+              "date_of_incident", "losses": [{"category","item","quantity","damage_percent"}],
+              "documents_lost": [str]},
+   "missing_fields": [str], "follow_up_questions": [str], "ai_state": {Member 1's claim}}
 
 Member 3  POST {MEMBER3_VERIFY_URL}/verify  multipart: photo=<file>, lat, lon, taken_at, claim_id, phone?
   -> {"damage_detected": bool, "damage_score": 0-1, "gps_ok": bool,
@@ -23,11 +26,13 @@ With MOCK_MEMBER1 / MOCK_MEMBER3 (or MOCK_SERVICES for both; development only)
 app/dev_mocks.py answers instead.
 """
 import asyncio
+import base64
 
 import httpx
 
 from ..config import settings
 from ..logs import request_id_var
+from . import member1_adapter
 
 RETRIES = 2
 BACKOFF_SECONDS = 0.5  # waits 0.5s, then 1s
@@ -37,7 +42,8 @@ class ServiceUnavailable(Exception):
     """A teammate's service could not be reached or gave an unusable answer."""
 
 
-async def _post(url: str, files: dict, data: dict) -> dict:
+async def _post(url: str, files: dict | None = None, data: dict | None = None,
+                json: dict | None = None) -> dict:
     error = ""
     timeout = httpx.Timeout(settings.service_timeout, connect=5.0)
     headers = {"X-Request-ID": request_id_var.get()}   # lets teammates correlate logs
@@ -46,7 +52,7 @@ async def _post(url: str, files: dict, data: dict) -> dict:
             if attempt:
                 await asyncio.sleep(BACKOFF_SECONDS * 2 ** (attempt - 1))
             try:
-                r = await client.post(url, files=files, data=data)
+                r = await client.post(url, files=files, data=data, json=json)
             except httpx.TransportError as e:  # timeout, refused, DNS ...
                 error = type(e).__name__
                 continue
@@ -62,15 +68,33 @@ async def _post(url: str, files: dict, data: dict) -> dict:
     raise ServiceUnavailable(f"{url}: {error} after {RETRIES + 1} attempts")
 
 
-async def process_audio(audio: bytes, filename: str, content_type: str, language: str) -> dict:
+async def _claim_turn(claim_id: str, language: str, ai_state: dict | None, **turn_input) -> dict:
+    if not settings.member1_ai_url:
+        raise ServiceUnavailable("MEMBER1_AI_URL is not set")
+    turn = await _post(f"{settings.member1_ai_url}/v1/claim/turn",
+                       json={"session_id": claim_id, "language": language,
+                             "claim": ai_state or None, **turn_input})
+    if not isinstance(turn.get("claim"), dict):
+        raise ServiceUnavailable("Member 1 reply has no claim")
+    return member1_adapter.to_member2_answer(turn)
+
+
+async def process_audio(audio: bytes, filename: str, content_type: str, language: str,
+                        claim_id: str = "", ai_state: dict | None = None) -> dict:
     if settings.use_mock_member1:
         from .. import dev_mocks
         return dev_mocks.process_audio(language)
-    if not settings.member1_ai_url:
-        raise ServiceUnavailable("MEMBER1_AI_URL is not set")
-    return await _post(f"{settings.member1_ai_url}/process",
-                       files={"audio": (filename, audio, content_type)},
-                       data={"language": language})
+    return await _claim_turn(claim_id, language, ai_state,
+                             audio_base64=base64.b64encode(audio).decode())
+
+
+async def process_text(text: str, language: str, claim_id: str = "",
+                       ai_state: dict | None = None) -> dict:
+    """Typed answers (or speech the phone already turned into text) go through the same AI."""
+    if settings.use_mock_member1:
+        from .. import dev_mocks
+        return dev_mocks.process_audio(language)
+    return await _claim_turn(claim_id, language, ai_state, text=text)
 
 
 async def verify_photo(photo: bytes, filename: str, content_type: str, lat, lon, taken_at,

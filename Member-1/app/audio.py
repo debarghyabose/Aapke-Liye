@@ -74,7 +74,24 @@ def to_wav16k(raw: bytes) -> bytes:
     proc = subprocess.run(cmd, input=raw, capture_output=True, timeout=30)
     if proc.returncode != 0 or not proc.stdout:
         raise AudioError(f"could not decode audio: {proc.stderr.decode(errors='ignore')[:200]}")
-    return proc.stdout
+    return _fix_wav_sizes(proc.stdout)
+
+
+def _fix_wav_sizes(wav: bytes) -> bytes:
+    """ffmpeg writing WAV to a pipe cannot seek back to fill in the RIFF and data sizes, so
+    they hold placeholder values (a 12 s note reads as ~37 hours). Rewrite them from the
+    real byte count."""
+    pos = 12
+    while pos + 8 <= len(wav):
+        chunk, size = wav[pos:pos + 4], int.from_bytes(wav[pos + 4:pos + 8], "little")
+        if chunk == b"data":
+            data_len = len(wav) - (pos + 8)
+            out = bytearray(wav)
+            out[4:8] = (len(wav) - 8).to_bytes(4, "little")
+            out[pos + 4:pos + 8] = data_len.to_bytes(4, "little")
+            return bytes(out)
+        pos += 8 + size + (size & 1)
+    return wav
 
 
 def _pyav_to_wav16k(raw: bytes) -> bytes:

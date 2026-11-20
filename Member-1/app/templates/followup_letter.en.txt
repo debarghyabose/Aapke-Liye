@@ -1,20 +1,27 @@
-### PLACEHOLDER TEMPLATE - replace with Member 5's reviewed legal wording before use ###
-
 To,
+The Officer-in-Charge / Block Development Officer / Tehsildar,
 {{office_name}}
 {{office_address}}
 
-Subject: Follow-up on relief claim no. {{claim_id}} filed on {{application_date}}
+Subject: Formal Follow-Up & Reminder Notice on Disaster Relief Claim No. {{claim_id}} filed on {{application_date}}
 
-Sir/Madam,
+Respected Sir / Madam,
 
-I filed a relief claim (no. {{claim_id}}) on {{application_date}} for losses in the {{disaster}}
-of {{incident_date}}. It has been {{days_pending}} days and I have not received a decision.
+I have the honour to draw your kind attention to my disaster relief application (Claim ID: {{claim_id}}) submitted on {{application_date}}, regarding the catastrophic losses sustained during the {{disaster}} occurring on or about {{incident_date}}.
 
-Details of loss:
+A period of {{days_pending}} days has elapsed since the submission of the application along with geo-tagged photographic evidence and loss particulars. As of date, I have not received notification of the field verification report, sanction order, or relief disbursement.
+
+PARTICULARS OF LOSSES RECORDED:
 {{losses_table}}
 
-I request you to kindly inform me of the status of my claim and the expected date of payment.
+In terms of the Citizens' Charter and the Operational Guidelines for State Disaster Response Fund (SDRF) administration, post-disaster verification and emergency relief are required to be expedited to restore immediate shelter and sustenance.
+
+I respectfully request that you kindly:
+1. Provide the current administrative processing status of Claim ID: {{claim_id}}.
+2. Inform whether any additional documentation or physical inspection is awaited.
+3. Intimate the anticipated date of sanction and DBT credit to my bank account.
+
+Thanking you in anticipation of prompt action.
 
 Yours faithfully,
 

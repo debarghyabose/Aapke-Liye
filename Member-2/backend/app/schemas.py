@@ -59,6 +59,11 @@ class ClaimCreate(BaseModel):
     consent_text_version: str = Field(min_length=1, max_length=40, examples=["v1"])
 
 
+class ClaimText(BaseModel):
+    """POST /claims/{id}/text: typed or phone-transcribed input for the claim AI."""
+    text: str = Field(min_length=1, max_length=2000)
+
+
 class ClaimFieldsUpdate(BaseModel):
     """Sent by the Review screen when the user taps Edit and corrects fields."""
     fields: ClaimFields

@@ -2,7 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { WifiOff, CheckCircle2 } from 'lucide-react';
-import { getOfflineQueue, clearOfflineQueue } from '../utils/indexedDB';
+import { getOfflineQueue, removeQueueItem } from '../utils/indexedDB';
+import { uploadAudio, uploadPhoto, DEMO_MODE } from '../api/client';
 
 export const OfflineBanner: React.FC = () => {
   const { t } = useTranslation();
@@ -23,10 +24,29 @@ export const OfflineBanner: React.FC = () => {
     const handleOnline = async () => {
       setIsOnline(true);
       const queue = await getOfflineQueue();
-      if (queue.length > 0) {
+      if (queue.length === 0) return;
+      // Upload each saved item; only delete it once the server has it. Anything that
+      // fails stays queued for the next time the signal returns.
+      let left = queue.length;
+      for (const item of queue.sort((x, y) => x.createdAt - y.createdAt)) {
+        try {
+          if (!DEMO_MODE) {
+            if (item.type === 'audio') await uploadAudio(item.claimId, item.blob);
+            else {
+              const m = item.metadata || {};
+              const file = new File([item.blob], m.name || 'photo.jpg', { type: item.blob.type || 'image/jpeg' });
+              await uploadPhoto(item.claimId, file, m.lat, m.lon, m.taken_at);
+            }
+          }
+          await removeQueueItem(item.id);
+          left -= 1;
+        } catch (e) {
+          console.warn('Offline item not sent yet; will retry', e);
+        }
+      }
+      setPendingCount(left);
+      if (left === 0) {
         setSynced(true);
-        await clearOfflineQueue();
-        setPendingCount(0);
         setTimeout(() => setSynced(false), 5000);
       }
     };

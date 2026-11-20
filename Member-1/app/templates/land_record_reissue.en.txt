@@ -1,21 +1,30 @@
-### PLACEHOLDER TEMPLATE - replace with Member 5's reviewed legal wording before use ###
-
 To,
-The Tehsildar / Revenue Officer,
-{{district}}, {{state}}
+The Tehsildar / Block Land & Land Reforms Officer (BL&LRO) / Circle Officer,
+Revenue & Land Reforms Department,
+District: {{district}}, State: {{state}}
 
-Subject: Application for certified copies of land records lost in the {{disaster}} of {{incident_date}}
+Subject: Statutory Application for Certified True Copies of Land Records (RoR / Khatian / 7-12 / Patta) Destroyed in Disaster
 
-Sir/Madam,
+Respected Sir / Madam,
 
+1. APPLICANT & PLOT PARTICULARS:
+   Name of Landholder / Recorded Tenant: {{name}}
+   Address: {{address}}
+   Mobile Number: {{phone}}
+   Mouza / Village: {{village}}
+   Survey / Khasra / Dag Number: {{survey_no}}
+   Total Recorded Land Area: {{land_area}}
+
+2. DISASTER EVENT & RECORD DESTRUCTION:
 {{incident_narrative}}
 
-My land documents were lost in this disaster. Details of the land:
-  Village: {{village}}
-  Survey / Khasra number: {{survey_no}}
-  Area: {{land_area}}
+On {{incident_date}}, our village and residential premises suffered catastrophic devastation due to {{disaster}}. All original paper title deeds, Khatian slips, rent receipts, and physical land revenue documents were destroyed / submerged.
 
-I request certified copies of the record of rights for the above land.
+3. STATUTORY PURPOSE:
+In terms of the Revenue Laws of the State read with the Ministry of Home Affairs State Disaster Response Fund (SDRF) Operational Guidelines, official land ownership / operational holding records are required to be produced for sanctioning agricultural crop loss input subsidies and house reconstruction assistance.
+
+4. PRAYER FOR EXPEDITED COPIES:
+I respectfully request that certified true copies of the Record of Rights (RoR / Khatian / 7/12 extract) concerning Survey / Khasra No. {{survey_no}} of Village {{village}} be prepared and issued to me at the earliest on an emergency basis.
 
 Yours faithfully,
 

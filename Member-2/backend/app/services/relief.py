@@ -39,7 +39,7 @@ def validate_rules(rules: dict) -> None:
             need(is_amount(rate), f"rate for '{name}.{item}' must be a number >= 0")
         for key in ("max_quantity", "min_damage_percent"):
             need(key not in cat or is_amount(cat[key]), f"'{name}.{key}' must be a number")
-        for key in ("min_amount", "max_amount"):
+        for key in ("min_amount", "max_amount", "max_quantity_per_household"):
             for item, amount in cat.get(key, {}).items():
                 need(item in items, f"'{name}.{key}' names unknown item '{item}'")
                 need(is_amount(amount), f"'{name}.{key}.{item}' must be a number")
@@ -61,16 +61,30 @@ def rules_are_sample() -> bool:
     return load_sdrf_rules()["version"].lower().startswith("sample")
 
 
+def _unit_word(cat: dict) -> str:
+    return cat["unit"].replace("per ", "")
+
+
 def calculate_relief(losses: list[dict]) -> dict:
     """
     losses: [{"category": "house", "item": "fully_damaged_plain", "quantity": 1,
               "damage_percent": 100}, ...]
     Returns line items, a total, and every loss that could not be matched to a rule
-    (with the reason), so nothing is silently dropped.
+    (with the reason), so nothing is silently dropped. Same rules as Member 5's engine:
+    - a category with min_damage_percent (crops: 33%) needs a damage percent to be priced;
+    - max_quantity is a household-wide cap across all lines of that category (2 ha of crops);
+    - max_quantity_per_household caps one item across lines (3 large milch animals, one
+      clothing grant per family).
     """
     rules = load_sdrf_rules()
     cats = rules["categories"]
     lines, unmatched, total = [], [], 0
+    cat_used: dict[str, float] = {}
+    item_used: dict[str, float] = {}
+
+    def zero(loss, qty, rate, cat, note):
+        lines.append({**loss, "quantity": qty, "rate": rate, "unit": cat["unit"],
+                      "amount": 0, "note": note})
 
     for loss in losses or []:
         cat_name, item = loss.get("category"), loss.get("item")
@@ -83,31 +97,56 @@ def calculate_relief(losses: list[dict]) -> dict:
             unmatched.append({**loss, "reason": f"Unknown item '{item}' in '{cat_name}'"})
             continue
         try:
-            qty = float(loss.get("quantity") or 1)
+            raw_qty = loss.get("quantity")
+            qty = 1.0 if raw_qty is None else float(raw_qty)
             pct = loss.get("damage_percent")
             pct = None if pct is None else float(pct)
         except (TypeError, ValueError):
             unmatched.append({**loss, "reason": "Quantity or damage percent is not a number"})
             continue
-
-        notes = []
-        min_pct = cat.get("min_damage_percent")
-        if min_pct is not None and pct is not None and pct < min_pct:
-            lines.append({**loss, "quantity": qty, "rate": rate, "unit": cat["unit"],
-                          "amount": 0, "note": f"Not eligible: damage below {min_pct:g}%"})
+        if qty < 0:
+            unmatched.append({**loss, "reason": "Quantity cannot be negative"})
             continue
 
-        if cat.get("max_quantity") and qty > cat["max_quantity"]:
-            notes.append(f"Capped at {cat['max_quantity']:g} {cat['unit'].replace('per ', '')}")
-            qty = cat["max_quantity"]
+        min_pct = cat.get("min_damage_percent")
+        if min_pct is not None and pct is None:
+            unmatched.append({**loss, "reason": f"Damage percent needed (relief needs "
+                                                f"at least {min_pct:g}% damage)"})
+            continue
+        if min_pct is not None and pct < min_pct:
+            zero(loss, qty, rate, cat, f"Not eligible: damage below {min_pct:g}%")
+            continue
+
+        notes = []
+        if (cap := cat.get("max_quantity")) is not None:
+            left = max(0.0, cap - cat_used.get(cat_name, 0.0))
+            if left <= 0:
+                zero(loss, 0.0, rate, cat, f"Household limit of {cap:g} {_unit_word(cat)} reached")
+                continue
+            if qty > left:
+                notes.append(f"Capped at {cap:g} {_unit_word(cat)} per household")
+                qty = left
+            cat_used[cat_name] = cat_used.get(cat_name, 0.0) + qty
+
+        if (cap := cat.get("max_quantity_per_household", {}).get(item)) is not None:
+            key = f"{cat_name}.{item}"
+            left = max(0.0, cap - item_used.get(key, 0.0))
+            if left <= 0:
+                zero(loss, 0.0, rate, cat, f"Household limit of {cap:g} already reached")
+                continue
+            if qty > left:
+                notes.append(f"Capped at {cap:g} per household")
+                qty = left
+            item_used[key] = item_used.get(key, 0.0) + qty
 
         amount = rate * qty
-        if (floor := cat.get("min_amount", {}).get(item)) and amount < floor:
-            amount = floor
-            notes.append(f"Raised to minimum ₹{inr(floor)}")
-        if (ceiling := cat.get("max_amount", {}).get(item)) and amount > ceiling:
-            amount = ceiling
-            notes.append(f"Capped at ₹{inr(ceiling)}")
+        if amount > 0:
+            if (floor := cat.get("min_amount", {}).get(item)) and amount < floor:
+                amount = floor
+                notes.append(f"Raised to minimum ₹{inr(floor)}")
+            if (ceiling := cat.get("max_amount", {}).get(item)) and amount > ceiling:
+                amount = ceiling
+                notes.append(f"Capped at ₹{inr(ceiling)}")
 
         amount = int(round(amount))
         total += amount
@@ -115,10 +154,32 @@ def calculate_relief(losses: list[dict]) -> dict:
                       "amount": amount, "note": "; ".join(notes) or None})
 
     return {"rules_version": rules["version"], "estimate_only": rules_are_sample(),
-            "lines": lines, "unmatched": unmatched, "total": total}
+            "lines": lines, "unmatched": unmatched, "total": total,
+            "may_also_qualify": other_schemes(losses)}
+
+
+@lru_cache
+def load_scheme(name: str) -> dict:
+    path = RULES_DIR / "schemes" / f"{name}.json"
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+
+
+def other_schemes(losses: list[dict]) -> list[dict]:
+    """Schemes the family may also qualify for (Member 5's multi-scheme rules). Not added to
+    the SDRF total: each needs its own application and eligibility checks."""
+    out = []
+    pmay = load_scheme("pmay_g_disaster")
+    if pmay and any((l.get("category") == "house" and "fully_damaged" in (l.get("item") or ""))
+                    for l in losses or []):
+        amount = pmay.get("total_package", {}).get("plain_areas")
+        out.append({"scheme_code": "PMAY_G_DISASTER", "scheme_name": pmay.get("scheme_name"),
+                    "authority": pmay.get("ministry"), "estimated_amount": amount,
+                    "conditions": pmay.get("eligibility_conditions", [])})
+    return out
 
 
 def suggest_proofs(documents_lost: list[str]) -> list[dict]:
     rules = load_proof_rules()
-    return [{"document": d, "alternatives": rules.get(d, rules["_default"])}
+    return [{"document": d, "alternatives": rules.get(d) if isinstance(rules.get(d), list)
+             else rules["_default"]}
             for d in documents_lost or []]

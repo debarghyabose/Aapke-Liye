@@ -58,6 +58,10 @@
       "items": {
         "clothing": 2500,
         "utensils": 2500
+      },
+      "max_quantity_per_household": {
+        "clothing": 1,
+        "utensils": 1
       }
     },
     "ex_gratia": {

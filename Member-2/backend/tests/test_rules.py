@@ -125,21 +125,21 @@ def test_cross_claim_duplicate_is_for_officials_only(client):
 
 def test_unmatched_losses_are_reported(client, services):
     ai = copy.deepcopy(AI_RESPONSE)
-    ai["fields"]["losses"].append({"category": "boat", "item": "trawler", "quantity": 1})
-    ai["fields"]["losses"].append({"category": "house", "item": "castle", "quantity": 1})
+    ai["claim"]["losses"].append({"type": "vehicle", "description": "trawler"})
+    ai["claim"]["losses"].append({"type": "livestock", "animal": "elephant", "count": 1})
     services.m1.respond(json=ai)
     cid, h = new_claim(client)
     relief_out = client.post(f"/claims/{cid}/audio", headers=h,
                              files={"audio": ("a.webm", WEBM, "audio/webm")}).json()["relief"]
     reasons = [u["reason"] for u in relief_out["unmatched"]]
-    assert reasons == ["Unknown category 'boat'", "Unknown item 'castle' in 'house'"]
-    assert len(relief_out["lines"]) == 4
+    assert reasons == ["Unknown category 'vehicle'", "Unknown item 'elephant' in 'livestock'"]
+    assert len(relief_out["lines"]) == 5
 
 
 def test_invalid_member1_fields_are_skipped_not_crashing(client, services):
     ai = copy.deepcopy(AI_RESPONSE)
-    ai["fields"]["losses"] = [{"category": "house", "item": "hut_damaged", "quantity": "two"}]
-    ai["fields"]["unexpected"] = "ignored"
+    ai["claim"]["losses"] = [{"type": "livestock", "animal": "cow", "count": "two"}]
+    ai["claim"]["unexpected"] = "ignored"
     services.m1.respond(json=ai)
     cid, h = new_claim(client)
     r = client.post(f"/claims/{cid}/audio", headers=h, files={"audio": ("a.webm", WEBM, "audio/webm")})

@@ -90,6 +90,7 @@ across services.
 | POST | `/claims` | — | JSON `{"language","disaster_type"?,"consent":true,"consent_text_version"}` | 201 claim + `claim_token` |
 | GET | `/claims/{id}` | X-Claim-Token | — | Full claim |
 | POST | `/claims/{id}/audio` | X-Claim-Token | multipart `audio` | Fields filled by Member 1. **503** if Member 1 is down (audio kept) |
+| POST | `/claims/{id}/text` | X-Claim-Token | JSON `{"text"}` | Typed / tapped answer through Member 1's claim AI. 503 if Member 1 is down |
 | POST | `/claims/{id}/audio/retry` | X-Claim-Token | — | Re-sends pending recordings. 409 if none are pending |
 | POST | `/claims/{id}/photos` | X-Claim-Token | multipart `photo`, `lat`?, `lon`?, `taken_at`? | Photo added. Same photo again = no-op |
 | POST | `/claims/{id}/photos/{photo_id}/reverify` | X-Claim-Token | — | Re-checks a `pending` photo. 503 if Member 3 is still down |
@@ -98,6 +99,7 @@ across services.
 | GET | `/claims/{id}/pdf` | X-Claim-Token | — | Relief form PDF |
 | GET | `/status/{id}` | X-Claim-Token | — | Status + timeline |
 | PUT | `/status/{id}` | X-Staff-Key | JSON `{"status","note"?}` | Officials move the claim along |
+| GET | `/staff/claims?status=` | X-Staff-Key | — | Officials' queue: submitted claims, newest first |
 | GET | `/staff/claims/{id}` | X-Staff-Key | — | Officials' view (adds `duplicate_of_claim_id` on photos) |
 | GET | `/health`, `/rules/sdrf` | — | — | Health and current relief rules |
 

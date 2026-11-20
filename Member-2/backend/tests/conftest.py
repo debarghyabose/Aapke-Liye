@@ -33,27 +33,33 @@ limiter.enabled = False   # test_security.py turns it on for the rate-limit test
 STAFF = {"X-Staff-Key": STAFF_KEY}
 CONSENT = {"consent": True, "consent_text_version": "v1"}
 
+# Member 1's POST /v1/claim/turn answer (Member-1/app/schemas.py TurnResponse).
 AI_RESPONSE = {
     "transcript": "Amar naam Rina Das. Bonnay amar kancha bari puro bheshe geche, "
                   "duto goru mara geche, ar ek bigha dhan nosto. Aadhaar card harie geche.",
-    "fields": {
-        "name": "Rina Das", "phone": None, "village": "Gosaba", "district": "South 24 Parganas",
-        "state": "West Bengal", "disaster_type": "flood", "date_of_incident": None,
+    "claim": {
+        "schema_version": "1.0", "session_id": "x", "language": "bn", "status": "incomplete",
+        "claimant": {"name": "Rina Das", "phone": None},
+        "location": {"village": "Gosaba", "district": "South 24 Parganas",
+                     "state": "West Bengal", "pincode": None},
+        "disaster_type": "flood", "incident_date": None,
         "losses": [
-            {"category": "house", "item": "fully_damaged_plain", "quantity": 1},
-            {"category": "livestock", "item": "milch_large", "quantity": 2},
-            {"category": "crop", "item": "rainfed", "quantity": 0.13, "damage_percent": 100},
-            {"category": "household", "item": "clothing", "quantity": 1},
+            {"type": "house", "house_kind": "kutcha", "damage_level": "destroyed"},
+            {"type": "livestock", "animal": "cow", "count": 2},
+            {"type": "crop", "crop_name": "paddy", "area_acres": 0.33, "damage_level": "destroyed"},
+            {"type": "belongings", "description": "clothes and utensils"},
         ],
         "documents_lost": ["aadhaar"],
-        "bank_account_available": True,
+        "field_confidence": {}, "transcripts": [],
     },
-    "missing_fields": ["phone", "date_of_incident"],
-    "follow_up_questions": ["What is your phone number?",
-                            "On which date did the flood reach your house?"],
+    "missing_fields": ["incident_date", "claimant.phone"],
+    "next_question": {"field": "incident_date", "text": "On which date did the flood reach your house?",
+                      "text_en": "On which date did the flood reach your house?"},
+    "status": "incomplete",
 }
-# 120000 house + 2 * 37500 cows + crop 0.13 ha * 8500 = 1105 + clothing 2500
-AI_TOTAL = 120000 + 75000 + 1105 + 2500
+# After member1_adapter: house 120000 + 2 cows * 37500 + paddy 0.33 acre = 0.134 ha * 8500
+# (= 1139) + clothing 2500 + utensils 2500
+AI_TOTAL = 120000 + 75000 + 1139 + 2500 + 2500
 
 VERIFY_RESPONSE = {"damage_detected": True, "damage_score": 0.8, "gps_ok": True,
                    "timestamp_ok": True, "duplicate": False, "notes": []}
@@ -68,7 +74,7 @@ def no_backoff(monkeypatch):
 def services():
     """Member 1 and 3 answering normally. Tests can change `services.m1` / `services.m3`."""
     with respx.mock(assert_all_called=False) as mock:
-        mock.m1 = mock.post("http://member1.test/process").respond(json=AI_RESPONSE)
+        mock.m1 = mock.post("http://member1.test/v1/claim/turn").respond(json=AI_RESPONSE)
         mock.m3 = mock.post("http://member3.test/verify").respond(json=VERIFY_RESPONSE)
         mock.m1_health = mock.get("http://member1.test/health").respond(json={"ok": True})
         mock.m3_health = mock.get("http://member3.test/health").respond(json={"ok": True})

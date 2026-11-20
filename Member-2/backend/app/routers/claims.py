@@ -16,7 +16,7 @@ from ..config import SUPPORTED_LANGUAGES, settings
 from ..db import get_db
 from ..models import AudioRecording, Claim, Photo, StatusEvent, audit, now
 from ..schemas import (ClaimCreate, ClaimCreated, ClaimFields, ClaimFieldsUpdate, ClaimOut,
-                       iso_utc)
+                       ClaimText, iso_utc)
 from ..security import claim_for_claimant, hash_token, limiter, new_claim_token
 from ..services import integrations
 from ..services.integrations import ServiceUnavailable
@@ -75,6 +75,8 @@ def _apply_ai(claim: Claim, ai: dict):
     claim.missing_fields = [m for m in ai.get("missing_fields", []) if not claim.fields.get(m)]
     claim.follow_up_questions = ai.get("follow_up_questions", []) if claim.missing_fields else []
     claim.disaster_type = claim.fields.get("disaster_type") or claim.disaster_type
+    if ai.get("ai_state"):
+        claim.ai_state = ai["ai_state"]
     _refresh_derived(claim)
 
 
@@ -85,7 +87,8 @@ async def _process_pending_audio(db: AsyncSession, claim: Claim):
         try:
             data = await storage.read(rec.path)
             ai = await integrations.process_audio(
-                data, f"recording.{EXT[rec.content_type]}", rec.content_type, claim.language)
+                data, f"recording.{EXT[rec.content_type]}", rec.content_type, claim.language,
+                claim.id, claim.ai_state)
         except ServiceUnavailable as e:
             audit(db, claim.id, "audio_processing_failed", recording_id=rec.id, error=str(e))
             await db.commit()
@@ -148,6 +151,28 @@ async def upload_audio(request: Request, audio: UploadFile = File(...),
     await db.flush()
     audit(db, claim.id, "audio_uploaded", recording_id=rec.id, bytes=len(data))
     await _process_pending_audio(db, claim)
+    return _out(claim)
+
+
+@router.post("/{claim_id}/text", response_model=ClaimOut,
+             responses={503: {"description": "Member 1 unavailable"}})
+@limiter.limit(settings.rate_limit_upload)
+async def send_text(request: Request, body: ClaimText,
+                    claim: Claim = Depends(claim_for_claimant),
+                    db: AsyncSession = Depends(get_db)):
+    """A typed answer, a tapped suggested answer, or speech the phone already transcribed.
+    Goes through Member 1's claim AI exactly like a voice note."""
+    _require_draft(claim)
+    try:
+        ai = await integrations.process_text(body.text, claim.language, claim.id, claim.ai_state)
+    except ServiceUnavailable as e:
+        audit(db, claim.id, "text_processing_failed", error=str(e))
+        await db.commit()
+        raise HTTPException(503, AI_DOWN.replace("recording", "answer"),
+                            headers={"Retry-After": "60"})
+    _apply_ai(claim, ai)
+    audit(db, claim.id, "text_processed", chars=len(body.text))
+    await db.commit()
     return _out(claim)
 
 

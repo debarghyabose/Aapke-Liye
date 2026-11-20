@@ -30,6 +30,7 @@ class Claim(Base):
     fields: Mapped[dict] = mapped_column(JSON, default=dict)        # from Member 1 (+ user edits)
     missing_fields: Mapped[list] = mapped_column(JSON, default=list)
     follow_up_questions: Mapped[list] = mapped_column(JSON, default=list)
+    ai_state: Mapped[dict | None] = mapped_column(JSON)  # Member 1's claim; sent back each turn
     relief: Mapped[dict | None] = mapped_column(JSON)               # SDRF calculation
     proof_suggestions: Mapped[list] = mapped_column(JSON, default=list)
     pdf_path: Mapped[str | None] = mapped_column(String(300))

@@ -20,7 +20,8 @@ def pdf_text(pdf: bytes) -> str:
 
 def test_indic_pdf(client, services):
     ai = copy.deepcopy(AI_RESPONSE)
-    ai["fields"].update({"name": "রিনা দাস", "village": "गोसाबा"})
+    ai["claim"]["claimant"]["name"] = "রিনা দাস"
+    ai["claim"]["location"]["village"] = "गोसाबा"
     services.m1.respond(json=ai)
     services.m3.side_effect = DOWN                      # photo stays "pending"
 
@@ -39,15 +40,15 @@ def test_indic_pdf(client, services):
         cid, "IST",
         "House – fully damaged (plains)", "Milch animal (cow/buffalo)", "Crop – rainfed",
         "Clothing (per family)", "Household Items",            # labels, Title Case
-        "1,98,605", "1,20,000",                                # Indian grouping
-        "Aadhaar card", "Attestation by the Gram Panchayat",   # documents + substitutes
+        "2,01,139", "1,20,000",                                # Indian grouping
+        "Aadhaar card", "Attestation certificate issued by Gram",  # documents + substitutes
         "Verification pending",
         "consent text version v1",
         "Estimated amount — subject to official verification",  # rules are a sample
         "Signature / Thumb impression of applicant",
     ]:
         assert expected in text, expected
-    assert inr(AI_TOTAL) == "1,98,605"
+    assert inr(AI_TOTAL) == "2,01,139"
 
 
 @pytest.mark.parametrize("n, out", [(0, "0"), (999, "999"), (1000, "1,000"),

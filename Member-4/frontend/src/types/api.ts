@@ -57,6 +57,7 @@ export interface PhotoOut {
   taken_at: string | null;
   verification: PhotoVerification;
   url?: string;
+  duplicate_of_claim_id?: string | null; // officials only
 }
 
 export interface StaffPhotoOut extends PhotoOut {
@@ -96,6 +97,13 @@ export interface ReliefSummary {
   currency: string;
   breakdown: ReliefScheme[];
   matched_schemes: string[]; // ["SDRF", "PMFBY", "PMAY-G"]
+  estimate_only?: boolean; // rules still marked "sample" by Member 5
+  may_also_qualify?: Array<{
+    scheme_code: string;
+    scheme_name?: string;
+    estimated_amount?: number;
+    conditions?: string[];
+  }>;
 }
 
 export interface ClaimOut {

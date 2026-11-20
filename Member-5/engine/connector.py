@@ -99,20 +99,15 @@ class SystemConnector:
                 try:
                     data2 = json.loads(f2.read_text(encoding="utf-8"))
                     data5 = json.loads(f5.read_text(encoding="utf-8"))
-                    # Compare essential structure and versions
-                    if rname == "sdrf_rules.json":
-                        if data2.get("version") != data5.get("version"):
+                    # Full content comparison: a changed rate or substitute is a mismatch
+                    # even when the version string is the same.
+                    if data2 != data5:
+                        if rname == "sdrf_rules.json" and data2.get("version") != data5.get("version"):
                             mismatches.append(
                                 f"sdrf_rules.json version mismatch: Member 2 has '{data2.get('version')}', Member 5 has '{data5.get('version')}'"
                             )
-                    elif rname == "proof_substitution.json":
-                        if len(data2) != len(data5) or set(data2.keys()) != set(data5.keys()):
-                            mismatches.append(
-                                f"proof_substitution.json content mismatch: Member 2 has {len(data2)} keys, Member 5 has {len(data5)} keys"
-                            )
-                    elif rname == "labels.json":
-                        if data2.get("categories") != data5.get("categories"):
-                            mismatches.append("labels.json categories mismatch")
+                        else:
+                            mismatches.append(f"{rname} content differs from Member 5's copy")
                 except Exception as e:
                     mismatches.append(f"Error parsing {rname}: {e}")
 
@@ -149,7 +144,9 @@ class SystemConnector:
         # 4. Member 4: Frontend implementation check
         # ----------------------------------------------------
         # Member 4 only owns screens; check if any code/html exists in Member-4
-        m4_files = [p for p in self.m4_dir.rglob("*") if p.is_file() and p.name != "README.md"]
+        skip = {"node_modules", "dist", ".vite"}
+        m4_files = [p for p in self.m4_dir.rglob("*")
+                    if p.is_file() and p.name != "README.md" and not skip & set(p.parts)]
         if not m4_files:
             status["member_4"]["connected"] = False
             status["member_4"]["sync_status"] = "Pending Implementation"

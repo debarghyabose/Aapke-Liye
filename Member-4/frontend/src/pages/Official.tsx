@@ -9,7 +9,15 @@ import {
   XCircle,
   Filter,
 } from 'lucide-react';
-import { getStaffClaim, getStaffClaimsList } from '../api/client';
+import {
+  getStaffClaim,
+  getStaffClaimsList,
+  updateStaffStatus,
+  DEMO_MODE,
+  errorText,
+  getStaffKey,
+  setStaffKey,
+} from '../api/client';
 import { StaffClaimOut } from '../types/api';
 import { MOCK_STAFF_CLAIMS } from '../mocks/sampleData';
 
@@ -20,6 +28,8 @@ export const Official: React.FC = () => {
   const [filterVulnerableOnly, setFilterVulnerableOnly] = useState<boolean>(false);
   const [statusActionNote, setStatusActionNote] = useState<string>('');
   const [staffActionSuccess, setStaffActionSuccess] = useState<string | null>(null);
+  const [staffError, setStaffError] = useState<string | null>(null);
+  const [keyInput, setKeyInput] = useState<string>(getStaffKey());
 
   useEffect(() => {
     loadClaims();
@@ -27,12 +37,19 @@ export const Official: React.FC = () => {
 
   const loadClaims = async () => {
     try {
+      setStaffError(null);
       const list = await getStaffClaimsList();
       setClaimsList(list);
-      setSelectedClaim(list[0]);
-    } catch {
-      setClaimsList(MOCK_STAFF_CLAIMS);
-      setSelectedClaim(MOCK_STAFF_CLAIMS[0]);
+      setSelectedClaim(list[0] || null);
+    } catch (e) {
+      if (DEMO_MODE) {
+        setClaimsList(MOCK_STAFF_CLAIMS);
+        setSelectedClaim(MOCK_STAFF_CLAIMS[0]);
+      } else {
+        setClaimsList([]);
+        setSelectedClaim(null);
+        setStaffError(errorText(e));
+      }
     }
   };
 
@@ -40,14 +57,30 @@ export const Official: React.FC = () => {
     try {
       const claim = await getStaffClaim(id);
       setSelectedClaim(claim);
-    } catch {
+    } catch (e) {
+      if (!DEMO_MODE) setStaffError(errorText(e));
       const found = claimsList.find((c) => c.id === id);
       if (found) setSelectedClaim(found);
     }
   };
 
-  const handleUpdateStatus = (newStatus: string) => {
+  const handleUpdateStatus = async (newStatus: string) => {
     if (!selectedClaim) return;
+    if (!DEMO_MODE) {
+      try {
+        setStaffError(null);
+        await updateStaffStatus(selectedClaim.id, newStatus, statusActionNote);
+        const fresh = await getStaffClaim(selectedClaim.id);
+        setSelectedClaim(fresh);
+        setClaimsList((list) => list.map((c) => (c.id === fresh.id ? fresh : c)));
+        setStaffActionSuccess(`Status updated to "${newStatus}" for Claim ${fresh.id}. Audit logged.`);
+        setStatusActionNote('');
+        setTimeout(() => setStaffActionSuccess(null), 4000);
+      } catch (e) {
+        setStaffError(errorText(e));
+      }
+      return;
+    }
     const msg = t('official.auditSuccess', {
       status: newStatus,
       id: selectedClaim.id,
@@ -84,6 +117,37 @@ export const Official: React.FC = () => {
         padding: '0 clamp(14px, 3.5vw, 28px)',
       }}
     >
+      {!DEMO_MODE && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            setStaffKey(keyInput);
+            loadClaims();
+          }}
+          style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '16px' }}
+        >
+          <label htmlFor="staff-key" style={{ fontWeight: 700 }}>
+            {t('official.staffKey', 'Staff key')}
+          </label>
+          <input
+            id="staff-key"
+            type="password"
+            autoComplete="off"
+            value={keyInput}
+            onChange={(e) => setKeyInput(e.target.value)}
+            style={{ flex: '1 1 220px', minHeight: '44px', padding: '8px 14px', borderRadius: '10px', border: '1.5px solid var(--border)' }}
+          />
+          <button type="submit" className="btn-pill btn-outline-pill" style={{ minHeight: '44px', padding: '8px 20px', fontWeight: 800 }}>
+            {t('official.loadClaims', 'Load claims')}
+          </button>
+          {staffError && (
+            <span role="alert" style={{ color: '#8A1C1C', fontWeight: 700, flexBasis: '100%' }}>
+              {staffError}
+            </span>
+          )}
+        </form>
+      )}
+
       {/* Official Header */}
       <div
         style={{

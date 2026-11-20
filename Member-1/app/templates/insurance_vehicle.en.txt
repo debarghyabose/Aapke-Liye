@@ -1,25 +1,31 @@
-### PLACEHOLDER TEMPLATE - replace with Member 5's reviewed legal wording before use ###
-
 To,
-The Claims Manager,
+The Motor Claims Department,
 {{insurer_name}}
 
-Subject: Intimation of own-damage claim, policy no. {{policy_no}}, vehicle {{vehicle_reg_no}}
+Subject: Intimation of Own-Damage Motor Vehicle Claim under Policy No. {{policy_no}} (Vehicle Registration No: {{vehicle_reg_no}})
 
-Sir/Madam,
+Respected Sir / Madam,
 
+1. POLICY & MOTOR VEHICLE DETAILS:
+   Insured Owner Name: {{name}}
+   Motor Policy Number: {{policy_no}}
+   Vehicle Registration Number: {{vehicle_reg_no}}
+   Current Physical Location of Vehicle: {{vehicle_location}}
+   Registered Mobile Number: {{phone}}
+   Date of Incident / Submersion: {{incident_date}}
+   Cause of Loss / Natural Calamity: {{disaster}}
+
+2. PERIL & DAMAGE NARRATIVE:
 {{incident_narrative}}
 
-Policy number: {{policy_no}}
-Vehicle registration number: {{vehicle_reg_no}}
-Place where the vehicle is now: {{vehicle_location}}
-Date of loss: {{incident_date}}
-Cause of loss: {{disaster}}
-
-Details of loss:
+3. EXTENT OF DAMAGE & MOTOR SURVEY REQUEST:
 {{losses_table}}
 
-I request you to register my claim and arrange inspection.
+The subject vehicle sustained extensive physical, mechanical, and electrical water/impact damage as a direct consequence of the recent {{disaster}}.
+In adherence to IRDAI natural disaster expedited claim settlement procedures, I request that this claim be registered and a licensed motor surveyor be deputed to inspect the vehicle at {{vehicle_location}}. 
+High-resolution geo-tagged damage photographs are maintained on record.
+
+Kindly furnish the formal Claim Docket Registration Number at the earliest.
 
 Yours faithfully,
 

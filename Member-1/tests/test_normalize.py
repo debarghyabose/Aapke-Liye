@@ -47,3 +47,20 @@ def test_plain_words_untouched():
 
 def test_native_digits():
     assert native_digits_to_ascii("९८७६ ৫৪৩ ౨౧ ௦") == "9876 543 21 0"
+
+
+def test_piped_ffmpeg_wav_sizes_are_fixed():
+    """ffmpeg writing WAV to a pipe leaves placeholder sizes; duration must use real bytes."""
+    import io
+    import wave
+
+    from app.audio import _fix_wav_sizes, _wav_duration
+
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as w:
+        w.setnchannels(1); w.setsampwidth(2); w.setframerate(16000)
+        w.writeframes(b"\x00\x00" * 16000 * 2)          # 2 seconds
+    wav = bytearray(buf.getvalue())
+    wav[4:8] = b"\xff\xff\xff\xff"                       # what ffmpeg writes to a pipe
+    wav[40:44] = b"\xff\xff\xff\xff"
+    assert round(_wav_duration(_fix_wav_sizes(bytes(wav))), 2) == 2.0

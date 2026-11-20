@@ -1,22 +1,32 @@
-### PLACEHOLDER TEMPLATE - replace with Member 5's reviewed legal wording before use ###
-
 To,
-The In-charge,
-Aadhaar Enrolment / Update Centre, {{district}}
+The In-Charge / Centre Manager,
+Aadhaar Seva Kendra / Enrolment & Update Centre,
+District: {{district}}, State: {{state}}
 
-Subject: Request for reprint of Aadhaar card lost in the {{disaster}} of {{incident_date}}
+Subject: Statutory Application for Emergency Re-issuance / Reprint of Aadhaar Card Destroyed in Natural Disaster
 
-Sir/Madam,
+Respected Sir / Madam,
 
+1. APPLICANT IDENTIFICATION:
+   Name of Resident: {{name}}
+   Registered Mobile Number: {{phone}}
+   Residential Address: {{address}}
+   Aadhaar Number (Last 4 Digits): {{aadhaar_last4}}
+   Date of Application: {{today}}
+
+2. DISASTER EVENT NARRATIVE:
 {{incident_narrative}}
 
-My Aadhaar card was lost in this disaster. Aadhaar number (last 4 digits): {{aadhaar_last4}}.
-Mobile number linked to Aadhaar: {{phone}}.
+3. PARTICULARS OF LOSS & EXCEPTIONAL CIRCUMSTANCE:
+Due to the sudden onset of {{disaster}} occurring on {{incident_date}}, my family residence was severely affected, and all primary identity documents, including my printed physical Aadhaar card, were destroyed or washed away.
+Other records lost in this disaster include: {{documents_lost}}.
 
-I request you to kindly help me obtain a reprint of my Aadhaar card. I am ready to provide
-biometric verification at the centre.
+4. REQUEST FOR BIOMETRIC / DEMOGRAPHIC RE-PRINT:
+In order to access emergency disaster relief under Section 12 of the Disaster Management Act, 2005, and to operate my Aadhaar-seeded Direct Benefit Transfer (DBT) bank account, an active physical/digital credential is urgently required.
 
-Other documents lost: {{documents_lost}}
+I am present / ready to present myself for on-site fingerprint and iris biometric verification or mobile OTP verification at your centre.
+
+I respectfully pray that an expedited duplicate printout / reprint of my Aadhaar card be furnished to me without delay.
 
 Yours faithfully,
 

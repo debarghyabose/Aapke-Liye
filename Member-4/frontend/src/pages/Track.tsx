@@ -10,7 +10,7 @@ import {
   Check,
   ShieldAlert,
 } from 'lucide-react';
-import { getStatus } from '../api/client';
+import { getStatus, DEMO_MODE, errorText, claimsOnThisDevice, getClaimPdf } from '../api/client';
 import { StatusOut } from '../types/api';
 import { MOCK_CLAIM_ID, MOCK_STATUS } from '../mocks/sampleData';
 import { speakText } from '../utils/tts';
@@ -18,12 +18,21 @@ import { speakText } from '../utils/tts';
 export const Track: React.FC = () => {
   const { i18n, t } = useTranslation();
   const [searchParams] = useSearchParams();
-  const initialId = searchParams.get('id') || MOCK_CLAIM_ID;
+  const initialId =
+    searchParams.get('id') || (DEMO_MODE ? MOCK_CLAIM_ID : claimsOnThisDevice().slice(-1)[0] || '');
 
   const [claimIdInput, setClaimIdInput] = useState<string>(initialId);
   const [statusData, setStatusData] = useState<StatusOut | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
-  const [isStuckMoreThan14Days] = useState<boolean>(true);
+  const [trackError, setTrackError] = useState<string | null>(null);
+  // Legal follow-up letters are offered once a claim has waited 14 days without approval.
+  const submittedAt = statusData?.timeline.find((e) => e.status === 'Submitted')?.at;
+  const isStuckMoreThan14Days =
+    DEMO_MODE ||
+    (!!statusData &&
+      ['Submitted', 'Verified'].includes(statusData.status) &&
+      !!submittedAt &&
+      Date.now() - new Date(submittedAt).getTime() > 14 * 24 * 60 * 60 * 1000);
   const [selectedGrievanceDraft, setSelectedGrievanceDraft] = useState<string | null>(null);
 
   useEffect(() => {
@@ -38,10 +47,15 @@ export const Track: React.FC = () => {
 
     setLoading(true);
     try {
+      setTrackError(null);
       const data = await getStatus(id);
       setStatusData(data);
-    } catch {
-      setStatusData(MOCK_STATUS);
+    } catch (e) {
+      if (DEMO_MODE) setStatusData(MOCK_STATUS);
+      else {
+        setStatusData(null);
+        setTrackError(errorText(e));
+      }
     } finally {
       setLoading(false);
     }
@@ -127,6 +141,12 @@ export const Track: React.FC = () => {
           <span>{loading ? t('track.searching', 'Searching…') : t('track.trackBtn', 'Track')}</span>
         </button>
       </div>
+
+      {trackError && (
+        <div role="alert" style={{ margin: '16px 0', padding: '14px 18px', borderRadius: '12px', background: '#FDECEA', color: '#8A1C1C', fontWeight: 700 }}>
+          {trackError}
+        </div>
+      )}
 
       {statusData && (
         <div className="card-soft track-results-card" style={{ padding: 'clamp(24px, 4vw, 40px) clamp(16px, 3.5vw, 36px)' }}>
@@ -454,13 +474,14 @@ export const Track: React.FC = () => {
                   >
                     {t('track.letterTemplate', {
                       claimId: statusData.claim_id,
-                      name: 'Sunita Mondal',
+                      name: DEMO_MODE ? 'Sunita Mondal' : '__________',
                       defaultValue: `To,\nThe Block Development Officer (BDO) / Sub-Divisional Magistrate,\nDistrict Disaster Relief Cell.\n\nSubject: Urgent Sanction of SDRF Relief Claim [Ref: ${statusData.claim_id}]\n\nRespected Sir/Madam,\nI, Sunita Mondal, submitted my disaster relief claim on 15/10/2026 for total house damage and crop loss. More than 14 days have elapsed since field inspection. As per standard SDRF relief norms, kindly release the pending DBT compensation to avoid ongoing distress to my family.\n\nClaim ID: ${statusData.claim_id}\nAttached: Geo-tagged photo verification receipt.`,
                     })}
                   </pre>
                   <button
                     onClick={() => {
-                      window.open('/sample-claim.pdf', '_blank');
+                      if (DEMO_MODE) window.open('/sample-claim.pdf', '_blank');
+                      else getClaimPdf(statusData.claim_id).catch((e) => setTrackError(errorText(e)));
                     }}
                     className="btn-pill btn-orange-pill"
                     style={{ minHeight: '44px', padding: '8px 26px', fontSize: '0.92rem', marginTop: '14px' }}

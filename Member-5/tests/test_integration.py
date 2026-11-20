@@ -12,20 +12,34 @@ def test_system_connections_diagnostic():
     assert "member_3" in status
     assert "member_4" in status
 
-    # Verify deep content synchronization flags:
-    # Member 1 still has placeholder templates -> must be flagged "Out of sync"
-    assert status["member_1"]["sync_status"] == "Out of sync"
-    assert "placeholder" in status["member_1"]["details"][0].lower()
-
-    # Member 2 is still using sample rates -> must be flagged "Out of sync"
-    assert status["member_2"]["sync_status"] == "Out of sync"
-    assert "sample" in status["member_2"]["details"][0].lower() or "version" in status["member_2"]["details"][0].lower()
+    # Members 1 and 2 now run Member 5's exact files
+    assert status["member_1"]["sync_status"] == "In sync"
+    assert status["member_2"]["sync_status"] == "In sync"
 
     # Member 3 algorithms ready for dashboard telemetry
     assert status["member_3"]["sync_status"] == "Telemetry Ready"
 
-    # Member 4 has not yet built frontend screens -> must be flagged "Pending Implementation"
-    assert status["member_4"]["sync_status"] == "Pending Implementation"
+    # Member 4 has built the frontend (node_modules and build output are not counted)
+    assert status["member_4"]["sync_status"] == "In progress"
+
+
+def test_connector_flags_changed_rates(tmp_path):
+    """Same version string but a different rate must still be reported as out of sync."""
+    import json
+    import shutil
+    from pathlib import Path
+    root = Path(__file__).resolve().parent.parent.parent
+    for d in ["Member-1/app/templates", "Member-3/app", "Member-4", "Member-5/templates", "Member-5/rules"]:
+        (tmp_path / d).mkdir(parents=True, exist_ok=True)
+    shutil.copytree(root / "Member-5/rules", tmp_path / "Member-5/rules", dirs_exist_ok=True)
+    shutil.copytree(root / "Member-2/backend/rules", tmp_path / "Member-2/backend/rules")
+    rules = tmp_path / "Member-2/backend/rules/sdrf_rules.json"
+    data = json.loads(rules.read_text(encoding="utf-8"))
+    data["categories"]["house"]["items"]["fully_damaged_plain"] = 1
+    rules.write_text(json.dumps(data), encoding="utf-8")
+    status = SystemConnector(root=tmp_path).check_connection_status()
+    assert status["member_2"]["sync_status"] == "Out of sync"
+    assert "content differs" in status["member_2"]["details"][0]
 
 
 def test_member2_rules_compatibility():

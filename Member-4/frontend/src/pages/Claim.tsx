@@ -32,6 +32,9 @@ import {
   updateFields,
   submitClaim,
   getClaimPdf,
+  sendText,
+  DEMO_MODE,
+  errorText,
 } from '../api/client';
 import { ClaimOut } from '../types/api';
 import { getLocalizedSampleClaim } from '../mocks/sampleData';
@@ -47,18 +50,50 @@ const LANGUAGES = [
   { code: 'ta', label: 'தமிழ்', sub: 'Tamil', sample: 'தமிழில் பேசுங்கள்' },
 ];
 
+function emptyClaim(): ClaimOut {
+  const now = new Date().toISOString();
+  return {
+    id: '',
+    language: 'en',
+    disaster_type: null,
+    transcript: null,
+    fields: {},
+    missing_fields: [],
+    follow_up_questions: [],
+    relief: null,
+    proof_suggestions: [],
+    status: 'Draft',
+    photos: [],
+    recordings: [],
+    history: [],
+    consent_text_version: 'v1',
+    consent_given_at: now,
+    submitted_at: null,
+    created_at: now,
+    updated_at: now,
+  };
+}
+
 export const Claim: React.FC = () => {
   const { i18n, t } = useTranslation();
   const [step, setStep] = useState<number>(1);
   const [selectedLang, setSelectedLang] = useState<string>((i18n.language || 'bn').split('-')[0]);
-  const [claim, setClaim] = useState<ClaimOut>(() => getLocalizedSampleClaim(t));
+  const [claim, setClaim] = useState<ClaimOut>(() => (DEMO_MODE ? getLocalizedSampleClaim(t) : emptyClaim()));
   const [loading, setLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Update claim when language changes if still using sample
   useEffect(() => {
-    setClaim(getLocalizedSampleClaim(t));
+    if (DEMO_MODE && step === 1) setClaim(getLocalizedSampleClaim(t));
   }, [i18n.language, t]);
+
+  // Live mode never shows sample data: an error is shown instead.
+  const fail = (e: unknown, demoFallback?: () => void) => {
+    if (DEMO_MODE && demoFallback) demoFallback();
+    else setErrorMsg(errorText(e));
+  };
+  const show = (value: string | null | undefined, demoValue: string) =>
+    value || (DEMO_MODE ? demoValue : t('claim.notGiven', 'Not given yet'));
 
   // Audio Recording State
   const [isRecording, setIsRecording] = useState<boolean>(false);
@@ -104,9 +139,11 @@ export const Claim: React.FC = () => {
       });
       setClaim(created);
       setStep(2);
-    } catch {
-      setClaim(getLocalizedSampleClaim(t));
-      setStep(2);
+    } catch (e) {
+      fail(e, () => {
+        setClaim(getLocalizedSampleClaim(t));
+        setStep(2);
+      });
     } finally {
       setLoading(false);
     }
@@ -149,6 +186,10 @@ export const Claim: React.FC = () => {
         setRecordingSeconds((prev) => prev + 1);
       }, 1000);
     } catch {
+      if (!DEMO_MODE) {
+        setErrorMsg(t('claim.micUnavailable', 'Microphone not available. Allow microphone access, or type your answer below.'));
+        return;
+      }
       setIsRecording(true);
       setRecordingSeconds(0);
       timerIntervalRef.current = setInterval(() => {
@@ -165,7 +206,7 @@ export const Claim: React.FC = () => {
     setIsRecording(false);
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop();
-    } else {
+    } else if (DEMO_MODE) {
       setTimeout(() => {
         setClaim(getLocalizedSampleClaim(t));
       }, 600);
@@ -176,19 +217,16 @@ export const Claim: React.FC = () => {
     setLoading(true);
     try {
       if (!navigator.onLine) {
-        await queueOfflineItem({
-          type: 'audio',
-          claim_id: claim.id,
-          payload: { blob: audioBlob },
-          created_at: new Date().toISOString(),
-        });
-        setClaim(getLocalizedSampleClaim(t));
+        await queueOfflineItem({ type: 'audio', claimId: claim.id, blob: audioBlob });
+        if (DEMO_MODE) setClaim(getLocalizedSampleClaim(t));
+        else setErrorMsg(t('claim.savedOffline', 'No network. Your recording is saved on this phone and will be sent when the signal returns.'));
         return;
       }
+      setErrorMsg(null);
       const updated = await uploadAudio(claim.id, audioBlob);
       setClaim(updated);
-    } catch {
-      setClaim(getLocalizedSampleClaim(t));
+    } catch (e) {
+      fail(e, () => setClaim(getLocalizedSampleClaim(t)));
     } finally {
       setLoading(false);
     }
@@ -197,18 +235,32 @@ export const Claim: React.FC = () => {
   const handleRetryAudio = async () => {
     setLoading(true);
     try {
+      setErrorMsg(null);
       const updated = await retryAudio(claim.id);
       setClaim(updated);
-    } catch {
-      setClaim(getLocalizedSampleClaim(t));
+    } catch (e) {
+      fail(e, () => setClaim(getLocalizedSampleClaim(t)));
     } finally {
       setLoading(false);
     }
   };
 
   // Step 3: Question Handling
-  const handleAnswerQuestion = (field: string, answer: string) => {
+  const [typedAnswer, setTypedAnswer] = useState<string>('');
+
+  const handleAnswerQuestion = async (field: string, answer: string) => {
     setAnsweredQuestions((prev) => ({ ...prev, [field]: answer }));
+    if (DEMO_MODE || !answer.trim()) return;
+    setLoading(true);
+    setErrorMsg(null);
+    try {
+      setClaim(await sendText(claim.id, answer.trim()));
+      setTypedAnswer('');
+    } catch (e) {
+      fail(e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSpeakQuestion = (q: string) => {
@@ -245,9 +297,9 @@ export const Claim: React.FC = () => {
       if (!navigator.onLine) {
         await queueOfflineItem({
           type: 'photo',
-          claim_id: claim.id,
-          payload: { file, lat, lon },
-          created_at: new Date().toISOString(),
+          claimId: claim.id,
+          blob: file,
+          metadata: { lat, lon, taken_at: new Date().toISOString(), name: file.name },
         });
         setClaim((prev) => ({
           ...prev,
@@ -277,7 +329,11 @@ export const Claim: React.FC = () => {
 
       const updated = await uploadPhoto(claim.id, file, lat, lon);
       setClaim(updated);
-    } catch {
+    } catch (e) {
+      if (!DEMO_MODE) {
+        setErrorMsg(errorText(e));
+        return;
+      }
       setClaim((prev) => ({
         ...prev,
         photos: [
@@ -311,8 +367,8 @@ export const Claim: React.FC = () => {
     try {
       const updated = await reverifyPhoto(claim.id, photoId);
       setClaim(updated);
-    } catch {
-      // ignore
+    } catch (e) {
+      fail(e);
     }
   };
 
@@ -322,7 +378,12 @@ export const Claim: React.FC = () => {
     try {
       const updated = await updateFields(claim.id, { [fieldName]: editValue });
       setClaim(updated);
-    } catch {
+      setErrorMsg(null);
+    } catch (e) {
+      if (!DEMO_MODE) {
+        setErrorMsg(errorText(e));
+        return;
+      }
       setClaim({
         ...claim,
         fields: {
@@ -339,11 +400,12 @@ export const Claim: React.FC = () => {
   const handleFinalSubmit = async () => {
     setLoading(true);
     try {
+      setErrorMsg(null);
       const updated = await submitClaim(claim.id);
       setClaim(updated);
       setStep(6);
-    } catch {
-      setStep(6);
+    } catch (e) {
+      fail(e, () => setStep(6));
     } finally {
       setLoading(false);
     }
@@ -352,8 +414,8 @@ export const Claim: React.FC = () => {
   const handleDownloadPdf = async () => {
     try {
       await getClaimPdf(claim.id);
-    } catch {
-      window.open('/sample-claim.pdf', '_blank');
+    } catch (e) {
+      fail(e, () => window.open('/sample-claim.pdf', '_blank'));
     }
   };
 
@@ -365,10 +427,45 @@ export const Claim: React.FC = () => {
 
   const handleShareWhatsApp = () => {
     const text = encodeURIComponent(
-      `Aapke Liye Flood Relief Claim ${claim.id} submitted for Sunita Mondal. Track progress: https://aapke-liye.gov.in/track?id=${claim.id}`
+      `Aapke Liye relief claim ${claim.id} has been submitted. Track it here: ${window.location.origin}/track?id=${claim.id}`
     );
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
   };
+
+  // Typed answers go through the same claim AI as voice (live mode only).
+  const typeBox = DEMO_MODE ? null : (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleAnswerQuestion(claim.missing_fields[0] || 'text', typedAnswer);
+      }}
+      style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '20px' }}
+    >
+      <input
+        value={typedAnswer}
+        onChange={(e) => setTypedAnswer(e.target.value)}
+        placeholder={t('claim.typeAnswer', 'Or type here, in your language…')}
+        aria-label={t('claim.typeAnswer', 'Or type here, in your language…')}
+        maxLength={2000}
+        style={{
+          flex: '1 1 240px',
+          minHeight: '48px',
+          padding: '10px 16px',
+          borderRadius: '14px',
+          border: '1.5px solid var(--border)',
+          fontSize: '1rem',
+        }}
+      />
+      <button
+        type="submit"
+        disabled={loading || !typedAnswer.trim()}
+        className="btn-pill btn-outline-pill"
+        style={{ minHeight: '48px', padding: '12px 22px', fontWeight: 800 }}
+      >
+        {loading ? t('common.loading', 'Sending…') : t('claim.send', 'Send')}
+      </button>
+    </form>
+  );
 
   const selectedLangObj = LANGUAGES.find((l) => l.code === selectedLang) || LANGUAGES[0];
 
@@ -703,6 +800,8 @@ export const Claim: React.FC = () => {
             </div>
           )}
 
+          {typeBox}
+
           <div
             className="claim-nav-buttons"
             style={{
@@ -723,7 +822,9 @@ export const Claim: React.FC = () => {
 
             <div className="claim-nav-right" style={{ display: 'flex', gap: '12px' }}>
               <button
-                onClick={handleRetryAudio}
+                onClick={
+                  DEMO_MODE || claim.recordings.some((r) => r.status === 'pending') ? handleRetryAudio : startRecording
+                }
                 title={t('claim.reRecord', 'Record Again')}
                 className="btn-pill btn-outline-pill"
                 style={{ minHeight: '48px', padding: '12px 20px', fontSize: '0.98rem', fontWeight: 800 }}
@@ -817,6 +918,12 @@ export const Claim: React.FC = () => {
                 )}
               </div>
             ))}
+            {!DEMO_MODE && claim.follow_up_questions.length === 0 && (
+              <p style={{ fontWeight: 700, color: 'var(--leaf)' }}>
+                {t('claim.nothingMissing', 'Nothing more is needed. You can add photos now.')}
+              </p>
+            )}
+            {typeBox}
           </div>
 
           <div className="claim-nav-buttons" style={{ display: 'flex', justifyContent: 'space-between', gap: '14px' }}>
@@ -1075,12 +1182,12 @@ export const Claim: React.FC = () => {
                 {t('claim.sdrfBannerTitle', 'Estimated Government Compensation (SDRF Norms)')}
               </span>
               <div className="sdrf-banner-amount" style={{ fontSize: '2.6rem', fontWeight: 800 }}>
-                ₹{claim.relief?.total ? claim.relief.total.toLocaleString('en-IN') : '2,06,300'}
+                ₹{claim.relief?.total ? claim.relief.total.toLocaleString('en-IN') : DEMO_MODE ? '2,06,300' : '0'}
               </div>
               <div style={{ fontSize: '0.92rem', color: '#FFE082', marginTop: '4px', fontWeight: 700 }}>
                 {t('claim.matchedSchemes', {
-                  schemes: claim.relief?.matched_schemes.join(' · ') || 'SDRF, PMFBY, PMAY-G',
-                  defaultValue: `Matched Schemes: ${claim.relief?.matched_schemes.join(' · ') || 'SDRF, PMFBY, PMAY-G'}`,
+                  schemes: claim.relief?.matched_schemes.join(' · ') || (DEMO_MODE ? 'SDRF, PMFBY, PMAY-G' : 'SDRF'),
+                  defaultValue: `Matched Schemes: ${claim.relief?.matched_schemes.join(' · ') || (DEMO_MODE ? 'SDRF, PMFBY, PMAY-G' : 'SDRF')}`,
                 })}
               </div>
             </div>
@@ -1130,16 +1237,16 @@ export const Claim: React.FC = () => {
             </h3>
 
             {[
-              { label: t('claim.claimantName', 'Claimant Name'), key: 'name', value: claim.fields.name || 'Sunita Mondal' },
-              { label: t('claim.mobileNumber', 'Mobile Number'), key: 'phone', value: claim.fields.phone || '+91 98301 23456' },
-              { label: t('claim.villageBlock', 'Village / Block'), key: 'village', value: claim.fields.village || 'Ghatal Block-II' },
+              { label: t('claim.claimantName', 'Claimant Name'), key: 'name', value: show(claim.fields.name, 'Sunita Mondal') },
+              { label: t('claim.mobileNumber', 'Mobile Number'), key: 'phone', value: show(claim.fields.phone, '+91 98301 23456') },
+              { label: t('claim.villageBlock', 'Village / Block'), key: 'village', value: show(claim.fields.village, 'Ghatal Block-II') },
               {
                 label: t('claim.districtState', 'District / State'),
                 key: 'district',
-                value: `${claim.fields.district || 'Paschim Medinipur'}, ${claim.fields.state || 'West Bengal'}`,
+                value: `${show(claim.fields.district, 'Paschim Medinipur')}, ${show(claim.fields.state, 'West Bengal')}`,
               },
-              { label: t('claim.disasterType', 'Disaster Type'), key: 'disaster_type', value: t('claim.floodVal', 'Flood') },
-              { label: t('claim.dateOfFlood', 'Date of Flood'), key: 'date_of_incident', value: claim.fields.date_of_incident || '2026-10-14' },
+              { label: t('claim.disasterType', 'Disaster Type'), key: 'disaster_type', value: DEMO_MODE ? t('claim.floodVal', 'Flood') : show(claim.fields.disaster_type, '') },
+              { label: t('claim.dateOfFlood', 'Date of Flood'), key: 'date_of_incident', value: show(claim.fields.date_of_incident, '2026-10-14') },
             ].map((f) => (
               <div
                 key={f.key}

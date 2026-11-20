@@ -1,21 +1,32 @@
-### PLACEHOLDER TEMPLATE - replace with Member 5's reviewed legal wording before use ###
-
 To,
-The District Supply Officer,
-{{district}}, {{state}}
+The District Supply Officer / Sub-Divisional Controller of Food & Supplies,
+Department of Food, Civil Supplies & Consumer Affairs,
+District: {{district}}, State: {{state}}
 
-Subject: Application for duplicate ration card lost in the {{disaster}} of {{incident_date}}
+Subject: Application for Immediate Issuance of Duplicate Ration Card & Emergency Food Grain Allotment following Disaster
 
-Sir/Madam,
+Respected Sir / Madam,
 
+1. BENEFICIARY PARTICULARS:
+   Name of Head of Household: {{name}}
+   Registered Residential Address: {{address}}
+   Registered Mobile Number: {{phone}}
+   Ration Card Number: {{ration_card_no}}
+   Ration Card Category (AAY / PHH / SPHH / General): {{ration_card_category}}
+   Designated Fair Price Shop (FPS) / Dealer Name: {{fps_name}}
+   Number of Listed Family Beneficiaries: {{family_members}}
+
+2. DISASTER LOSS NARRATIVE:
 {{incident_narrative}}
 
-My ration card (number: {{ration_card_no}}, category: {{ration_card_category}}) was lost in this
-disaster. I request issue of a duplicate ration card so that my family can continue to receive
-rations.
+3. STATUTORY GROUNDS UNDER NATIONAL FOOD SECURITY ACT (NFSA), 2013:
+Following the devastation caused by {{disaster}} on or about {{incident_date}}, our residential dwelling sustained severe damage, resulting in the destruction and loss of our physical ration card.
+Pursuant to the provisions of the National Food Security Act, 2013, read with Section 12 of the Disaster Management Act, 2005 (Mandatory Provision of Food & Sustenance to Disaster Victims), no eligible family can be deprived of nutritional food security due to loss of physical cards.
 
-Fair price shop: {{fps_name}}
-Number of family members on the card: {{family_members}}
+4. PRAYER FOR RELIEF:
+I respectfully request your office to:
+   a. Issue an emergency duplicate ration card or provisional digital beneficiary entitlement certificate.
+   b. Authorize the tagged Fair Price Shop dealer ({{fps_name}}) to disburse our monthly entitled food grains through Aadhaar biometric authentication or manual emergency disaster register entries pending card reprinting.
 
 Yours faithfully,
 
