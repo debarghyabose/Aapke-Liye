@@ -2,7 +2,8 @@ import asyncio
 from contextlib import asynccontextmanager
 
 import httpx
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response
+from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
@@ -15,6 +16,7 @@ from .db import create_tables, engine
 from .logs import request_context, setup_logging
 from .routers import claims, staff, status
 from .security import limiter
+from .services import integrations
 from .services.relief import load_sdrf_rules, rules_are_sample
 from .uploads import MAX_REQUEST_BYTES
 
@@ -58,6 +60,26 @@ app.middleware("http")(request_context)   # outermost: every response gets X-Req
 app.include_router(claims.router)
 app.include_router(status.router)
 app.include_router(staff.router)
+
+
+class SpeechRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=600)
+    language: str = "en"
+
+
+@app.post("/speech", tags=["claims"],
+          responses={200: {"content": {"audio/mpeg": {}}}, 503: {"description": "Speech unavailable"}})
+@limiter.limit(settings.rate_limit_upload)
+async def speech(request: Request, body: SpeechRequest):
+    """Read a question aloud in the claimant's language (Listen buttons). No personal data
+    is stored; the text is only passed to Member 1's text-to-speech."""
+    if body.language not in SUPPORTED_LANGUAGES:
+        raise HTTPException(422, f"language must be one of {SUPPORTED_LANGUAGES}")
+    try:
+        mp3 = await integrations.speak(body.text, body.language)
+    except integrations.ServiceUnavailable:
+        raise HTTPException(503, "Speech is not available right now")
+    return Response(mp3, media_type="audio/mpeg", headers={"Cache-Control": "no-store"})
 
 
 async def _service_state(url: str, mocked: bool) -> str:

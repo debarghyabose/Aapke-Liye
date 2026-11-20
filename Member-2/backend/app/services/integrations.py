@@ -108,3 +108,14 @@ async def verify_photo(photo: bytes, filename: str, content_type: str, lat, lon,
     return await _post(f"{settings.member3_verify_url}/verify",
                        files={"photo": (filename, photo, content_type)},
                        data={k: str(v) for k, v in data.items() if v is not None})
+
+
+async def speak(text: str, language: str) -> bytes:
+    """MP3 of `text` from Member 1's text-to-speech (for the app's Listen buttons)."""
+    if settings.use_mock_member1 or not settings.member1_ai_url:
+        raise ServiceUnavailable("text-to-speech needs Member 1")
+    out = await _post(f"{settings.member1_ai_url}/v1/tts", json={"text": text, "language": language})
+    try:
+        return base64.b64decode(out["audio_base64"])
+    except (KeyError, ValueError):
+        raise ServiceUnavailable("Member 1 text-to-speech reply is unusable") from None

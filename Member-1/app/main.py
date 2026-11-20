@@ -6,6 +6,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
+from pydantic import BaseModel, Field
 
 from . import damage, documents
 from .asr import ASRError, transcribe
@@ -14,8 +15,9 @@ from .config import get_settings
 from .languages import LANGUAGES
 from .llm import LLMError
 from .pipeline import run_turn
+from .tts import TTSError, speak
 from .schemas import (
-    SCHEMA_VERSION, Claim, DamageCompareRequest, DamageCompareResponse, DraftRequest, DraftResponse,
+    SCHEMA_VERSION, Claim, LanguageCode, DamageCompareRequest, DamageCompareResponse, DraftRequest, DraftResponse,
     EscalationRequest, EscalationResponse, TranscribeRequest, TranscribeResponse, TurnRequest, TurnResponse,
 )
 
@@ -109,3 +111,17 @@ def documents_draft(req: DraftRequest):
 @app.post("/v1/escalation/next", response_model=EscalationResponse)
 def escalation_next(req: EscalationRequest):
     return documents.next_escalation(req)
+
+
+class TTSRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=600)
+    language: LanguageCode = "en"
+
+
+@app.post("/v1/tts")
+def tts_route(req: TTSRequest):
+    """Speak a question or status aloud (gTTS, needs internet). Returns base64 MP3."""
+    try:
+        return {"audio_base64": speak(req.text, req.language), "format": "mp3"}
+    except TTSError as exc:
+        raise HTTPException(502, str(exc)) from exc

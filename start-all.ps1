@@ -24,8 +24,17 @@ function Stop-AppServices {
         $c = Get-PortOwner $port
         if (-not $c) { continue }
         $p = Get-CimInstance Win32_Process -Filter "ProcessId=$($c.OwningProcess)"
-        if ($p.CommandLine -like "*$root*" -or $p.ExecutablePath -like "$root*") {
+        # A venv's python.exe is a launcher: the listening process is its child, so check
+        # the parent's command line too.
+        $parent = Get-CimInstance Win32_Process -Filter "ProcessId=$($p.ParentProcessId)" -ErrorAction SilentlyContinue
+        $ours = foreach ($x in @($p, $parent)) {
+            if ($x -and ($x.CommandLine -like "*$root*" -or $x.ExecutablePath -like "$root*")) { $true }
+        }
+        if ($ours) {
             Stop-Process -Id $c.OwningProcess -Force
+            if ($parent -and $parent.ExecutablePath -like "$root*") {
+                Stop-Process -Id $parent.ProcessId -Force -ErrorAction SilentlyContinue
+            }
             Write-Host "Stopped port $port"
         }
     }
