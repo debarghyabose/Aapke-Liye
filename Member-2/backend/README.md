@@ -219,7 +219,9 @@ These are unchanged from v0.1 apart from the notes below. They also appear at th
  "missing_fields": ["phone"], "follow_up_questions": ["What is your phone number?"]}
 ```
 
-**Member 3** `POST {MEMBER3_VERIFY_URL}/verify`, multipart: `photo=<file>`, `lat`, `lon`, `taken_at`, `claim_id`
+**Member 3** `POST {MEMBER3_VERIFY_URL}/verify`, multipart: `photo=<file>`, `lat`, `lon`, `taken_at`, `claim_id`,
+and `phone` when the claim has a valid one (for Member 3's "one phone, many claims" fraud check;
+Member 3 keeps only a keyed fingerprint, never the number)
 ```json
 {"damage_detected": true, "damage_score": 0.8, "gps_ok": true, "timestamp_ok": true,
  "duplicate": false, "notes": []}

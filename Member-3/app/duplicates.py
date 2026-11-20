@@ -1,6 +1,6 @@
 """Flag the same photo or the same claim sent twice.
 
-The in-memory index is for the demo; Member 2 will back it with a photo_hashes table.
+Fingerprints from /verify are also saved in app.store and loaded back on startup.
 """
 import io
 from typing import Optional
@@ -27,6 +27,27 @@ class DuplicateIndex:
             if h - other <= config.PHASH_MAX_DISTANCE:
                 return claim_id
         return None
+
+    def closest_other_claim(self, h: imagehash.ImageHash, claim_id: Optional[str]
+                            ) -> tuple[Optional[str], Optional[int]]:
+        """Closest stored photo from a *different* claim within PHASH_MAX_DISTANCE:
+        (that claim_id, hash distance), or (None, None)."""
+        best: tuple[Optional[str], Optional[int]] = (None, None)
+        for other, other_claim in self._hashes:
+            if other_claim == claim_id:
+                continue
+            d = h - other
+            if d <= config.PHASH_MAX_DISTANCE and (best[1] is None or d < best[1]):
+                best = (other_claim, int(d))
+        return best
+
+    def add_hash(self, h: imagehash.ImageHash, claim_id: Optional[str]) -> None:
+        self._hashes.append((h, claim_id))
+
+    def load(self, saved: list[tuple[str, Optional[str]]]) -> None:
+        """Restore fingerprints saved in the store (after a restart)."""
+        for hex_hash, claim_id in saved:
+            self._hashes.append((imagehash.hex_to_hash(hex_hash), claim_id))
 
     def find_claim(self, phone: str, lat: Optional[float], lon: Optional[float]) -> Optional[str]:
         if lat is None or lon is None:

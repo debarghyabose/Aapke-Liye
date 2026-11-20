@@ -100,7 +100,10 @@ async def _verify(claim: Claim, photo: Photo, data: bytes) -> dict:
     try:
         v = await integrations.verify_photo(
             data, f"photo.{EXT[photo.content_type]}", photo.content_type, photo.lat, photo.lon,
-            iso_utc(photo.taken_at) if photo.taken_at else None, claim.id)
+            iso_utc(photo.taken_at) if photo.taken_at else None, claim.id,
+            # For Member 3's "one phone, many claims" check. Known once the voice claim is
+            # processed; photos uploaded before that are sent without it.
+            normalize_phone((claim.fields or {}).get("phone")))
     except ServiceUnavailable:
         return {"status": "pending"}
     return {**v, "status": "complete"}

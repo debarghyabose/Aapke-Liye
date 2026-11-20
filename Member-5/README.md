@@ -84,6 +84,7 @@ Member-5/
 | **Proof Substitution Framework** | [docs/proof_substitution_framework.md](docs/proof_substitution_framework.md) | ✅ Documented | State-by-state administrative SOPs (WB, OD, AS, MH, TN) |
 | **DPDP Privacy Framework** | [docs/dpdp_compliance_privacy_framework.md](docs/dpdp_compliance_privacy_framework.md) | ✅ Documented | 6 privacy pillars, encryption, retention, and GRO details |
 | **Government Operations Dashboard** | [docs/government_dashboard_spec.md](docs/government_dashboard_spec.md) | ✅ Documented | Damage heatmap, Vulnerability Priority Index, DBT export |
+| **Network Mesh (phone-to-phone relay)** | [below](#-network-mesh-phone-to-phone-relay) | 🛣️ Planned | Spec, DPDP consent and pitch story for relaying sealed claims between phones |
 
 ---
 
@@ -134,3 +135,40 @@ Get-Content Member-5\rules\proof_substitution.json | ConvertFrom-Json
 # Check multi-lingual consent strings
 (Get-Content Member-5\rules\labels.json | ConvertFrom-Json).consent
 ```
+
+---
+
+## 📡 Network mesh (phone-to-phone relay)
+
+**Problem:** after a flood or cyclone, whole villages can lose mobile network for days.
+The offline queue (Member 3) only helps when *the same phone* gets signal back.
+
+**Idea:** phones pass the claim along to each other over Bluetooth / Wi-Fi Direct until one
+of them reaches signal, which then uploads it.
+
+```
+Ramesh's phone (no signal) ──Bluetooth/Wi-Fi Direct──► neighbour's phone ──► … ──► volunteer phone with signal ──► server
+```
+
+How it works (store and forward):
+1. The claim is saved on the phone and **encrypted with the server's public key**, so phones in between can carry it but never read it.
+2. Nearby phones running the app discover each other and copy claims they don't have yet.
+3. The first phone with internet uploads everything it is carrying to `POST /sync` (Member 3).
+4. The server ignores duplicates (same `claim_id`) and sends a receipt back through the mesh, so the original phone shows "Delivered".
+
+### Your tasks (Member 5)
+- [ ] **Spec:** one page covering the flow above, what a relay phone stores, how long it keeps a claim (e.g. 7 days), and the size limit per claim (voice note compressed, photos resized)
+- [ ] **Privacy and legal:** consent wording for "let my phone carry others' sealed claims"; check against the DPDP Act (relay phones hold encrypted data only; delete it after delivery)
+- [ ] **Battery and trust rules:** relaying is opt-in, stops below 20% battery; volunteers / NGO workers can be marked as trusted "carrier" phones
+- [ ] **Pitch:** a mock-up and a 30-second demo story: two phones in airplane mode, one hands a claim to the other, the second turns on data and the claim appears on the dashboard
+
+### Who builds it
+| Member | Part |
+|---|---|
+| **Member 5** | Spec, privacy, consent text, pitch mock-up (above) |
+| **Member 3** | The relay logic and `/sync` de-duplication + receipts |
+| **Member 4** | A native Android app (browsers can't form a phone-to-phone mesh); Google Nearby Connections API |
+| **Member 2** | Server key pair for encrypting claims; accepts relayed claims |
+| **Member 1** | Nothing changes: speech + claim AI run on the server once the claim arrives |
+
+**Phase:** roadmap (Phase 2). For the buildathon, the two-phone demo is enough.

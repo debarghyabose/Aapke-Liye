@@ -27,7 +27,48 @@ VISION_API_KEY = os.getenv("VISION_API_KEY", "")  # Anthropic key, for VISION_PR
 VISION_MODEL = os.getenv("VISION_MODEL", "claude-opus-5-5")
 VISION_EFFORT = os.getenv("VISION_EFFORT", "medium")  # low | medium | high
 
+# SQLite file with every photo check (dashboard data + duplicate fingerprints).
+DB_PATH = os.getenv("MEMBER3_DB_PATH", "member3.db")
+# If set, /dashboard/* requires the header X-Dashboard-Key with this value.
+# Leave empty only on your own computer: the dashboard shows exact victim locations.
+DASHBOARD_API_KEY = os.getenv("DASHBOARD_API_KEY", "")
+# Web pages allowed to read /dashboard from a browser (Member 5's dashboard).
+# "null" = the dashboard opened straight from a file (file://). Remove it in production.
+DASHBOARD_CORS_ORIGINS = [o.strip() for o in os.getenv(
+    "DASHBOARD_CORS_ORIGINS",
+    "null,http://localhost:5500,http://127.0.0.1:5500,http://localhost:8080,http://localhost:3000",
+).split(",") if o.strip()]
+
 # Photos whose perceptual hashes differ by this many bits or fewer count as the same photo.
 PHASH_MAX_DISTANCE = 8
 # Two claims from the same phone this close together (metres) count as the same claim.
 SAME_CLAIM_RADIUS_M = 50
+
+# --- Advanced fraud checks (all are review flags for an official, never automatic rejection)
+# Photos from different claims taken within this many metres may show the same house.
+# Phone GPS is often only accurate to 5-20 m, so neighbours can also be flagged.
+SAME_HOUSE_RADIUS_M = float(os.getenv("SAME_HOUSE_RADIUS_M", "25"))
+# More than this many *other* claims from one phone in 24 h is flagged (Member 5's spec:
+# "> 3 claims ... within 24 hours"). NGO workers filing for many families will trip it too.
+PHONE_MAX_OTHER_CLAIMS_24H = int(os.getenv("PHONE_MAX_OTHER_CLAIMS_24H", "3"))
+# --- Satellite / map checks (local files only; see app/geodata.py)
+_files = lambda name: [f.strip() for f in os.getenv(name, "").split(",") if f.strip()]
+# Flood-extent polygons (Copernicus EMS, ISRO Bhuvan/NRSC): .geojson or .shp, comma-separated.
+FLOOD_MAP_FILES = _files("FLOOD_MAP_FILES")
+# Inside the flood polygon, or this close to it, counts as "in the flooded area".
+FLOOD_TOLERANCE_M = float(os.getenv("FLOOD_TOLERANCE_M", "300"))
+# A flood map is used for points up to this far outside the area it covers.
+FLOOD_COVERAGE_MARGIN_KM = float(os.getenv("FLOOD_COVERAGE_MARGIN_KM", "10"))
+# Building footprints (Google Open Buildings CSV, OSM GeoJSON), comma-separated.
+BUILDING_FILES = _files("BUILDING_FILES")
+# A house photo needs a mapped building this close (covers GPS error of a few metres).
+BUILDING_SEARCH_M = float(os.getenv("BUILDING_SEARCH_M", "30"))
+
+# Crop before/after check from Sentinel-2 NDVI (app/ndvi.py). Runs in the background after
+# /verify for crop photos with their own GPS. Reads public images (no account).
+NDVI_ENABLED = os.getenv("NDVI_ENABLED", "true").strip().lower() in ("1", "true", "yes")
+# Half-size of the square of field compared (metres): 30 = about 6 x 6 Sentinel-2 pixels.
+NDVI_RADIUS_M = float(os.getenv("NDVI_RADIUS_M", "30"))
+
+# Secret for phone fingerprints. Set a long random value in production.
+PHONE_HASH_KEY = os.getenv("PHONE_HASH_KEY", "")
