@@ -1,0 +1,27 @@
+{
+  "state": "West Bengal",
+  "state_code": "WB",
+  "land_portal": "Banglarbhumi (banglarbhumi.gov.in)",
+  "land_authority": "Block Land & Land Reforms Officer (BL&LRO)",
+  "administrative_tiers": {
+    "district": "District Magistrate & Collector",
+    "sub_division": "Sub-Divisional Officer (SDO)",
+    "block": "Block Development Officer (BDO)",
+    "gram_panchayat": "Gram Panchayat Pradhan"
+  },
+  "accepted_substitutes": {
+    "land_record": [
+      "Banglarbhumi portal digital Khatian and Dag number search extract",
+      "BL&LRO certificate of recorded bargadar or rayat occupancy",
+      "Panchayat Pradhan and 2 neighbor joint affidavit"
+    ],
+    "ration_card": [
+      "WB Food & Supplies ePDS digital beneficiary record or e-Ration card",
+      "Duare Sarkar camp registration docket slip"
+    ],
+    "house_ownership": [
+      "Gram Panchayat tax assessment receipt or WBSEDCL electricity bill",
+      "Aapke Liye geo-tagged photo with Sundarbans / coastal zone coordinates"
+    ]
+  }
+}

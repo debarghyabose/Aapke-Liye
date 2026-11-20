@@ -1,0 +1,27 @@
+{
+  "state": "Assam",
+  "state_code": "AS",
+  "land_portal": "Dharitree / Integrated Land Records Management System (ILRMS)",
+  "land_authority": "Circle Officer (CO) / Lot Mandal",
+  "administrative_tiers": {
+    "state_authority": "Assam State Disaster Management Authority (ASDMA)",
+    "district": "Deputy Commissioner (DC)",
+    "revenue_circle": "Circle Officer (CO)",
+    "village": "Gaonburah (Village Headman)"
+  },
+  "accepted_substitutes": {
+    "land_record": [
+      "Dharitree portal Jamabandi / Patta copy",
+      "Lot Mandal verification report countersigned by Circle Officer",
+      "Gaonburah flood damage certification"
+    ],
+    "ration_card": [
+      "Assam Food, Civil Supplies & Consumer Affairs online RC extract",
+      "Village Gaonburah family register extract"
+    ],
+    "house_ownership": [
+      "Gaonburah residential certificate or APDCL power bill",
+      "Aapke Liye Brahmaputra basin geo-tagged coordinates"
+    ]
+  }
+}

@@ -1,0 +1,40 @@
+To,
+The Branch / Claims Manager,
+{{insurer_name}},
+(Copy submitted to: The District Agriculture Officer, {{district}}, {{state}})
+
+Subject: Mandatory 72-Hour Intimation of Localized Crop Calamity under Pradhan Mantri Fasal Bima Yojana (PMFBY) / Restructured Weather-Based Crop Insurance Scheme (RWBCIS)
+
+Respected Sir / Madam,
+
+1. INSURED FARMER & POLICY DETAILS:
+   Name of Insured Farmer: {{name}}
+   Village: {{village}}, District: {{district}}, State: {{state}}
+   Mobile Number: {{phone}}
+   PMFBY Policy / Application Number: {{policy_no}}
+   Aadhaar / Bank Account Linked to Policy (Last 4 Digits): {{bank_last4}}
+   Crop Season & Year: {{season}}
+   Survey / Khasra / Dag Number: {{survey_no}}
+
+2. CALAMITY EVENT & TIMELY INTIMATION:
+{{incident_narrative}}
+
+On {{incident_date}}, our cultivated agricultural plot suffered severe crop damage caused by localized {{disaster}} (inundation / hailstorm / landslide / cloudburst). 
+In full compliance with Section 19 of the PMFBY Operational Guidelines requiring intimation of localized risk within 72 hours of occurrence, this formal notice is hereby delivered.
+
+3. DAMAGE APPRAISAL & PARTICULARS:
+{{losses_table}}
+
+Estimated Financial Loss Incurred: {{total_loss}}
+
+4. PRAYER FOR JOINT FIELD SURVEY:
+Under the standard operating procedure of PMFBY, an immediate joint assessment survey by the Insurance Company representative and the State Agriculture Department official is required to be completed within 10 days of intimation.
+
+I respectfully request that this intimation be registered immediately with a Claim Registration Docket ID, and that an authorized surveyor be deputed for on-site assessment. Geo-tagged photographs captured via Aapke Liye are maintained on record.
+
+Yours faithfully,
+
+{{name}}
+Address: {{address}}
+Mobile: {{phone}}
+Date: {{today}}

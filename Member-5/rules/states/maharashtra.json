@@ -1,0 +1,27 @@
+{
+  "state": "Maharashtra",
+  "state_code": "MH",
+  "land_portal": "Mahabhulekh (bhulekh.mahabhumi.gov.in)",
+  "land_authority": "Talathi / Circle Officer / Tehsildar",
+  "administrative_tiers": {
+    "district": "Collector & District Magistrate",
+    "sub_division": "Sub-Divisional Officer (SDO / Prant)",
+    "taluka": "Tehsildar",
+    "village": "Talathi & Gram Sevak / Sarpanch"
+  },
+  "accepted_substitutes": {
+    "land_record": [
+      "Digital 7/12 extract and 8A holding statement from Mahabhulekh",
+      "Talathi spot panchnama (पंचनामा) report",
+      "Gram Panchayat namuna 8 property register extract"
+    ],
+    "ration_card": [
+      "RCMS Maharashtra online ration card extract",
+      "Talathi attestation of affected family members"
+    ],
+    "house_ownership": [
+      "Gram Panchayat namuna 8 house tax receipt or MSEDCL electricity bill",
+      "Aapke Liye Konkan / Western Ghats geo-tagged photo panchnama"
+    ]
+  }
+}

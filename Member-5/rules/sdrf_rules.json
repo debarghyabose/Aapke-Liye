@@ -1,0 +1,62 @@
+{
+  "_note": "Official Ministry of Home Affairs (MHA) SDRF/NDRF assistance norms (Letter No. 33-03/2020-NDM-I dated 10-10-2022 under the Disaster Management Act 2005). Checked and validated by Member 5. Version identifier keeps 'sample' prefix for mock/test compatibility while containing exact statutory rates.",
+  "version": "sample-mha-sdrf-2022-26-v1.1",
+  "currency": "INR",
+  "statutory_authority": "Ministry of Home Affairs, Disaster Management Division, Government of India",
+  "categories": {
+    "house": {
+      "unit": "per house",
+      "items": {
+        "fully_damaged_plain": 120000,
+        "fully_damaged_hilly": 130000,
+        "partially_damaged_pucca": 6500,
+        "partially_damaged_kutcha": 4000,
+        "hut_damaged": 8000,
+        "cattle_shed": 3000
+      }
+    },
+    "crop": {
+      "unit": "per hectare",
+      "max_quantity": 2,
+      "min_damage_percent": 33,
+      "items": {
+        "rainfed": 8500,
+        "irrigated": 17000,
+        "perennial": 22500
+      },
+      "min_amount": {
+        "rainfed": 1000,
+        "irrigated": 2000,
+        "perennial": 2500
+      }
+    },
+    "livestock": {
+      "unit": "per animal",
+      "items": {
+        "milch_large": 37500,
+        "milch_small": 4000,
+        "draught_large": 32000,
+        "draught_small": 20000,
+        "poultry": 100
+      },
+      "max_amount": {
+        "poultry": 10000
+      }
+    },
+    "household": {
+      "unit": "per family",
+      "items": {
+        "clothing": 2500,
+        "utensils": 2500
+      }
+    },
+    "ex_gratia": {
+      "unit": "per person",
+      "items": {
+        "death": 400000,
+        "disability_40_60": 74000,
+        "disability_above_60": 250000
+      }
+    }
+  }
+}

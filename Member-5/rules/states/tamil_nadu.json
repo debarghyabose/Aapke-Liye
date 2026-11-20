@@ -1,0 +1,28 @@
+{
+  "state": "Tamil Nadu",
+  "state_code": "TN",
+  "land_portal": "Anywhere Anytime e-Services (eservices.tn.gov.in)",
+  "land_authority": "Village Administrative Officer (VAO) / Firka Revenue Inspector (RI)",
+  "administrative_tiers": {
+    "state_authority": "Tamil Nadu Disaster Risk Reduction Agency (TNDRRA)",
+    "district": "District Collector",
+    "taluk": "Tehsildar",
+    "firka": "Revenue Inspector (RI)",
+    "revenue_village": "Village Administrative Officer (VAO)"
+  },
+  "accepted_substitutes": {
+    "land_record": [
+      "Digital Patta / Chitta extract from TN e-Services portal",
+      "VAO field verification certificate countersigned by Firka RI",
+      "Adjoining patta-dars' joint declaration"
+    ],
+    "ration_card": [
+      "TN Smart Card (PDS / TNePDS portal) electronic beneficiary record",
+      "Fair price shop bill receipt"
+    ],
+    "house_ownership": [
+      "Village Panchayat property tax receipt or TANGEDCO power consumption bill",
+      "Aapke Liye coastal geo-tagged damage evidence"
+    ]
+  }
+}

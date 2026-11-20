@@ -1,0 +1,18 @@
+{
+  "scheme_name": "Pradhan Mantri Awaas Yojana - Gramin (PMAY-G) Disaster Rebuild Special Window",
+  "scheme_code": "PMAY_G_DISASTER",
+  "ministry": "Ministry of Rural Development",
+  "statutory_basis": "PMAY-G Framework for Implementation & Special Calamity Rebuilding Directives",
+  "eligibility": "Families whose pucca or kutcha house is fully destroyed in a notified natural disaster and who lack safe permanent shelter",
+  "grant_amounts": {
+    "plain_areas_unit_grant": 120000,
+    "hilly_tribal_iap_grant": 130000,
+    "mgnrega_unskilled_labor_wage_days": 90,
+    "mgnrega_daily_wage_estimate": 275,
+    "swachh_bharat_toilet_grant": 12000
+  },
+  "total_package": {
+    "plain_areas": 156750,
+    "hilly_tribal_areas": 166750
+  }
+}

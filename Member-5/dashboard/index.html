@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aapke Liye — SDMA Operations & Disaster Relief Hub</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background-color: var(--bg); color: var(--text); font-family: var(--font); line-height: 1.5; padding: 20px; }
+    .header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 20px; border-bottom: 1px solid var(--border); margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand h1 { font-size: 1.5rem; font-weight: 700; color: #fff; }
+    .brand span { font-size: 0.85rem; background: #1e3a8a; color: #93c5fd; padding: 3px 8px; border-radius: 6px; }
+    .district-select { background: var(--card); border: 1px solid var(--border); color: #fff; padding: 8px 14px; border-radius: 8px; font-size: 0.9rem; }
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+    .kpi-title { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 6px; }
+    .kpi-value { font-size: 1.8rem; font-weight: 700; }
+    .kpi-sub { font-size: 0.75rem; color: var(--success); margin-top: 4px; }
+    .layout-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 900px) { .layout-grid { grid-template-columns: 1fr; } }
+    .panel { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; }
+    .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .panel-title { font-size: 1.1rem; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .badge { font-size: 0.75rem; padding: 3px 8px; border-radius: 12px; font-weight: 600; }
+    .badge-red { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+    .badge-yellow { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+    .badge-green { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .map-container { height: 320px; background: #090d16; border-radius: 8px; border: 1px solid var(--border); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+    .canvas-map { width: 100%; height: 100%; }
+    .map-overlay-controls { position: absolute; top: 10px; right: 10px; background: rgba(15, 23, 42, 0.85); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.8rem; display: flex; flex-direction: column; gap: 6px; }
+    .table-container { overflow-x: auto; max-height: 380px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left; }
+    th { padding: 10px; background: rgba(15, 23, 42, 0.6); color: var(--text-muted); font-weight: 600; position: sticky; top: 0; }
+    td { padding: 12px 10px; border-bottom: 1px solid var(--border); }
+    tr:hover { background: rgba(255, 255, 255, 0.02); }
+    .btn { background: var(--primary); color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 500; cursor: pointer; transition: 0.2s; }
+    .btn:hover { background: var(--primary-hover); }
+    .btn-success { background: #059669; }
+    .btn-success:hover { background: #047857; }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn-outline:hover { background: var(--border); }
+    .actions { display: flex; gap: 6px; }
+    .modal { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7); z-index: 100; align-items: center; justify-content: center; padding: 20px; }
+    .modal-content { background: var(--card); border: 1px solid var(--border); border-radius: 12px; max-width: 600px; width: 100%; padding: 24px; position: relative; }
+    .modal-header { font-size: 1.2rem; font-weight: 700; margin-bottom: 16px; }
+    .modal-close { position: absolute; top: 16px; right: 16px; background: transparent; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; }
+    .export-bar { margin-top: 24px; padding: 16px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="brand">
+      <h1>🤝 Aapke Liye (आपके लिए)</h1>
+      <span>SDMA Operations & DBT Hub</span>
+    </div>
+    <div>
+      <label for="district-select" style="font-size: 0.85rem; color: var(--text-muted); margin-right: 8px;">Disaster Jurisdiction:</label>
+      <select id="district-select" class="district-select" onchange="switchDistrict(this.value)">
+        <option value="wb_s24p">West Bengal — South 24 Parganas (Cyclone Remal)</option>
+        <option value="od_cuttack">Odisha — Kendrapara / Cuttack (Mahanadi Floods)</option>
+        <option value="as_dhemaji">Assam — Dhemaji (Brahmaputra Inundation)</option>
+        <option value="mh_raigad">Maharashtra — Raigad (Konkan Landslide/Flash Flood)</option>
+        <option value="tn_nagapattinam">Tamil Nadu — Nagapattinam (North East Monsoon)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi-card">
+      <div class="kpi-title">Total Voice Claims Filed</div>
+      <div class="kpi-value" id="kpi-total">4,892</div>
+      <div class="kpi-sub">↑ 412 in last 24 hrs</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-title">Field Verified</div>
+      <div class="kpi-value" id="kpi-verified">3,120</div>
+      <div class="kpi-sub" style="color: #60a5fa;">63.7% completion</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-title">Sanctioned & Approved</div>
+      <div class="kpi-value" id="kpi-approved">2,410</div>
+      <div class="kpi-sub" style="color: var(--warning);">710 awaiting sign-off</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-title">Total Relief Disbursed</div>
+      <div class="kpi-value" id="kpi-disbursed">₹18.42 Cr</div>
+      <div class="kpi-sub">Direct Benefit Transfer (DBT)</div>
+    </div>
+  </div>
+
+  <div class="layout-grid">
+    <!-- Live Damage Heatmap -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">🗺️ Live Village Damage Heatmap & Telemetry</div>
+        <span class="badge badge-red">LIVE SENTINEL-1 INUNDATION</span>
+      </div>
+      <div class="map-container">
+        <canvas id="mapCanvas" class="canvas-map"></canvas>
+        <div class="map-overlay-controls">
+          <label><input type="checkbox" id="toggleSat" checked onchange="drawMap()"> Sentinel-1 Satellite Mask</label>
+          <label><input type="checkbox" id="toggleHeat" checked onchange="drawMap()"> Damage Density Heatmap</label>
+          <span style="font-size: 0.7rem; color: var(--text-muted);">Click clusters for village breakdown</span>
+        </div>
+      </div>
+      <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-top: 10px;">
+        <span>Critical Hotspots: <strong>Gosaba</strong>, <strong>Basanti</strong>, <strong>Sandeshkhali</strong></span>
+        <span>GPS Accuracy: ± 4.2m verified</span>
+      </div>
+    </div>
+
+    <!-- Vulnerability Priority Dispatch List -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">👥 Vulnerability Priority Index (VPI) Queue</div>
+        <span class="badge badge-yellow">ALGORITHMIC DISPATCH</span>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>VPI</th>
+              <th>Beneficiary</th>
+              <th>Village</th>
+              <th>Loss Item</th>
+              <th>Entitlement</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="vpi-table-body">
+            <!-- Rendered by JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- DBT Export Bar -->
+  <div class="export-bar">
+    <div>
+      <h3 style="font-size: 1rem; font-weight: 600;">Ministry of Finance PFMS Direct Benefit Transfer Gateway</h3>
+      <p style="font-size: 0.8rem; color: var(--text-muted);">
+        2,410 approved claims validated against NPCI Aadhaar-Seeded Bank Account Mapper. Ready for direct Treasury disbursement.
+      </p>
+    </div>
+    <div class="actions">
+      <button class="btn btn-outline" onclick="showFraudModal()">⚠️ View Anomaly Alerts (14)</button>
+      <button class="btn btn-success" onclick="exportPFMSBatch()">📥 Export PFMS Batch (XML/CSV)</button>
+    </div>
+  </div>
+
+  <!-- Fraud Modal -->
+  <div id="fraudModal" class="modal">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeFraudModal()">&times;</button>
+      <div class="modal-header">🚫 Anti-Fraud & Perceptual Duplicate Detection</div>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+        Member 3's perceptual image hashing detected identical photo evidence submitted in two distinct claims:
+      </p>
+      <div style="background: rgba(15,23,42,0.8); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 0.85rem;">
+        <p><strong>Original Claim:</strong> CLM-2026-WB-4102 (Smt. Maya Mondal, Gosaba) — Filed 16-Nov</p>
+        <p><strong>Flagged Duplicate:</strong> CLM-2026-WB-8921 (Sri Debu Mondal, Basanti) — Filed 18-Nov</p>
+        <p style="color: var(--danger); margin-top: 6px;">Perceptual Hash Distance: 0 (Identical Image Hash: <code>a8f192bc03e1</code>)</p>
+      </div>
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 16px;">
+        Action: Official inspection required before sanction. Primary claimant protected; duplicate frozen for inquiry.
+      </p>
+      <div style="display: flex; justify-content: flex-end; gap: 8px;">
+        <button class="btn btn-outline" onclick="closeFraudModal()">Dismiss</button>
+        <button class="btn btn-danger" onclick="alert('Claim CLM-2026-WB-8921 flagged for Tehsildar spot enquiry.'); closeFraudModal();">Flag for Spot Inspection</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const sampleClaims = [
+      { vpi: 94, name: "Kamala Mondal", village: "Gosaba", loss: "Kutcha House Destroyed + 2 Goats", amount: "₹1,28,000", tag: "Widow / 2 Infants", status: "Approved" },
+      { vpi: 89, name: "Ram Pada Das", village: "Sandeshkhali", loss: "1.5 ha Paddy Submerged (100%)", amount: "₹12,750", tag: "Disabled Farmer", status: "Approved" },
+      { vpi: 85, name: "Rina Das", village: "Gosaba", loss: "Pucca House Damaged", amount: "₹6,500", tag: "Antyodaya BPL", status: "Verified" },
+      { vpi: 81, name: "Subhas Gayen", village: "Basanti", loss: "Cattle Shed + 1 Cow Dead", amount: "₹40,500", tag: "Elderly (>70)", status: "Approved" },
+      { vpi: 76, name: "Purnima Halder", village: "Sagar Island", loss: "Hut Destroyed + Clothing", amount: "₹10,500", tag: "Single Mother", status: "Verified" },
+      { vpi: 72, name: "Bikash Barman", village: "Hingalganj", loss: "1.0 ha Irrigated Crop Loss", amount: "₹17,000", tag: "Marginal Farmer", status: "Submitted" }
+    ];
+
+    function renderTable() {
+      const tbody = document.getElementById("vpi-table-body");
+      tbody.innerHTML = sampleClaims.map(c => `
+        <tr>
+          <td><span class="badge ${c.vpi >= 85 ? 'badge-red' : 'badge-yellow'}">${c.vpi}</span></td>
+          <td><strong>${c.name}</strong><br><span style="font-size: 0.75rem; color: var(--text-muted);">${c.tag}</span></td>
+          <td>${c.village}</td>
+          <td>${c.loss}</td>
+          <td style="font-weight: 600;">${c.amount}</td>
+          <td>
+            <div class="actions">
+              <button class="btn btn-outline" onclick="alert('Viewing Claim Form for ' + '${c.name}')">PDF</button>
+              <button class="btn btn-success" onclick="alert('Direct Sanction Triggered for ' + '${c.name}')">Approve</button>
+            </div>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    function drawMap() {
+      const canvas = document.getElementById("mapCanvas");
+      const ctx = canvas.getContext("2d");
+      canvas.width = canvas.parentElement.clientWidth;
+      canvas.height = canvas.parentElement.clientHeight;
+
+      // Dark background
+      ctx.fillStyle = "#090d16";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Water body / Bay of Bengal curve
+      ctx.fillStyle = "#0c172e";
+      ctx.beginPath();
+      ctx.moveTo(0, canvas.height * 0.7);
+      ctx.bezierCurveTo(canvas.width * 0.3, canvas.height * 0.6, canvas.width * 0.7, canvas.height * 0.85, canvas.width, canvas.height * 0.75);
+      ctx.lineTo(canvas.width, canvas.height);
+      ctx.lineTo(0, canvas.height);
+      ctx.closePath();
+      ctx.fill();
+
+      // Satellite flood mask overlay
+      if (document.getElementById("toggleSat").checked) {
+        ctx.fillStyle = "rgba(37, 99, 235, 0.25)";
+        ctx.beginPath();
+        ctx.ellipse(canvas.width * 0.45, canvas.height * 0.45, canvas.width * 0.35, canvas.height * 0.25, 0.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(96, 165, 250, 0.5)";
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      // Heatmap clusters
+      if (document.getElementById("toggleHeat").checked) {
+        const clusters = [
+          { x: canvas.width * 0.35, y: canvas.height * 0.4, r: 45, label: "Gosaba (412 claims)", color: "rgba(239, 68, 68, 0.7)" },
+          { x: canvas.width * 0.55, y: canvas.height * 0.35, r: 35, label: "Basanti (280 claims)", color: "rgba(245, 158, 11, 0.7)" },
+          { x: canvas.width * 0.70, y: canvas.height * 0.30, r: 25, label: "Sandeshkhali (195 claims)", color: "rgba(239, 68, 68, 0.7)" },
+          { x: canvas.width * 0.25, y: canvas.height * 0.55, r: 30, label: "Sagar Island (160 claims)", color: "rgba(245, 158, 11, 0.7)" }
+        ];
+
+        clusters.forEach(c => {
+          const grad = ctx.createRadialGradient(c.x, c.y, 2, c.x, c.y, c.r);
+          grad.addColorStop(0, c.color);
+          grad.addColorStop(1, "rgba(0,0,0,0)");
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = "#fff";
+          ctx.font = "bold 11px sans-serif";
+          ctx.fillText(c.label, c.x - 40, c.y + 4);
+        });
+      }
+    }
+
+    function switchDistrict(val) {
+      alert("Switched operational district to: " + val + ". Telemetry and claims re-indexed.");
+      drawMap();
+    }
+
+    function showFraudModal() { document.getElementById("fraudModal").style.display = "flex"; }
+    function closeFraudModal() { document.getElementById("fraudModal").style.display = "none"; }
+
+    function exportPFMSBatch() {
+      const csv = "PFMS_BATCH_ID,BENEFICIARY_NAME,VILLAGE,AADHAAR_HASH,AMOUNT_INR,CATEGORY,STATUS\n" +
+        "BATCH-2026-WB-01,Kamala Mondal,Gosaba,xxxx-xxxx-8921,128000,HOUSE_LIVESTOCK,APPROVED\n" +
+        "BATCH-2026-WB-01,Ram Pada Das,Sandeshkhali,xxxx-xxxx-1209,12750,CROP_INPUT_SUBSIDY,APPROVED\n" +
+        "BATCH-2026-WB-01,Subhas Gayen,Basanti,xxxx-xxxx-4410,40500,LIVESTOCK_SHED,APPROVED\n";
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.setAttribute("href", url);
+      a.setAttribute("download", "PFMS_SDRF_DBT_DISBURSEMENT_BATCH_WB.csv");
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      alert("PFMS DBT batch generated successfully (3 approved records exported for direct treasury clearing).");
+    }
+
+    window.addEventListener("load", () => {
+      renderTable();
+      drawMap();
+    });
+    window.addEventListener("resize", drawMap);
+  </script>
+</body>
+</html>

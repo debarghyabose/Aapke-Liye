@@ -1,0 +1,52 @@
+{
+  "_note": "Statutory Proof Substitution Matrix designed by Member 5 under Section 12 of the Disaster Management Act 2005. When documents are destroyed by disaster, field officers are legally required to accept these certified alternative proofs.",
+  "version": "mha-dm-substitution-v1.0",
+  "aadhaar": [
+    "Voter ID (EPIC), Ration Card or any government photo identity card",
+    "Attestation certificate issued by Gram Panchayat Pradhan, Ward Councillor, or Village Administrative Officer (VAO)",
+    "Electronic demographic match via mobile OTP or Aadhaar Seva Kendra biometric printout (auto-drafted request available)",
+    "Neighbor corroboration countersigned by Panchayat Secretary"
+  ],
+  "ration_card": [
+    "Electronic beneficiary record in the National Food Security Act (NFSA) / State Food & Supplies PDS dealer register",
+    "Panchayat Pradhan / Ward Member family composition certificate",
+    "Ration dealer token slip or ePDS portal digital beneficiary extract"
+  ],
+  "land_record": [
+    "Digital RoR / Khatian / 7/12 / Patta extract from state land portals (Banglarbhumi, Bhulekh, Dharitree, AnyROR, Patta Chitta)",
+    "Emergency certificate from the Block Land & Land Reforms Office (BL&LRO) / Tehsildar / Talathi / Patwari",
+    "Geo-tagged and timestamped photographs of the damaged agricultural plot submitted through Aapke Liye",
+    "Adjoining plot owners' joint affidavit countersigned by the Gram Panchayat"
+  ],
+  "bank_passbook": [
+    "Direct Benefit Transfer (DBT) verification from NPCI Aadhaar-Seeded Bank Account Mapper",
+    "Emergency single-page bank statement or letter from local bank branch / Business Correspondent (Bank Mitra)",
+    "Cancelled cheque or digital screenshot from Mobile/Internet banking / UPI app profile"
+  ],
+  "house_ownership": [
+    "Gram Panchayat property tax receipt, electricity utility bill, or water connection receipt",
+    "Geo-tagged, time-stamped damage photos of the dwelling captured via Aapke Liye",
+    "Pradhan / Revenue Inspector joint site inspection panchnama",
+    "Joint neighbor declaration affirming physical possession and occupancy prior to disaster"
+  ],
+  "voter_id": [
+    "Online Electoral Roll extract from Election Commission of India (ECI) voter portal (voters.eci.gov.in)",
+    "Aadhaar card, Ration Card, or MNREGA Job Card",
+    "Gram Panchayat or Revenue Inspector identity certificate"
+  ],
+  "death_certificate": [
+    "First Information Report (FIR) or Station Diary entry from local Police Station",
+    "Inquest report and Post-Mortem report from District / Sub-Divisional Hospital",
+    "Joint enquiry certificate by Block Development Officer (BDO) / Tehsildar and Medical Officer confirming death due to disaster"
+  ],
+  "disability_certificate": [
+    "UDID (Unique Disability ID) digital card or Swavlamban portal registration extract",
+    "Emergency medical examination report by Chief Medical Officer (CMO) or Government Medical Board",
+    "Local Primary Health Centre (PHC) medical officer disability certificate"
+  ],
+  "_default": [
+    "Attestation certificate by the Gram Panchayat Pradhan, Village Administrative Officer (VAO), or Revenue Inspector",
+    "Geo-tagged, time-stamped damage photographs submitted through the Aapke Liye mobile app",
+    "Two neighbor attestations confirming residency and loss"
+  ]
+}

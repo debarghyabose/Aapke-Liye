@@ -1,0 +1,55 @@
+{
+  "_note": "Human-readable labels for the relief form PDF. Keys match rules/sdrf_rules.json and rules/proof_substitution.json. Missing keys fall back to a tidied version of the key.",
+  "categories": {
+    "house": "House",
+    "crop": "Crop",
+    "livestock": "Livestock",
+    "household": "Household Items",
+    "ex_gratia": "Ex Gratia"
+  },
+  "items": {
+    "house.fully_damaged_plain": "House – fully damaged (plains)",
+    "house.fully_damaged_hilly": "House – fully damaged (hilly area)",
+    "house.partially_damaged_pucca": "House – partially damaged (pucca)",
+    "house.partially_damaged_kutcha": "House – partially damaged (kutcha)",
+    "house.hut_damaged": "Hut – damaged or destroyed",
+    "house.cattle_shed": "Cattle shed",
+    "crop.rainfed": "Crop – rainfed",
+    "crop.irrigated": "Crop – irrigated",
+    "crop.perennial": "Crop – perennial",
+    "livestock.milch_large": "Milch animal (cow/buffalo)",
+    "livestock.milch_small": "Milch animal (sheep/goat)",
+    "livestock.draught_large": "Draught animal (ox/horse)",
+    "livestock.draught_small": "Draught animal (calf/donkey)",
+    "livestock.poultry": "Poultry (per bird)",
+    "household.clothing": "Clothing (per family)",
+    "household.utensils": "Utensils (per family)",
+    "ex_gratia.death": "Ex gratia – loss of life",
+    "ex_gratia.disability_40_60": "Ex gratia – disability 40–60%",
+    "ex_gratia.disability_above_60": "Ex gratia – disability above 60%"
+  },
+  "documents": {
+    "aadhaar": "Aadhaar card",
+    "ration_card": "Ration card",
+    "land_record": "Land record (Khatian / RoR)",
+    "bank_passbook": "Bank passbook",
+    "house_ownership": "House ownership proof",
+    "voter_id": "Voter ID"
+  },
+  "languages": {
+    "en": "English",
+    "hi": "Hindi (हिन्दी)",
+    "bn": "Bengali (বাংলা)",
+    "te": "Telugu (తెలుగు)",
+    "mr": "Marathi (मराठी)",
+    "ta": "Tamil (தமிழ்)"
+  },
+  "consent": {
+    "v1": "I agree that the information, recordings and photos I provide may be collected and used by the disaster relief authorities only to process my relief claim, as described to me in my language. I can ask for my data to be corrected.",
+    "v1_hi": "मैं सहमति देता/देती हूँ कि मेरे द्वारा प्रदान की गई जानकारी, आवाज़ की रिकॉर्डिंग और तस्वीरें आपदा प्रबंधन अधिनियम 2005 और डीपीडीपी अधिनियम 2023 के तहत केवल मेरे आधिकारिक राहत दावे के प्रसंस्करण के लिए एकत्र और उपयोग की जा सकती हैं। मुझे अपने डेटा की समीक्षा और सुधार का अधिकार है।",
+    "v1_bn": "আমি সম্মত হচ্ছি যে আমার দেওয়া তথ্য, ভয়েস রেকর্ডিং এবং ছবিগুলি দুর্যোগ ব্যবস্থাপনা আইন ২০০৫ এবং ডিপিডিপি আইন ২০২৩-এর অধীনে কেবল আমার ত্রাণের দাবি প্রক্রিয়া করার জন্য ব্যবহার করা হবে। আমার তথ্য পর্যালোচনা ও সংশোধন করার অধিকার রয়েছে।",
+    "v1_te": "విపత్తు నిర్వహణ చట్టం 2005 మరియు DPDP చట్టం 2023 ప్రకారం నా అధికారిక సహాయ దావాను ప్రాసెస్ చేయడానికి మాత్రమే నేను అందించిన సమాచారం, వాయిస్ రికార్డింగ్‌లు మరియు ఫోటోలను సేకరించి ఉపయోగించడానికి నేను అంగీకరిస్తున్నాను. నా డేటాను సమీక్షించే మరియు సరిదిద్దే హక్కు నాకు ఉంది.",
+    "v1_mr": "आपत्ती व्यवस्थापन कायदा 2005 आणि DPDP कायदा 2023 अंतर्गत केवळ माझ्या अधिकृत मदत अर्जावर प्रक्रिया करण्यासाठी मी दिलेली माहिती, आवाज रेकॉर्डिंग आणि फोटो संकलित करण्यास मी संमती देतो/देते. मला माझ्या माहितीचे पुनरावलोकन आणि दुरुस्ती करण्याचा अधिकार आहे।",
+    "v1_ta": "பேரிடர் மேலாண்மைச் சட்டம் 2005 மற்றும் DPDP சட்டம் 2023 ஆகியவற்றின் கீழ் எனது அதிகாரப்பூர்வ நிவாரணக் கோரிக்கையைச் செயல்படுத்த மட்டுமே நான் வழங்கும் தகவல்கள், குரல் பதிவுகள் மற்றும் புகைப்படங்களைச் சேகரிக்க நான் ஒப்புக்கொள்கிறேன். எனது தரவை மதிப்பாய்வு செய்து திருத்துவதற்கான உரிமை எனக்கு உள்ளது."
+  }
+}

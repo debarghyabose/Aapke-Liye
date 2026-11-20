@@ -1,0 +1,28 @@
+{
+  "state": "Odisha",
+  "state_code": "OD",
+  "land_portal": "Bhulekh Odisha (bhulekh.ori.nic.in)",
+  "land_authority": "Tehsildar / Revenue Inspector (RI)",
+  "administrative_tiers": {
+    "state_authority": "Special Relief Commissioner (SRC) / OSDMA",
+    "district": "Collector & District Magistrate",
+    "block": "Block Development Officer (BDO)",
+    "tahasil": "Tehsildar",
+    "village": "Village Disaster Management Committee (VDMC)"
+  },
+  "accepted_substitutes": {
+    "land_record": [
+      "Bhulekh Odisha electronic RoR copy (Khata and Plot number)",
+      "Revenue Inspector field panchnama countersigned by Additional Tehsildar",
+      "VDMC emergency disaster roster entry"
+    ],
+    "ration_card": [
+      "NFSA / SFSS digital card extract from Odisha Food Supplies & Consumer Welfare portal",
+      "Fair Price Shop dealer sales register folio"
+    ],
+    "house_ownership": [
+      "Holding tax receipt or TPCODL/WESCO electric bill",
+      "OSDMA verified cyclone shelter relief registry entry"
+    ]
+  }
+}

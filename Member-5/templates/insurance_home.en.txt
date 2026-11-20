@@ -1,0 +1,37 @@
+To,
+The Claims Manager / Disaster Claims Cell,
+{{insurer_name}}
+
+Subject: Intimation of Property Damage Claim under Home / Dwelling Insurance Policy No. {{policy_no}}
+
+Respected Sir / Madam,
+
+1. POLICY & INSURED PROPERTY DETAILS:
+   Insured Name: {{name}}
+   Home Insurance Policy Number: {{policy_no}}
+   Address of Insured Property: {{address}}
+   Mobile Contact: {{phone}}
+   Date of Peril / Loss: {{incident_date}}
+   Insured Peril / Cause of Damage: {{disaster}}
+
+2. PERIL & DAMAGE NARRATIVE:
+{{incident_narrative}}
+
+3. ITEMIZED LOSS PARTICULARS:
+{{losses_table}}
+
+Estimated Financial Quantum of Damage: {{total_loss}}
+
+4. REGISTRATION OF CLAIM & DEPUTATION OF SURVEYOR:
+Under the Insurance Regulatory and Development Authority of India (IRDAI) guidelines for expedited processing of disaster claims, insurers are mandated to register natural catastrophe claims immediately and depute a licensed surveyor without administrative delay.
+
+Photographs of the damage with certified GPS coordinates and timestamps captured via the Aapke Liye system are ready for inspection.
+
+I request you to register this claim, assign a formal Claim Reference Docket Number, and depute an IRDAI-empanelled loss assessor to inspect the damaged dwelling at the earliest.
+
+Yours faithfully,
+
+{{name}}
+Address: {{address}}
+Mobile: {{phone}}
+Date: {{today}}
