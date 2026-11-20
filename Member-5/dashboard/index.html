@@ -340,6 +340,7 @@
       duplicate_photo: "Duplicate photo", gps_mismatch: "GPS mismatch", not_genuine_photo: "Not a genuine photo",
       outside_disaster_area: "Outside disaster area", no_location: "No location", no_capture_time: "No capture time",
       time_invalid: "Time invalid", damage_not_assessed: "Damage not assessed",
+      possible_same_house: "Possibly same house", phone_many_claims: "Phone on many claims",
     };
     const bandColor = (s) => s >= 70 ? "rgba(239, 68, 68, 0.75)" : s >= 40 ? "rgba(245, 158, 11, 0.75)" : s > 0 ? "rgba(250, 204, 21, 0.7)" : "rgba(148, 163, 184, 0.6)";
 
@@ -432,7 +433,9 @@
       const box = document.getElementById("fraud-live");
       box.style.display = "";
       const detail = (i) => i.type === "duplicate_photo" ? `Same photo as claim <strong>${esc(i.other_claim_id)}</strong> (hash distance ${esc(i.hash_distance)})`
-        : i.type === "gps_mismatch" ? `Photo taken ${esc(i.distance_km)} km from the phone's location` : "";
+        : i.type === "gps_mismatch" ? `Photo taken ${esc(i.distance_km)} km from the phone's location`
+        : i.type === "possible_same_house" ? `Photo taken ${esc(i.distance_m)} m from a photo in claim <strong>${esc(i.other_claim_id)}</strong>`
+        : i.type === "phone_many_claims" ? `Same phone number on ${esc(i.other_claims)} other claims in 24 hours` : "";
       box.innerHTML = `<p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">
           Live review queue from Member 3. Each item needs an official's decision; none is proof of fraud.</p>
         <div class="fraud-list">${fraud.items.length ? fraud.items.map((i) => `
