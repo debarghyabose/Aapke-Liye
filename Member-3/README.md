@@ -159,6 +159,29 @@ http://localhost:3000/demo.html (Member 2's backend allows browser calls from po
 Stop the backend or turn off Wi-Fi, start a claim and add a photo, then reconnect: everything
 uploads by itself.
 
+## Demo day (Cyclone Fani, Puri)
+
+1. In `.env`: the Puri demo settings from `data/copernicus/README.md`, plus `GEMINI_API_KEY` and
+   `DASHBOARD_API_KEY`.
+2. Start the service: `uvicorn app.main:app --port 8002`.
+3. Fill the dashboard with demo claims (7 Gemini calls, so run it early):
+   ```powershell
+   python scripts/seed_demo.py
+   ```
+   It sends 7 `DEMO-` claims through `/verify`, using the real photos in `data/demo/photos/`
+   (credits in `ATTRIBUTION.md`) with demo Puri GPS added in memory. They cover: a satellite-graded
+   "Destroyed" house inside the flood map, a "Damaged" house outside it (wind damage, so no flood
+   flag), a duplicate photo, the same house from another photo, a chat screenshot, one phone behind
+   5 claims, a 54 km GPS mismatch, a crop field with a Sentinel-2 before/after loss, and a house
+   outside the disaster area.
+4. Open Member 5's dashboard (`Member-5/dashboard/index.html`), paste the dashboard key, and press
+   **Connect live**.
+
+The script refuses to run twice, because re-adding the same photos would flag them all as
+duplicates. To start over: stop the service, delete `member3.db`, start it, and run the script again.
+Photos taken live at the venue fall outside the Puri disaster area, which is correct. For a live
+demo, set `DISASTER_ZONE_*` to where you are.
+
 ## API
 
 **`POST /verify`**, called by Member 2 for every claim photo.
