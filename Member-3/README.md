@@ -48,6 +48,10 @@ amounts and claim status come from Member 2: **join on `claim_id`**.
   send it as the `X-Dashboard-Key` header. The service warns at startup when the key isn't set.
   The heatmap's grid cells hide exact household locations.
 - Fraud flags are for review only. None of them proves fraud: an official decides.
+- **Member 5's dashboard** (`Member-5/dashboard/index.html`) connects automatically when this
+  service runs on port 8002: KPIs, map, damage queue and fraud panel switch to live data, and it
+  falls back to its sample data otherwise. Browsers may only read `/dashboard` from the pages listed
+  in `DASHBOARD_CORS_ORIGINS` (by default, the file opened directly and a few localhost ports).
 - Photo fingerprints are saved too, so a re-used photo is still caught after a restart.
 
 ## Offline queue (for Member 4's frontend)

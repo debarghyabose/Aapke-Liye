@@ -32,6 +32,12 @@ DB_PATH = os.getenv("MEMBER3_DB_PATH", "member3.db")
 # If set, /dashboard/* requires the header X-Dashboard-Key with this value.
 # Leave empty only on your own computer: the dashboard shows exact victim locations.
 DASHBOARD_API_KEY = os.getenv("DASHBOARD_API_KEY", "")
+# Web pages allowed to read /dashboard from a browser (Member 5's dashboard).
+# "null" = the dashboard opened straight from a file (file://). Remove it in production.
+DASHBOARD_CORS_ORIGINS = [o.strip() for o in os.getenv(
+    "DASHBOARD_CORS_ORIGINS",
+    "null,http://localhost:5500,http://127.0.0.1:5500,http://localhost:8080,http://localhost:3000",
+).split(",") if o.strip()]
 
 # Photos whose perceptual hashes differ by this many bits or fewer count as the same photo.
 PHASH_MAX_DISTANCE = 8

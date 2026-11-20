@@ -117,6 +117,18 @@ def test_dashboard_key_required_when_set(monkeypatch):
         assert client.get(path, headers={"X-Dashboard-Key": "secret-dashboard-key"}).status_code == 200
 
 
+def test_browser_dashboard_can_read_but_not_other_sites():
+    """Member 5's dashboard (opened from a file: Origin null) may read /dashboard."""
+    ok = client.get("/dashboard/summary", headers={"Origin": "null"})
+    assert ok.headers.get("access-control-allow-origin") == "null"
+    evil = client.get("/dashboard/summary", headers={"Origin": "https://evil.example"})
+    assert "access-control-allow-origin" not in evil.headers
+    pre = client.options("/dashboard/summary", headers={
+        "Origin": "null", "Access-Control-Request-Method": "GET",
+        "Access-Control-Request-Headers": "X-Dashboard-Key"})
+    assert pre.status_code == 200
+
+
 def test_duplicates_survive_restart(photo_factory, tmp_path):
     """Fingerprints are saved, so a re-used photo is caught after the service restarts."""
     photo = photo_factory(seed=13)
