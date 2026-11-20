@@ -1,137 +1,160 @@
 <div align="center">
 
-# 🤝 Aapke Liye — *For You*
+# 🤝 Aapke Liye (आपके लिए) — *For You*
 
-### Speak once. Get your relief form. Even with no network.
+### Speak in your language. Show what you lost. Get your relief, even if your documents are gone.
 
-**A voice-first, offline-capable disaster relief claim app for India — in 6 languages.**
+**AI-powered disaster relief infrastructure connecting victims, volunteers and government, from claim to payment.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-![PWA](https://img.shields.io/badge/Citizen%20App-PWA-5A0FC8?logo=pwa&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?logo=fastapi&logoColor=white)
-![Cloud Run](https://img.shields.io/badge/Deploy-Cloud%20Run%20(Mumbai)-4285F4?logo=googlecloud&logoColor=white)
-![Gemini](https://img.shields.io/badge/AI-Gemini-8E75B2?logo=googlegemini&logoColor=white)
-![AlloyDB](https://img.shields.io/badge/DB-AlloyDB-4285F4?logo=postgresql&logoColor=white)
-![Status](https://img.shields.io/badge/status-planning-orange)
+![PostgreSQL](https://img.shields.io/badge/DB-PostgreSQL%20%2B%20PostGIS-336791?logo=postgresql&logoColor=white)
+![Speech](https://img.shields.io/badge/Speech-Bhashini%20%7C%20Whisper-FF6F00)
+![Offline](https://img.shields.io/badge/App-Offline--first-5A0FC8)
+![Status](https://img.shields.io/badge/status-building%20MVP-orange)
 
-[The Problem](#-the-problem) · [How it works](#-how-it-works) · [Architecture](#-architecture) · [Repo Structure](#-repository-structure) · [Team](#-team--ownership) · [Work Plan](#-work-plan) · [Getting Started](#-getting-started)
+**Team OPUS · Institute of Engineering and Management (IEM), Kolkata · Startup Buildathon India 2026**
+
+[Problem](#-the-problem) · [Solution](#-our-solution) · [Features](#-features) · [Architecture](#%EF%B8%8F-architecture) · [Team](#-team--work-split) · [Business Model](#-business-model) · [Work Plan](#%EF%B8%8F-work-plan)
 
 </div>
 
 ---
 
-## 🌊 The Problem
+## 🌊 The problem
 
-When a flood, cyclone, landslide or fire hits, the people who need relief the most face a wall:
+After a flood, cyclone, earthquake or fire, the government announces relief money. Victims often never receive it, or get it very late, because:
 
-- 📄 **Paper forms** they can't read, in a language that isn't theirs.
-- 🪪 **Documents lost** in the very disaster they are claiming for.
-- 📵 **No network** for days — exactly when claims must be filed.
-- ⏳ **Long queues** at block offices, and claims that silently go missing.
+- 📄 **Claim forms** use formal, official language many people can't read.
+- 🪪 **The disaster destroys their documents**: ID, land records, bank passbooks.
+- ❓ **They don't know** which schemes they qualify for, what to write, or where to submit.
+- 🕳️ **Nobody tracks the claim** once it's submitted, and stuck claims are forgotten.
+- 🗂️ **Officials get messy, incomplete or duplicate claims** with no quick way to verify them.
 
-Officials, on the other side, drown in handwritten forms with no way to search, verify or prioritise them.
+## 💡 Our solution
 
-## 💡 Our Solution
+> **"After a disaster, Aapke Liye lets anyone just speak in their own language and show photos of what they lost, and it turns that into a ready government relief claim, even if their documents are gone."**
 
-**Aapke Liye** lets any citizen **speak** their loss in their own language. AI turns that into a complete, official relief claim — and if the network is down, the app **finishes the claim on the phone** and sends it automatically when signal returns.
+The victim **speaks** and **takes photos of the damage**. Aapke Liye turns that into a **ready-to-submit relief claim**, then **tracks it until the money arrives**.
 
-| For citizens (free) | For officials (paid) |
+We focus on the **recovery phase**, the weeks after a disaster, not just rescue.
+
+| For victims (always free) | For government & NGOs |
 |---|---|
-| 🗣️ Speak in 1 of 6 languages — no typing, no reading needed | 📊 Dashboard filtered by block & status |
-| 📸 Photograph damage — GPS + time saved as proof | 🕐 Sees the **original** filing time, even for offline claims |
-| 🤖 AI asks follow-up questions out loud | 💬 Ask questions in plain language → read-only SQL |
-| 📴 Works fully offline, syncs later | ✅ Approve, or 🚩 flag for field visit |
-| 🧾 Gets a PDF with claim ID + QR, instantly | 🔍 AI-rechecked relief amounts per SDRF norms |
+| 🗣️ Speak in English or one of India's top 5 languages | ✅ GPS, timestamp and satellite verification |
+| 📸 Camera-based damage assessment | 🚫 Duplicate and fraud detection |
+| 🧾 Auto-filled official relief form, even with lost documents | 🗺️ Live village-level damage heatmap |
+| 💰 Finds every scheme they qualify for | 👥 Priority lists for vulnerable groups |
+| 📍 Tracks the claim until the money arrives | 📋 Bulk filing by NGO workers |
 
 ---
 
-## 🔄 How it works
+## ✨ Features
 
-![Aapke Liye app workflow](assets/workflow.jpg)
+Organised by the relief journey. **✅ = in the MVP demo** · 🛣️ = roadmap
 
-<details>
-<summary><b>📝 Step-by-step (click to expand)</b></summary>
+### 🛡️ Before the disaster
+| Feature | What it does | |
+|---|---|---|
+| Disaster document vault | Store ID, land records and bank details in advance, with DigiLocker linking | 🛣️ |
+| Baseline photos | Photograph house, fields and livestock in normal times for before/after comparison | 🛣️ |
+| Household pre-registration | Volunteers or panchayats register high-risk families so claims are half-filled | 🛣️ |
 
-1. **Open app** — PWA, cached on the phone. Pick 1 of 6 languages.
-2. **Consent**, then **speak** or **photograph** the damage (GPS + time saved).
-3. **Network check (5 s)**
-   - **Online →** Gemini turns voice into claim JSON → asks follow-ups (spoken by Cloud TTS) until nothing is missing.
-   - **Offline →** guided taps + prerecorded voice prompts → *the same* claim JSON → relief **estimated** from cached SDRF rates.
-4. **Read-back** — the claim is read aloud; the citizen confirms.
-5. **Documents lost?** — upload substitute proof; Gemini vision checks it (queued if offline).
-6. **Fill relief form** — PDF + claim ID + QR (offline: draft + QR).
-7. **Save on phone first** — always, in IndexedDB.
-8. **Send** when network is available — JSON first, then audio, then photos. Retries on app open, on signal return, and every 30 s.
-9. **Server** saves to AlloyDB + Cloud Storage (upsert by claim ID), Gemini re-checks audio/photos and relief, produces the final PDF + status.
-10. **Officials** review on the dashboard → **Approve** (relief released) or **Flag for field visit**.
+### 🗣️ While claiming
+| Feature | What it does | |
+|---|---|---|
+| Voice claim filing | Speak in 6 languages; AI extracts name, location, loss type and amounts | ✅ |
+| Damage vision | AI checks and scores damage from photos | ✅ basic · 🛣️ before/after |
+| Entitlement engine | Matches losses to SDRF relief norms and estimates the amount | ✅ SDRF · 🛣️ all schemes |
+| Proof substitution | Suggests accepted alternatives when documents are lost | ✅ |
+| Auto-filled relief form PDF | Official form, ready to submit | ✅ |
+| Offline-first app | Works with no network; uploads when signal returns | ✅ |
+| Replacement applications | Drafts reissue requests for lost Aadhaar, ration cards and land records | 🛣️ |
+| Insurance claims | Generates home, vehicle and crop insurance claims from the same data | 🛣️ |
+| WhatsApp bot + IVR line | For people without smartphones or data | 🛣️ |
 
-</details>
+### 📍 After submitting
+| Feature | What it does | |
+|---|---|---|
+| Claim tracking | Submitted → Verified → Approved → Paid | ✅ |
+| Voice/SMS updates | Status changes in the user's own language | 🛣️ |
+| Auto-escalation | Drafts follow-up letters, grievances and RTI applications for stuck claims | 🛣️ |
+| Payment confirmation | Checks the DBT money actually reached the account | 🛣️ |
+
+### 🏛️ For government & NGOs
+| Feature | What it does | |
+|---|---|---|
+| Basic verification | GPS, timestamp and duplicate checks | ✅ |
+| Satellite verification | Confirms the claim location is in the affected zone (Sentinel-1, ISRO Bhuvan) | 🛣️ |
+| Live damage dashboard | Village heatmap, total damage, vulnerable-group priority lists | 🛣️ |
+| Bulk mode | One NGO worker files for many families | 🛣️ |
 
 ---
 
 ## 🏗️ Architecture
 
+> **Any channel in → AI understands and verifies → the right forms reach the right office → the victim is tracked until the money arrives.**
+
 ```mermaid
-flowchart LR
-    subgraph Phone["📱 Citizen phone (PWA)"]
-        UI[UI · 6 languages]
-        SW[Service worker<br/>app cache]
-        IDB[(IndexedDB<br/>claims + media)]
-        SYNC[Sync engine<br/>JSON → audio → photos]
-        EST[SDRF estimator<br/>cached rates]
-        UI --> IDB
-        UI --> EST
-        IDB --> SYNC
+flowchart TB
+    subgraph A["📱 Access channels"]
+        A1[Mobile app<br/>offline-first]
+        A2[WhatsApp bot]
+        A3[IVR line<br/>feature phones]
+        A4[NGO portal<br/>bulk filing]
     end
-
-    subgraph GCP["☁️ Google Cloud · asia-south1 (Mumbai)"]
-        API[FastAPI on Cloud Run<br/>one service]
-        DB[(AlloyDB<br/>claims)]
-        GCS[(Cloud Storage<br/>audio · photos · PDFs)]
-        API --> DB
-        API --> GCS
+    subgraph G["🔐 API gateway + offline sync"]
+        G1[FastAPI · auth · queued uploads]
     end
-
-    subgraph AI["🤖 Google AI"]
-        GEM[Gemini<br/>voice → JSON · vision · NL→SQL]
-        TTS[Cloud TTS]
+    subgraph AI["🤖 AI layer"]
+        I1[Speech AI<br/>STT, 6 languages]
+        I2[Claim AI<br/>speech → fields]
+        I3[Damage vision<br/>before vs after]
+        I4[Entitlement engine<br/>scheme matching]
     end
-
-    SYNC -- HTTPS, idempotent upsert --> API
-    UI -- online only --> API
-    API --> GEM
-    API --> TTS
-
-    DASH[🖥️ Officials dashboard] --> API
+    subgraph C["⚙️ Core services"]
+        C1[Doc vault<br/>DigiLocker sync]
+        C2[Form builder<br/>relief PDFs]
+        C3[Verification<br/>GPS · satellite · duplicates]
+        C4[Claim tracker<br/>status · escalation · RTI]
+    end
+    subgraph D["🗄️ Data layer"]
+        D1[(PostgreSQL + PostGIS)]
+        D2[(Encrypted photo &<br/>document storage)]
+        D3[(Audit log)]
+    end
+    subgraph O["📤 Outputs"]
+        O1[Govt dashboard<br/>damage heatmap]
+        O2[Govt portals /<br/>DBT payments]
+        O3[Insurers<br/>verified claims]
+        O4[Notifications<br/>SMS + voice]
+    end
+    A --> G --> AI --> C --> D
+    C --> O
 ```
 
-**Key design rules**
+### 🎬 MVP demo flow
 
-| # | Rule | Why |
-|---|---|---|
-| 1 | **One claim JSON format** for online *and* offline | Everything downstream is a single pipeline |
-| 2 | **Save on phone first, always** | A claim is never lost — even if the phone dies mid-upload |
-| 3 | **Upload order: JSON → audio → photos** | The important, tiny part gets through on 2G |
-| 4 | **Upsert by claim ID** (UUID made on the phone) | Retries are always safe; no duplicates |
-| 5 | **Server re-verifies everything** | Offline estimates are never final |
-| 6 | **Original filing time is kept** | Offline filers are never penalised |
-| 7 | **NL→SQL runs as a read-only DB role** | The AI can never change data |
+```mermaid
+flowchart LR
+    S[🗣️ Speak + 📸 photos] --> STT[Speech AI] --> CL[Claim AI] --> V[Verify photos<br/>GPS + time] --> F[Relief form PDF<br/>+ SDRF amount] --> T[📍 Track claim]
+```
 
 ### 🧰 Tech stack
 
 | Layer | Technology |
 |---|---|
-| Citizen app | PWA · Vanilla JS + Vite · Service Worker · IndexedDB · MediaRecorder |
-| Officials dashboard | Static HTML/JS served by the same FastAPI service |
-| Backend | Python 3.12 · FastAPI · SQLAlchemy · ReportLab (PDF) · qrcode |
-| AI | Gemini (audio understanding, vision, NL→SQL) · Google Cloud Text-to-Speech |
-| Data | AlloyDB (PostgreSQL-compatible) · Cloud Storage |
-| Hosting | Cloud Run, `asia-south1` (Mumbai) — data stays in India |
-| CI | GitHub Actions |
+| Backend | Python · FastAPI |
+| Speech | Bhashini APIs or Whisper (multilingual speech-to-text and translation) |
+| Claim AI | LLM for field extraction and document drafting |
+| Vision | Damage classification · before/after comparison |
+| Geo | PostGIS · Sentinel-1 / ISRO Bhuvan flood layers |
+| Data | PostgreSQL · encrypted object storage for media |
+| Channels | Offline-first mobile app · WhatsApp Business API · IVR provider |
+| Documents | PDF generation for official forms |
 
 ### 🌐 Languages
-
-Hindi · Bengali · Marathi · Tamil · Telugu · English
+English + India's top 5 languages.
 
 ---
 
@@ -144,14 +167,13 @@ Aapke-Liye/
 ├── Member-3/README.md    🛰️ Verification + Offline + Channels
 ├── Member-4/README.md    🎨 Frontend + Claim Tracking
 ├── Member-5/README.md    ⚖️ Entitlement, Policy & Pitch
-├── assets/workflow.jpg   app workflow diagram
 ├── README.md
 └── LICENSE
 ```
 
 ---
 
-## 👥 Team & ownership
+## 👥 Team & work split
 
 | Member | Role | Key deliverables |
 |---|---|---|
@@ -167,85 +189,48 @@ Aapke-Liye/
 
 ---
 
+## 💼 Business model
+
+| Customer | Pays? | Why they pay |
+|---|---|---|
+| **Victims** | **Always free** | They are the people we serve |
+| **State Disaster Management Authorities & district offices (B2G)** | SaaS licence | Clean, verified, de-duplicated claims; faster processing; audit trail |
+| **Insurers** | Per verified claim | Fraud-checked, evidence-backed claims |
+| **NGOs / CSR** | Funded deployments | Rollouts in high-risk districts |
+
+---
+
 ## 🎯 Final goal
 
-> **A citizen in a flood-hit village, with no network and no documents, can file a complete relief claim by voice in under 5 minutes — and an official in the block office sees it, verified, the moment signal returns.**
+> **Any disaster victim, in any language, with or without documents, can file a complete relief claim by voice in minutes, and is tracked until the money reaches their account.**
 
-**Definition of done (v1.0)**
-
-- [ ] Full claim filed **by voice** in all **6 languages**, online
-- [ ] Full claim filed **with zero network**, synced automatically later
-- [ ] **No claim ever lost** — kill the app / phone mid-upload and it still arrives
-- [ ] **No duplicate** claims from retries
-- [ ] Relief estimate on phone matches server re-check for standard cases
-- [ ] Citizen receives PDF + claim ID + QR
-- [ ] Officials can filter, ask questions in plain language, approve or flag
-- [ ] Runs on a ₹7,000 Android phone on a 2G connection
-- [ ] Deployed on Cloud Run (Mumbai) with CI green
+**MVP definition of done**
+- [ ] Voice in → filled relief PDF out, in all 6 languages
+- [ ] Damage photos checked, with GPS and timestamp verified
+- [ ] Relief amount estimated from SDRF norms
+- [ ] Proof substitution suggested when documents are lost
+- [ ] Works offline; claim sent when signal returns
+- [ ] Claim status trackable: Submitted → Verified → Approved → Paid
 
 ---
 
 ## 🗓️ Work plan
 
-6 weeks, 3 phases, starting Mon 23 Nov 2026. Per-member weekly tasks are in each `Member-N` folder.
-
-```mermaid
-gantt
-    title Aapke Liye — 6-week plan
-    dateFormat  YYYY-MM-DD
-    axisFormat  W%W
-    section Phase 1 · Foundation
-    Claim schema + API contract (all)      :p1a, 2026-11-23, 4d
-    Repo, CI, Cloud Run skeleton (M5)      :p1b, 2026-11-23, 5d
-    PWA shell + language/consent (M1)      :p1c, 2026-11-25, 6d
-    IndexedDB + service worker (M2)        :p1d, 2026-11-25, 6d
-    DB schema + upsert API (M4)            :p1e, 2026-11-25, 6d
-    Gemini voice → JSON prototype (M3)     :p1f, 2026-11-25, 6d
-    section Phase 2 · Core flows
-    Online voice loop + TTS (M1, M3)       :p2a, 2026-12-07, 7d
-    Offline guided flow + estimator (M1,M2):p2b, 2026-12-07, 7d
-    Sync engine + retries (M2, M4)         :p2c, 2026-12-10, 7d
-    PDF + QR, storage (M4)                 :p2d, 2026-12-10, 7d
-    Dashboard + filters (M5)               :p2e, 2026-12-07, 10d
-    section Phase 3 · Polish & ship
-    Vision proof check + server recheck(M3):p3a, 2026-12-21, 6d
-    NL → SQL (M5)                          :p3b, 2026-12-21, 6d
-    Field test, 2G test, bug bash (all)    :p3c, 2026-12-28, 5d
-    Demo + v1.0 release (all)              :milestone, 2027-01-02, 0d
-```
-
-| Phase | Weeks | Milestone |
+| Phase | Goal | Features |
 |---|---|---|
-| 🧱 **1. Foundation** | 1–2 | Contract frozen; an empty claim can travel phone → IndexedDB → API → AlloyDB |
-| ⚙️ **2. Core flows** | 3–4 | Full claim works online **and** offline end-to-end; officials can see it |
-| 🚀 **3. Polish & ship** | 5–6 | AI re-check, NL→SQL, real-device testing, v1.0 demo |
+| 🧱 **Phase 1: Core demo** | Voice in → relief PDF out, tracked | Speech AI, Claim AI, form builder, basic verification, offline sync, SDRF rules, 5 app screens, tracking |
+| 🚀 **Phase 2: Roadmap** (build in this order) | Prove all three pitch highlights | 1. Before/after photo comparison · 2. Satellite verification · 3. Full entitlement engine + escalation · 4. WhatsApp bot · 5. Everything else |
+
+### 🌟 Three pitch highlights
+1. **Before/after vault:** prepares people instead of only reacting
+2. **Entitlement engine + tracking/escalation:** victims actually get the money
+3. **Satellite verification + government dashboard:** officials trust and adopt it
 
 ---
-
-## 🚀 Getting started
-
-> 🚧 **The repo is at the planning stage.** Code arrives phase by phase, following the work plan above.
-
-1. Clone the repo:
-   ```bash
-   git clone https://github.com/debarghyabose/Aapke-Liye.git
-   ```
-2. Open your `Member-N` folder and add your name and GitHub username to its README.
-3. **Week 1:** agree on the claim JSON format together. Everything else builds on it.
-
-### Prerequisites (for when building starts)
-- Node.js 20+ · Python 3.12+ · PostgreSQL 15+ (local stand-in for AlloyDB)
-- A Google Cloud project with the Gemini API and Cloud TTS enabled
-
----
-
-## 🤝 Contributing
-
-Branch from `main` as `m<N>/<short-topic>` (e.g. `m2/sync-retry`), open a pull request, and get one review from a teammate.
 
 ## 🔐 Privacy
 
-Consent is taken before any data is collected. We store only the **last 4 digits** of any ID number, keep all data in India (`asia-south1`), and officials' AI queries run on a **read-only** database role.
+Consent comes before any data is collected. Documents and photos are stored encrypted, every action is in an audit log, and we design for India's DPDP Act with data kept in India.
 
 ## 📄 License
 
@@ -253,6 +238,6 @@ Released under the [MIT License](LICENSE).
 
 <div align="center">
 
-**Made with ❤️ for the people who need it most — *aapke liye*.**
+**Made with ❤️ by Team OPUS, for the people who need it most: *aapke liye*.**
 
 </div>
