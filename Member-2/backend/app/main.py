@@ -60,8 +60,8 @@ app.include_router(status.router)
 app.include_router(staff.router)
 
 
-async def _service_state(url: str) -> str:
-    if settings.mock_services:
+async def _service_state(url: str, mocked: bool) -> str:
+    if mocked:
         return "mock"
     if not url:
         return "not_configured"
@@ -86,13 +86,15 @@ async def _database_state() -> str:
 async def health(response: Response):
     """200 when the database works (Members 1/3 being down is reported, not fatal), else 503."""
     database, member1, member3 = await asyncio.gather(
-        _database_state(), _service_state(settings.member1_ai_url),
-        _service_state(settings.member3_verify_url))
+        _database_state(), _service_state(settings.member1_ai_url, settings.use_mock_member1),
+        _service_state(settings.member3_verify_url, settings.use_mock_member3))
     warnings = []
     if rules_are_sample():
         warnings.append("SDRF rules are a SAMPLE: relief amounts are estimates only")
-    if settings.mock_services:
-        warnings.append("MOCK_SERVICES is on: Member 1/3 answers are fake (development only)")
+    if settings.use_mock_member1:
+        warnings.append("Member 1 is mocked: transcripts and fields are fake (development only)")
+    if settings.use_mock_member3:
+        warnings.append("Member 3 is mocked: photo checks are fake (development only)")
     response.status_code = 200 if database == "ok" else 503
     return {"ok": database == "ok", "env": settings.app_env, "database": database,
             "member1_ai": member1, "member3_verify": member3,
