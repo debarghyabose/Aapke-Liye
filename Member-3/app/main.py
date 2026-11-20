@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import config, ivr, sync, whatsapp
+from app import config, ivr, mesh, sync, whatsapp
 from app.dashboard import router as dashboard_router
 from app.geodata import get_geo
 from app.store import get_store
@@ -37,6 +37,8 @@ async def lifespan(app: FastAPI):
                  config.PUBLIC_BASE_URL or "(set PUBLIC_BASE_URL)", config.MEMBER2_API_URL)
         if config.WHATSAPP_STATUS_POLL_SECONDS > 0:
             poller = asyncio.create_task(whatsapp.status_loop())
+    if not mesh.enabled():
+        log.info("Mesh is off: run scripts/make_mesh_keys.py to turn it on")
     if ivr.enabled():
         log.info("IVR line on: set your Twilio number's \"A call comes in\" to %s/ivr/voice",
                  config.PUBLIC_BASE_URL or "(set PUBLIC_BASE_URL)")
@@ -51,14 +53,16 @@ app = FastAPI(title="Aapke Liye: Verification + Offline Sync", version="0.3.0", 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=config.DASHBOARD_CORS_ORIGINS,
-    allow_methods=["GET"],
-    allow_headers=["X-Dashboard-Key"],
+    # POST is for /mesh/envelopes from Member 4's app (a carried claim). Other POSTs need no CORS.
+    allow_methods=["GET", "POST"],
+    allow_headers=["X-Dashboard-Key", "Content-Type"],
 )
 app.include_router(verify_router)
 app.include_router(dashboard_router)
 app.include_router(sync_router)
 app.include_router(whatsapp.router)
 app.include_router(ivr.router)
+app.include_router(mesh.router)
 
 
 @app.get("/health")
