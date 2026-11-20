@@ -39,28 +39,47 @@ def _distance_m(lat: float, lon: float, geom) -> float:
 
 
 def _read_geometries(path: Path) -> list:
-    """Polygons/points from GeoJSON, shapefile or Open Buildings CSV (WKT `geometry` column)."""
+    """(geometry, properties) pairs from GeoJSON, shapefile or Open Buildings CSV, always in
+    longitude/latitude. Shapefiles in metres (e.g. Copernicus EMS files in UTM) are converted
+    using their .prj file."""
     suffix = path.suffix.lower()
     if suffix in (".geojson", ".json"):
         data = json.loads(path.read_text(encoding="utf-8"))
         feats = data["features"] if data.get("type") == "FeatureCollection" else [data]
-        return [shape(f["geometry"] if "geometry" in f else f) for f in feats if f.get("geometry", f)]
-    if suffix == ".shp":
+        out = [(shape(f["geometry"] if "geometry" in f else f), f.get("properties") or {})
+               for f in feats if f.get("geometry", f)]
+    elif suffix == ".shp":
         import shapefile  # pyshp
 
         with shapefile.Reader(str(path)) as r:
-            return [shape(s.__geo_interface__) for s in r.shapes() if s.points]
-    if suffix == ".csv":
+            names = [f[0] for f in r.fields[1:]]
+            out = [(shape(sr.shape.__geo_interface__), dict(zip(names, sr.record)))
+                   for sr in r.shapeRecords() if sr.shape.points]
+        prj = path.with_suffix(".prj")
+        if prj.exists() and "PROJCS" in prj.read_text(errors="ignore").upper():
+            from pyproj import CRS, Transformer
+
+            t = Transformer.from_crs(CRS.from_wkt(prj.read_text(errors="ignore")), 4326, always_xy=True)
+            to_lonlat = lambda xy: __import__("numpy").column_stack(t.transform(xy[:, 0], xy[:, 1]))  # noqa: E731
+            out = [(shapely.transform(g, to_lonlat), p) for g, p in out]
+            log.info("Converted %s from %s to longitude/latitude", path.name, CRS.from_wkt(prj.read_text(errors="ignore")).name)
+    elif suffix == ".csv":
         csv.field_size_limit(min(sys.maxsize, 2**31 - 1))
-        geoms = []
+        out = []
         with path.open(newline="", encoding="utf-8") as f:
             for row in csv.DictReader(f):
                 if row.get("geometry"):
-                    geoms.append(wkt.loads(row["geometry"]))
+                    out.append((wkt.loads(row["geometry"]), {}))
                 elif row.get("latitude") and row.get("longitude"):
-                    geoms.append(Point(float(row["longitude"]), float(row["latitude"])))
-        return geoms
-    raise ValueError(f"Unsupported map file type: {path.name} (use .geojson, .shp or .csv)")
+                    out.append((Point(float(row["longitude"]), float(row["latitude"])), {}))
+    else:
+        raise ValueError(f"Unsupported map file type: {path.name} (use .geojson, .shp or .csv)")
+    # A file still in metres would put every point in the wrong place: refuse it.
+    for g, _ in out[:50]:
+        minx, miny, maxx, maxy = g.bounds
+        if not (-180 <= minx <= 180 and -180 <= maxx <= 180 and -90 <= miny <= 90 and -90 <= maxy <= 90):
+            raise ValueError(f"{path.name} is not in longitude/latitude (add its .prj file, or convert to WGS84)")
+    return out
 
 
 class Layer:
@@ -68,6 +87,7 @@ class Layer:
 
     def __init__(self, files: list[str], kind: str):
         self.geoms: list = []
+        self.props: list[dict] = []       # same order as geoms
         self.coverage: list[tuple] = []   # (name, bbox polygon)
         for f in files:
             p = Path(f)
@@ -75,12 +95,14 @@ class Layer:
                 log.warning("%s file not found: %s", kind, p)
                 continue
             try:
-                g = [x for x in _read_geometries(p) if not x.is_empty]
+                pairs = [(g, pr) for g, pr in _read_geometries(p) if not g.is_empty]
             except Exception as e:  # a broken file must not stop the service
                 log.error("Could not read %s file %s: %s", kind, p, e)
                 continue
+            g = [x for x, _ in pairs]
             if g:
                 self.geoms.extend(g)
+                self.props.extend(pr for _, pr in pairs)
                 minx = min(x.bounds[0] for x in g); miny = min(x.bounds[1] for x in g)
                 maxx = max(x.bounds[2] for x in g); maxy = max(x.bounds[3] for x in g)
                 self.coverage.append((p.stem, box(minx, miny, maxx, maxy)))
@@ -92,16 +114,19 @@ class Layer:
         pt = Point(lon, lat)
         margin_deg = margin_m / M_PER_DEG_LAT
         for name, area in self.coverage:
-            if area.buffer(margin_deg).contains(pt):
+            if area.buffer(margin_deg).covers(pt):   # covers: points on the edge count too
                 return name
         return None
 
     def near(self, lat: float, lon: float, radius_m: float) -> list:
+        return [g for g, _ in self.near_with_props(lat, lon, radius_m)]
+
+    def near_with_props(self, lat: float, lon: float, radius_m: float) -> list[tuple]:
         if self.tree is None:
             return []
         deg = radius_m / (M_PER_DEG_LAT * max(0.2, math.cos(math.radians(lat))))
         idx = self.tree.query(Point(lon, lat).buffer(deg))
-        return [self.geoms[i] for i in idx]
+        return [(self.geoms[i], self.props[i]) for i in idx]
 
 
 class GeoData:
@@ -133,15 +158,21 @@ class GeoData:
         out = {"building_found": None, "distance_m": None}
         if lat is None or lon is None or self.buildings.tree is None:
             return out
-        if self.buildings.covering(lat, lon) is None:
+        # Margin: a photo just outside the outermost mapped building is still in the mapped area.
+        if self.buildings.covering(lat, lon, margin_m=config.BUILDING_SEARCH_M) is None:
             return out
         r = config.BUILDING_SEARCH_M
-        near = self.buildings.near(lat, lon, r * 2)
+        near = self.buildings.near_with_props(lat, lon, r * 2)
         if not near:
             out["building_found"] = False
             return out
-        d = min(_distance_m(lat, lon, g) for g in near)
+        d, props = min(((_distance_m(lat, lon, g), p) for g, p in near), key=lambda x: x[0])
         out.update(building_found=d <= r, distance_m=round(d, 1))
+        # Copernicus EMS grading products rate each building from satellite images.
+        grade = props.get("damage_gra") or props.get("damage_grade")
+        if d <= r and grade and str(grade).lower() not in ("", "none", "unknown", "not applicable"):
+            out["damage_grade"] = str(grade)
+            out["grade_source"] = props.get("source") or "Copernicus EMS"
         return out
 
     def flood_geojson(self, tolerance_deg: float = 0.0005, max_features: int = 5000) -> dict:

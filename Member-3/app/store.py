@@ -49,6 +49,7 @@ LATER_COLUMNS = {
     "flood_map": "TEXT",                # which flood map file was used
     "building_found": "INTEGER",        # building map: 1 found, 0 none nearby, NULL no data
     "building_distance_m": "REAL",
+    "satellite_damage_grade": "TEXT",   # e.g. Copernicus EMS grading: Destroyed / Damaged / ...
 }
 
 

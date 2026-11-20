@@ -165,3 +165,48 @@ def test_flood_extent_endpoint_and_summary(maps, photo_factory):
     sat = client.get("/dashboard/summary").json()["satellite"]
     assert sat == {"flood_maps_loaded": ["ems_flood_demo"], "claims_inside_flood": 1,
                    "claims_outside_flood": 1, "claims_without_map": 0}
+
+
+# ---------------------------------------------------------------- real-data formats
+
+def test_utm_shapefile_is_converted_to_lat_lon(tmp_path, monkeypatch):
+    """Copernicus EMS files can be in metres (UTM 44N); the .prj tells us how to convert."""
+    from pyproj import CRS, Transformer
+
+    to_utm = Transformer.from_crs(4326, 32644, always_xy=True)
+    ring = [list(to_utm.transform(x, y)) for x, y in [[83.20, 17.70], [83.24, 17.70], [83.24, 17.74], [83.20, 17.74], [83.20, 17.70]]]
+    shp = tmp_path / "emsr_utm"
+    with shapefile.Writer(str(shp), shapeType=shapefile.POLYGON) as w:
+        w.field("interpret", "C")
+        w.poly([ring])
+        w.record("Flooded Area")
+    (tmp_path / "emsr_utm.prj").write_text(CRS.from_epsg(32644).to_wkt("WKT1_ESRI"))
+    monkeypatch.setattr(config, "FLOOD_MAP_FILES", [str(shp) + ".shp"])
+    g = geodata.reload_geo()
+    assert g.flood_check(17.72, 83.22)["in_flood"] is True
+    assert g.flood_check(17.80, 83.22)["in_flood"] is False
+
+
+def test_file_in_metres_without_prj_is_refused(tmp_path, monkeypatch):
+    path = geojson(tmp_path / "metres.geojson", [[[721670, 1946404], [743752, 1946404], [743752, 1976525], [721670, 1946404]]])
+    monkeypatch.setattr(config, "FLOOD_MAP_FILES", [path])
+    assert geodata.reload_geo().floods.tree is None  # skipped with an error, not loaded wrongly
+
+
+def test_satellite_damage_grade_is_reported_and_clears_flood_flag(tmp_path, monkeypatch, photo_factory):
+    """Cyclone wind damage: outside the flood map, but Copernicus graded the building Damaged."""
+    flood = geojson(tmp_path / "flood.geojson", [FLOOD])
+    pts = tmp_path / "grading.geojson"
+    pts.write_text(json.dumps({"type": "FeatureCollection", "features": [
+        {"type": "Feature", "properties": {"damage_gra": "Damaged", "source": "Copernicus EMS EMSR999"},
+         "geometry": {"type": "Point", "coordinates": [88.395, 22.598]}},
+        {"type": "Feature", "properties": {"damage_gra": "Destroyed", "source": "Copernicus EMS EMSR999"},
+         "geometry": {"type": "Point", "coordinates": [88.34, 22.55]}}]}))
+    monkeypatch.setattr(config, "FLOOD_MAP_FILES", [flood])
+    monkeypatch.setattr(config, "BUILDING_FILES", [str(pts)])
+    geodata.reload_geo()
+    body = send(photo_factory(seed=20, lat=22.598, lon=88.395, taken_at=T), "AL-WIND")
+    assert has(body["notes"], 'graded "Damaged"') and has(body["notes"], "so no flood flag")
+    props = client.get("/dashboard/claims.geojson").json()["features"][0]["properties"]
+    assert props["satellite_damage_grade"] == "Damaged" and "outside_flood_extent" not in props["flags"]
+    assert all(i["type"] != "outside_flood_extent" for i in client.get("/dashboard/fraud-flags").json()["items"])

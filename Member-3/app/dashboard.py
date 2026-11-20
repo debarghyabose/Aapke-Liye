@@ -57,7 +57,9 @@ def flags_for(check: dict) -> list[str]:
         flags.append("possible_same_house")
     if (check.get("phone_other_claims") or 0) > config.PHONE_MAX_OTHER_CLAIMS_24H:
         flags.append("phone_many_claims")
-    if check.get("in_flood") is False:
+    # Outside the flood map is not suspicious when satellite grading shows the building damaged
+    # (cyclone wind damage, for example).
+    if check.get("in_flood") is False and not check.get("satellite_damage_grade"):
         flags.append("outside_flood_extent")
     if check.get("building_found") is False:
         flags.append("no_building_at_location")
@@ -82,8 +84,10 @@ def _claims() -> dict[str, dict]:
             "claim_id": cid, "lat": None, "lon": None, "gps_source": None, "photos": 0,
             "damage_score": 0, "damage_types": [], "sdrf_categories": [], "flags": [],
             "duplicate_of": [], "first_checked_at": c["checked_at"], "last_checked_at": c["checked_at"],
-            "in_flood": None, "building_found": None,
+            "in_flood": None, "building_found": None, "satellite_damage_grade": None,
         })
+        if c.get("satellite_damage_grade"):
+            cl["satellite_damage_grade"] = c["satellite_damage_grade"]
         # Satellite / map results: any photo confirming it is enough.
         for k in ("in_flood", "building_found"):
             if c.get(k) is True or (c.get(k) is False and cl[k] is None):
@@ -220,7 +224,7 @@ def fraud_flags() -> dict:
             items.append({**base, "type": "phone_many_claims", "other_claims": c["phone_other_claims"],
                           "action": "One phone number filed many claims in 24 h: confirm it is an NGO or "
                                     "volunteer filing for several families"})
-        if c.get("in_flood") is False:
+        if c.get("in_flood") is False and not c.get("satellite_damage_grade"):
             items.append({**base, "type": "outside_flood_extent", "distance_km": c.get("flood_distance_km"),
                           "flood_map": c.get("flood_map"),
                           "action": "Satellite flood map shows no flooding here: check the damage cause "

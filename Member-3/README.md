@@ -70,8 +70,16 @@ For photos with their own GPS (EXIF), `/verify` also checks local map files:
   300 m tolerance), and building maps of rural India are incomplete. Both are review notes.
 - `GET /dashboard/flood-extent.geojson` serves the loaded polygons. Member 5's dashboard draws them
   as the "Satellite flood map" layer.
+- **Real data included:** `data/copernicus/` has Copernicus EMS flood maps for Andhra Pradesh
+  (EMSR104, 2014) and Puri (EMSR357, Cyclone Fani 2019), plus **9,777 Puri buildings graded from
+  satellite images** (Destroyed / Damaged / Possibly damaged). A claim photo at a graded building
+  gets the note *"Satellite damage grading (Copernicus EMS EMSR357): … graded "Destroyed""*.
+  Credit Copernicus EMS whenever you show them (see `data/copernicus/README.md`).
+- Shapefiles in metres (UTM) are converted automatically using their `.prj` file. Use
+  `scripts/convert_cems.py` to turn a new Copernicus vector package into GeoJSON.
+- Outside the flood map is **not** flagged when satellite grading shows the building damaged
+  (cyclone wind damage).
 - `data/demo/DEMO_synthetic_flood_extent.geojson` is **synthetic demo data**, not from a satellite.
-  `data/demo/README.md` explains how to get a real Copernicus EMS file.
 - **Not possible with free data:** checking whether one specific house was intact before the
   disaster needs ~0.5 m imagery (ISRO Cartosat through NRSC, or Maxar Open Data for major
   disasters). Free Sentinel imagery is 10 m per pixel, about one pixel per house.
