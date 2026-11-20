@@ -1,0 +1,16 @@
+# Optional: Postgres + PostGIS for when you move off SQLite.
+#   docker compose up -d
+#   then set DATABASE_URL=postgresql+psycopg://aapke:aapke@localhost:5432/aapke_liye in .env
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: aapke
+      POSTGRES_PASSWORD: aapke
+      POSTGRES_DB: aapke_liye
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+volumes:
+  pgdata:
