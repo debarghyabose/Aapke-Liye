@@ -16,7 +16,7 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
-from app import sync
+from app import config, sync
 from app.exif_check import distance_km, gps_in_zone, read_exif, timestamp_valid
 from app.store import get_store
 from app.vision import assess_damage
@@ -76,6 +76,8 @@ async def verify(
     lon: Optional[str] = Form(None),
     taken_at: Optional[str] = Form(None),
     claim_id: Optional[str] = Form(None),
+    phone: Optional[str] = Form(None, max_length=20,
+                                description="Optional. Only a keyed fingerprint is stored, never the number."),
 ) -> VerifyResponse:
     data = await photo.read()
     if not data:
@@ -132,6 +134,27 @@ async def verify(
     if duplicate:
         notes.append("Same photo was already submitted with another claim")
 
+    store = get_store()
+    # --- Same house: a different photo, but taken within a few metres of another claim's.
+    # Only the photo's own GPS counts: the phone's location at upload time would flag every
+    # family an NGO worker files for from the same relief camp.
+    nearby = []
+    if gps_source == "exif":
+        nearby = [n for n in store.nearby_other_claims(use_lat, use_lon, claim_id, config.SAME_HOUSE_RADIUS_M)
+                  if n["claim_id"] != duplicate_of]
+        if nearby:
+            n = nearby[0]
+            more = f" (and {len(nearby) - 1} more)" if len(nearby) > 1 else ""
+            notes.append(f"Photo taken {n['distance_m']:.0f} m from a photo in claim {n['claim_id']}{more}: "
+                         "possibly the same house")
+
+    # --- Same person: one phone number behind many claims in 24 hours.
+    phone_fp = store.phone_fingerprint(phone)
+    phone_others = store.other_claims_for_phone(phone_fp, claim_id)
+    if len(phone_others) > config.PHONE_MAX_OTHER_CLAIMS_24H:
+        notes.append(f"This phone number was used on {len(phone_others)} other claims in the last 24 hours "
+                     "(NGO bulk filing, or possible fraud)")
+
     # --- Damage vision (slow network call: run off the event loop).
     damage = await run_in_threadpool(assess_damage, data)
     if damage.type == "unknown" and damage.description in RETRYABLE_VISION:
@@ -149,8 +172,9 @@ async def verify(
     detected = damage.type not in ("none", "unknown") and damage.severity > 0
     score = round(damage.severity if detected else 0.0, 2)
     sync.dup_index.add_hash(fingerprint, claim_id)
-    get_store().record(
+    store.record(
         claim_id=claim_id, lat=use_lat, lon=use_lon, gps_source=gps_source,
+        phone_hash=phone_fp, nearby_claims=nearby, phone_other_claims=len(phone_others) if phone_fp else None,
         gps_mismatch_km=None if gap is None else round(gap, 2),
         gps_ok=bool(in_zone), timestamp_ok=bool(time_ok),
         damage_type=damage.type, severity=score, sdrf_category=damage.sdrf_category,

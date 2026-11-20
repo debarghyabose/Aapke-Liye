@@ -43,3 +43,13 @@ DASHBOARD_CORS_ORIGINS = [o.strip() for o in os.getenv(
 PHASH_MAX_DISTANCE = 8
 # Two claims from the same phone this close together (metres) count as the same claim.
 SAME_CLAIM_RADIUS_M = 50
+
+# --- Advanced fraud checks (all are review flags for an official, never automatic rejection)
+# Photos from different claims taken within this many metres may show the same house.
+# Phone GPS is often only accurate to 5-20 m, so neighbours can also be flagged.
+SAME_HOUSE_RADIUS_M = float(os.getenv("SAME_HOUSE_RADIUS_M", "25"))
+# More than this many *other* claims from one phone in 24 h is flagged (Member 5's spec:
+# "> 3 claims ... within 24 hours"). NGO workers filing for many families will trip it too.
+PHONE_MAX_OTHER_CLAIMS_24H = int(os.getenv("PHONE_MAX_OTHER_CLAIMS_24H", "3"))
+# Secret for phone fingerprints. Set a long random value in production.
+PHONE_HASH_KEY = os.getenv("PHONE_HASH_KEY", "")

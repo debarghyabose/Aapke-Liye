@@ -52,6 +52,10 @@ def flags_for(check: dict) -> list[str]:
         flags.append("gps_mismatch")
     if check["real_photo"] is False:
         flags.append("not_genuine_photo")
+    if check.get("nearby_claims"):
+        flags.append("possible_same_house")
+    if (check.get("phone_other_claims") or 0) > config.PHONE_MAX_OTHER_CLAIMS_24H:
+        flags.append("phone_many_claims")
     if check["lat"] is None:
         flags.append("no_location")
     elif not check["gps_ok"]:
@@ -181,12 +185,22 @@ def fraud_flags() -> dict:
         if c["gps_mismatch_km"] is not None and c["gps_mismatch_km"] > GPS_MISMATCH_KM:
             items.append({**base, "type": "gps_mismatch", "distance_km": c["gps_mismatch_km"],
                           "action": "Photo was taken far from where the phone was: field visit before sanction"})
+        for n in c.get("nearby_claims") or []:
+            items.append({**base, "type": "possible_same_house", "other_claim_id": n["claim_id"],
+                          "distance_m": n["distance_m"],
+                          "action": "Photos from two claims were taken a few metres apart: check if it is the "
+                                    "same house (neighbours and joint families are common)"})
+        if (c.get("phone_other_claims") or 0) > config.PHONE_MAX_OTHER_CLAIMS_24H:
+            items.append({**base, "type": "phone_many_claims", "other_claims": c["phone_other_claims"],
+                          "action": "One phone number filed many claims in 24 h: confirm it is an NGO or "
+                                    "volunteer filing for several families"})
         if c["real_photo"] is False:
             items.append({**base, "type": "not_genuine_photo",
                           "action": "Image looks like a screenshot, stock, drawing or AI image: ask for a new photo"})
         if c["lat"] is not None and not c["gps_ok"]:
             items.append({**base, "type": "outside_disaster_area", "lat": c["lat"], "lon": c["lon"],
                           "action": "Location is outside the affected area: check before sanction"})
-    order = {"duplicate_photo": 0, "gps_mismatch": 1, "not_genuine_photo": 2, "outside_disaster_area": 3}
+    order = {"duplicate_photo": 0, "possible_same_house": 1, "phone_many_claims": 2, "gps_mismatch": 3,
+             "not_genuine_photo": 4, "outside_disaster_area": 5}
     items.sort(key=lambda x: (order[x["type"]], x["checked_at"]))
     return {"count": len(items), "items": items}

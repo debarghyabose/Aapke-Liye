@@ -54,6 +54,27 @@ amounts and claim status come from Member 2: **join on `claim_id`**.
   in `DASHBOARD_CORS_ORIGINS` (by default, the file opened directly and a few localhost ports).
 - Photo fingerprints are saved too, so a re-used photo is still caught after a restart.
 
+## Fraud checks
+
+Every check is a **flag for an official to review**, never an automatic rejection.
+
+| Check | How | Flag |
+|---|---|---|
+| Same photo | Perceptual hash: identical, re-saved or slightly edited copies on another claim | `duplicate_photo` |
+| Same house | A *different* photo whose own GPS (EXIF) is within 25 m of another claim's photo | `possible_same_house` |
+| Same person | One phone number behind more than 3 other claims in 24 h (Member 5's spec) | `phone_many_claims` |
+| Wrong place | Photo GPS more than 2 km from the phone's location, or outside the disaster area | `gps_mismatch`, `outside_disaster_area` |
+| Fake image | The AI judges it a screenshot, stock, drawing or AI-generated image | `not_genuine_photo` |
+
+- **Same house uses only the photo's own GPS.** The phone's location at upload time would flag
+  every family an NGO worker files for from the same relief camp. Phone GPS is often only
+  accurate to 5–20 m, so neighbours can be flagged too; the note says so.
+- **Phone numbers are never stored.** Only a keyed fingerprint (HMAC-SHA256 of the last 10
+  digits) is kept, so `+91 98765 43210` and `9876543210` match. Set `PHONE_HASH_KEY` in production.
+- **Member 2:** to switch on the same-person check, also send `phone` to `/verify`. The field is
+  optional; without it, everything else works as before.
+- Settings: `SAME_HOUSE_RADIUS_M`, `PHONE_MAX_OTHER_CLAIMS_24H`, `PHONE_HASH_KEY` in `.env`.
+
 ## Offline queue (for Member 4's frontend)
 
 `offline-client/queue.js` is a plain ES module with no build step. Every claim step is saved
@@ -93,7 +114,7 @@ uploads by itself.
 ## API
 
 **`POST /verify`**, called by Member 2 for every claim photo.
-Multipart `photo` (required), plus `lat`, `lon`, `taken_at` (ISO 8601) and `claim_id`.
+Multipart `photo` (required), plus `lat`, `lon`, `taken_at` (ISO 8601), `claim_id` and, optionally, `phone`.
 
 ```json
 {"damage_detected": true, "damage_score": 0.8, "gps_ok": true, "timestamp_ok": true,
@@ -111,7 +132,7 @@ Multipart `photo` (required), plus `lat`, `lon`, `taken_at` (ISO 8601) and `clai
 | Feature | What to do |
 |---|---|
 | Satellite verification | Check the claim location against Sentinel-1 / ISRO Bhuvan flood and damage maps, using PostGIS |
-| Advanced fraud detection | Flag the same photo, house or person claiming twice |
+| ✅ Advanced fraud detection | Flag the same photo, house or person claiming twice (see "Fraud checks" below) |
 | WhatsApp bot | File a claim by sending a voice note on WhatsApp |
 | IVR / missed-call line | Feature-phone users call in and speak their claim |
 | Voice/SMS status updates | Send each status change to the user in their own language |

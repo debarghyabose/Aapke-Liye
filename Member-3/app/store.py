@@ -3,10 +3,14 @@
 Without this the service forgot everything on restart: the dashboard had no data and a
 photo re-used after a restart was not caught as a duplicate.
 """
+import hashlib
+import hmac
 import json
+import re
+import secrets
 import sqlite3
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from app import config
@@ -32,7 +36,15 @@ CREATE TABLE IF NOT EXISTS photo_checks (
     checked_at      TEXT NOT NULL    -- UTC ISO 8601
 );
 CREATE INDEX IF NOT EXISTS ix_checks_claim ON photo_checks (claim_id);
+CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 """
+
+# Columns added after the first release: created on older databases at startup.
+LATER_COLUMNS = {
+    "phone_hash": "TEXT",               # keyed fingerprint of the phone number, never the number
+    "nearby_claims": "TEXT",            # JSON [{"claim_id", "distance_m"}]: possibly the same house
+    "phone_other_claims": "INTEGER",    # other claims from the same phone in the last 24 h
+}
 
 
 class Store:
@@ -42,10 +54,77 @@ class Store:
         self._lock = threading.Lock()
         with self._lock:
             self._db.executescript(SCHEMA)
+            have = {r["name"] for r in self._db.execute("PRAGMA table_info(photo_checks)")}
+            for col, kind in LATER_COLUMNS.items():
+                if col not in have:
+                    self._db.execute(f"ALTER TABLE photo_checks ADD COLUMN {col} {kind}")
+            self._db.commit()
+        self._phone_key = self._load_phone_key()
+
+    # ------------------------------------------------------------ phone fingerprints
+
+    def _load_phone_key(self) -> bytes:
+        """HMAC key for phone fingerprints: PHONE_HASH_KEY from .env, else a random key
+        made once and kept in this database. Without a key, 10-digit numbers could be
+        recovered from plain hashes by trying them all."""
+        if config.PHONE_HASH_KEY:
+            return config.PHONE_HASH_KEY.encode()
+        with self._lock:
+            row = self._db.execute("SELECT value FROM meta WHERE key = 'phone_key'").fetchone()
+            if row:
+                return bytes.fromhex(row["value"])
+            key = secrets.token_bytes(32)
+            self._db.execute("INSERT INTO meta (key, value) VALUES ('phone_key', ?)", (key.hex(),))
+            self._db.commit()
+            return key
+
+    def phone_fingerprint(self, phone: Optional[str]) -> Optional[str]:
+        """Same number in any format (+91, spaces, dashes) -> same fingerprint."""
+        digits = re.sub(r"\D", "", phone or "")
+        if len(digits) < 10:
+            return None
+        return hmac.new(self._phone_key, digits[-10:].encode(), hashlib.sha256).hexdigest()
+
+    # ------------------------------------------------------------ fraud lookups
+
+    def nearby_other_claims(self, lat: Optional[float], lon: Optional[float], claim_id: Optional[str],
+                            radius_m: float) -> list[dict]:
+        """Other claims with a photo located within radius_m. Closest first.
+        A full scan is fine for a demo; with many claims use PostGIS (ST_DWithin)."""
+        if lat is None or lon is None:
+            return []
+        from app.exif_check import distance_km
+
+        with self._lock:
+            rows = self._db.execute(
+                "SELECT claim_id, lat, lon FROM photo_checks WHERE lat IS NOT NULL AND claim_id IS NOT NULL "
+                "AND (? IS NULL OR claim_id != ?)", (claim_id, claim_id)).fetchall()
+        best: dict[str, float] = {}
+        for r in rows:
+            d = distance_km(lat, lon, r["lat"], r["lon"]) * 1000
+            if d <= radius_m and d < best.get(r["claim_id"], float("inf")):
+                best[r["claim_id"]] = d
+        return [{"claim_id": c, "distance_m": round(d, 1)} for c, d in sorted(best.items(), key=lambda x: x[1])]
+
+    def other_claims_for_phone(self, fingerprint: Optional[str], claim_id: Optional[str],
+                               hours: float = 24) -> list[str]:
+        if not fingerprint:
+            return []
+        since = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat(timespec="seconds")
+        with self._lock:
+            rows = self._db.execute(
+                "SELECT DISTINCT claim_id FROM photo_checks WHERE phone_hash = ? AND checked_at >= ? "
+                "AND claim_id IS NOT NULL AND (? IS NULL OR claim_id != ?)",
+                (fingerprint, since, claim_id, claim_id)).fetchall()
+        return [r["claim_id"] for r in rows]
+
+    # ------------------------------------------------------------ rows
 
     def record(self, **row) -> None:
         row = {**row, "notes": json.dumps(row.get("notes", []), ensure_ascii=False),
                "checked_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+        if "nearby_claims" in row:
+            row["nearby_claims"] = json.dumps(row["nearby_claims"] or [])
         cols = ", ".join(row)
         marks = ", ".join(f":{k}" for k in row)
         with self._lock:
@@ -59,6 +138,8 @@ class Store:
         for r in rows:
             d = dict(r)
             d["notes"] = json.loads(d["notes"])
+            d["nearby_claims"] = json.loads(d.get("nearby_claims") or "[]")
+            d.pop("phone_hash", None)  # never leaves the service
             for k in ("gps_ok", "timestamp_ok"):
                 d[k] = bool(d[k])
             d["real_photo"] = None if d["real_photo"] is None else bool(d["real_photo"])
