@@ -267,6 +267,9 @@ class Member2:
     async def submit(self, claim_id: str, token: str) -> dict:
         return await self._call("POST", f"/claims/{claim_id}/submit", token, timeout=60)
 
+    async def get_claim(self, claim_id: str, token: str) -> dict:
+        return await self._call("GET", f"/claims/{claim_id}", token)
+
     async def status(self, claim_id: str, token: str) -> dict:
         return await self._call("GET", f"/status/{claim_id}", token)
 

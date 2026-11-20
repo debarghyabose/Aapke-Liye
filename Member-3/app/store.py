@@ -50,7 +50,19 @@ CREATE TABLE IF NOT EXISTS wa_sessions (
     last_status  TEXT,               -- last claim status we told them about
     updated_at   TEXT NOT NULL
 );
+-- Phone calls to the IVR line (app/ivr.py): one row per call that started a claim.
+CREATE TABLE IF NOT EXISTS ivr_calls (
+    call_sid     TEXT PRIMARY KEY,
+    phone        TEXT NOT NULL,      -- caller ID, so a later call can hear the claim's status
+    language     TEXT,
+    claim_id     TEXT,
+    token_enc    TEXT,
+    processing   INTEGER NOT NULL DEFAULT 0,   -- 1 while the recording is being processed
+    updated_at   TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_ivr_phone ON ivr_calls (phone);
 """
+IVR_FIELDS = {"phone", "language", "claim_id", "token_enc", "processing"}
 WA_FIELDS = {"step", "language", "claim_id", "token_enc", "lat", "lon", "last_status"}
 
 # Columns added after the first release: created on older databases at startup.
@@ -216,6 +228,35 @@ class Store:
         with self._lock:
             rows = self._db.execute("SELECT * FROM wa_sessions WHERE claim_id IS NOT NULL").fetchall()
         return [dict(r) for r in rows]
+
+    # ------------------------------------------------------------ IVR calls
+
+    def ivr_save(self, call_sid: str, **fields) -> None:
+        unknown = set(fields) - IVR_FIELDS
+        if unknown:
+            raise ValueError(f"Unknown call fields: {unknown}")
+        row = {**fields, "call_sid": call_sid,
+               "updated_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+        with self._lock:
+            if self._db.execute("SELECT 1 FROM ivr_calls WHERE call_sid = ?", (call_sid,)).fetchone():
+                sets = ", ".join(f"{k} = :{k}" for k in row if k != "call_sid")
+                self._db.execute(f"UPDATE ivr_calls SET {sets} WHERE call_sid = :call_sid", row)
+            else:
+                self._db.execute(f"INSERT INTO ivr_calls ({', '.join(row)}) "
+                                 f"VALUES ({', '.join(':' + k for k in row)})", row)
+            self._db.commit()
+
+    def ivr_get(self, call_sid: str) -> Optional[dict]:
+        with self._lock:
+            row = self._db.execute("SELECT * FROM ivr_calls WHERE call_sid = ?", (call_sid,)).fetchone()
+        return dict(row) if row else None
+
+    def ivr_latest_claim(self, phone: str) -> Optional[dict]:
+        """The caller's most recent claim from an earlier call."""
+        with self._lock:
+            row = self._db.execute("SELECT * FROM ivr_calls WHERE phone = ? AND claim_id IS NOT NULL "
+                                   "ORDER BY updated_at DESC, rowid DESC LIMIT 1", (phone,)).fetchone()
+        return dict(row) if row else None
 
     def hashes(self) -> list[tuple[str, Optional[str]]]:
         with self._lock:
