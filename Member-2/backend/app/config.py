@@ -38,7 +38,9 @@ def _staff_keys(value: str | None) -> dict[str, str]:
 @dataclass
 class Settings:
     app_env: str = "development"
-    mock_services: bool = False
+    mock_services: bool = False      # shortcut: turns both mocks on
+    mock_member1: bool = False
+    mock_member3: bool = False
     database_url: str = ""
     storage_dir: Path = BASE_DIR / "storage"
     member1_ai_url: str = ""
@@ -52,6 +54,14 @@ class Settings:
     log_level: str = "INFO"
 
     @property
+    def use_mock_member1(self) -> bool:
+        return self.mock_services or self.mock_member1
+
+    @property
+    def use_mock_member3(self) -> bool:
+        return self.mock_services or self.mock_member3
+
+    @property
     def is_production(self) -> bool:
         return self.app_env == "production"
 
@@ -60,6 +70,8 @@ class Settings:
         return cls(
             app_env=env.get("APP_ENV", "development").strip().lower(),
             mock_services=_bool(env.get("MOCK_SERVICES")),
+            mock_member1=_bool(env.get("MOCK_MEMBER1")),
+            mock_member3=_bool(env.get("MOCK_MEMBER3")),
             database_url=env.get("DATABASE_URL", "").strip(),
             storage_dir=Path(env.get("STORAGE_DIR") or BASE_DIR / "storage"),
             member1_ai_url=env.get("MEMBER1_AI_URL", "").strip().rstrip("/"),
@@ -89,6 +101,8 @@ class Settings:
         if self.is_production:
             checks = {
                 "MOCK_SERVICES=true is not allowed in production": self.mock_services,
+                "MOCK_MEMBER1=true is not allowed in production": self.mock_member1,
+                "MOCK_MEMBER3=true is not allowed in production": self.mock_member3,
                 "MEMBER1_AI_URL is required in production": not self.member1_ai_url,
                 "DATABASE_URL (Postgres) is required in production": not self.database_url,
                 "CORS_ORIGINS must be an explicit list of origins in production":

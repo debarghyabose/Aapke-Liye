@@ -28,6 +28,8 @@ def test_valid_production_settings_pass():
 
 @pytest.mark.parametrize("change, message", [
     ({"MOCK_SERVICES": "true"}, "MOCK_SERVICES"),
+    ({"MOCK_MEMBER1": "true"}, "MOCK_MEMBER1"),
+    ({"MOCK_MEMBER3": "true"}, "MOCK_MEMBER3"),
     ({"MEMBER1_AI_URL": ""}, "MEMBER1_AI_URL"),
     ({"CORS_ORIGINS": "*"}, "CORS_ORIGINS"),
     ({"DATABASE_URL": ""}, "DATABASE_URL"),

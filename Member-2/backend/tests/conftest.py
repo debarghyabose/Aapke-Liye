@@ -10,6 +10,8 @@ STAFF_KEY = "test-staff-key-0123456789abcdef"
 os.environ.update({
     "APP_ENV": "development",
     "MOCK_SERVICES": "false",
+     "MOCK_MEMBER1": "false",
+    "MOCK_MEMBER3": "false",
     "DATABASE_URL": f"sqlite:///{DB_FILE}",
     "STORAGE_DIR": STORAGE,
     "STORAGE_ENCRYPTION_KEY": Fernet.generate_key().decode(),

@@ -117,3 +117,16 @@ def test_dev_mocks_answer_only_when_enabled(client, services, monkeypatch):
     assert r.status_code == 200
     assert r.json()["transcript"].startswith("[DEV MOCK]")
     assert services.m1.call_count == 0          # no real call was made
+
+
+def test_mock_only_member1_uses_real_member3(client, services, monkeypatch):
+    """MOCK_MEMBER1=true, MOCK_MEMBER3=false: fake audio, real photo verification."""
+    monkeypatch.setattr(settings, "mock_member1", True)
+    monkeypatch.setattr(settings, "mock_member3", False)
+    cid, h = new_claim(client)
+    r = client.post(f"/claims/{cid}/audio", headers=h, files={"audio": ("a.webm", WEBM, "audio/webm")})
+    assert r.status_code == 200 and r.json()["transcript"].startswith("[DEV MOCK]")
+    assert services.m1.call_count == 0
+    r = client.post(f"/claims/{cid}/photos", headers=h, files={"photo": ("p.jpg", JPEG, "image/jpeg")})
+    assert r.status_code == 200
+    assert services.m3.call_count == 1
