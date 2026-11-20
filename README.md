@@ -139,11 +139,11 @@ Hindi · Bengali · Marathi · Tamil · Telugu · English
 
 ```
 Aapke-Liye/
-├── Member-1/README.md    🎨 Citizen App & Experience
-├── Member-2/README.md    📴 Offline & Sync Engineer
-├── Member-3/README.md    🤖 AI Engineer
-├── Member-4/README.md    🗄️ Backend & Data Engineer
-├── Member-5/README.md    🖥️ Officials Dashboard & DevOps
+├── Member-1/README.md    🤖 AI/ML
+├── Member-2/README.md    ⚙️ Core Backend (CTO)
+├── Member-3/README.md    🛰️ Verification + Offline + Channels
+├── Member-4/README.md    🎨 Frontend + Claim Tracking
+├── Member-5/README.md    ⚖️ Entitlement, Policy & Pitch
 ├── assets/workflow.jpg   app workflow diagram
 ├── README.md
 └── LICENSE
@@ -155,13 +155,15 @@ Aapke-Liye/
 
 | Member | Role | Key deliverables |
 |---|---|---|
-| [**Member 1**](Member-1/README.md) | 🎨 Citizen App & Experience | All citizen screens, 6 languages, offline guided-tap flow (3b), voice read-back, accessibility |
-| [**Member 2**](Member-2/README.md) | 📴 Offline & Sync Engineer | Service worker, IndexedDB, 5 s network test, sync queue & retries, SDRF estimate (4b), draft PDF + QR on the phone |
-| [**Member 3**](Member-3/README.md) | 🤖 AI Engineer | Voice → claim JSON, follow-up questions, Cloud TTS, substitute-proof vision check, server recheck of offline claims |
-| [**Member 4**](Member-4/README.md) | 🗄️ Backend & Data Engineer | FastAPI, AlloyDB, safe-to-repeat uploads, Cloud Storage, final PDF + QR, relief calculation, claim format |
-| [**Member 5**](Member-5/README.md) | 🖥️ Officials Dashboard & DevOps | Dashboard, "Ask your claims" (read-only SQL), Cloud Run deploy, CI, monitoring |
+| [**Member 1**](Member-1/README.md) | 🤖 AI/ML | Speech to text in 6 languages, claim AI, follow-ups · *Roadmap:* before/after damage AI, replacement applications, insurance claims, escalation letters |
+| [**Member 2**](Member-2/README.md) | ⚙️ Core Backend (CTO) | FastAPI + PostgreSQL, claim APIs, relief form PDF · *Roadmap:* document vault + DigiLocker, pre-registration, bulk mode, DBT check, escalation trigger |
+| [**Member 3**](Member-3/README.md) | 🛰️ Verification + Offline + Channels | Damage vision, GPS/time checks, duplicates, offline sync · *Roadmap:* satellite verification, fraud detection, WhatsApp bot, IVR, SMS updates |
+| [**Member 4**](Member-4/README.md) | 🎨 Frontend + Claim Tracking | **All 5 app screens** + simple tracking backend (1 table, 2 APIs) |
+| [**Member 5**](Member-5/README.md) | ⚖️ Entitlement, Policy & Pitch | SDRF rules, proof substitution, legal & privacy, pitch · *Roadmap:* full entitlement engine, RTI templates, dashboard design |
 
-👉 Each member's folder has their full task list, week-by-week timeline and "done when" goal.
+👉 Each member's folder has their full Phase 1 (core demo) and Phase 2 (roadmap) task lists.
+
+**Core demo flow:** the person speaks (Member 4's screens) → AI builds the claim (Member 1) → photos verified (Member 3) → PDF + relief amount (Member 2, using Member 5's rules) → tracking (Member 4).
 
 ---
 

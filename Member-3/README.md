@@ -1,45 +1,26 @@
-# 🤖 Member 3: AI Engineer
+# 🛰️ Member 3: Verification + Offline + Channels
 
 **Name:** _your name_ · **GitHub:** _@handle_
 
 ## Your job
-All the Google AI: turn a citizen's voice into a claim, ask follow-up questions out loud, check proof photos, and recheck offline claims on the server.
+Make claims trustworthy for officials, make sure no claim is lost when the network drops, and reach people without smartphones.
 
-## Workflow steps you own
-| Step | What |
+## Phase 1: Core demo (build first)
+- [ ] **Damage vision:** AI checks the damage photos
+- [ ] **Basic verification:** check that the GPS location and timestamp look right
+- [ ] **Basic duplicate check:** flag the same photo or claim sent twice
+- [ ] **Offline sync:** queue uploads so nothing is lost when the network drops
+
+## Phase 2: Roadmap features (after the demo works)
+| Feature | What to do |
 |---|---|
-| 3 | **Gemini:** voice → claim JSON |
-| ◇ | **Fields missing?** Detect what's still needed |
-| 4 | Gemini writes a follow-up question; **Cloud TTS** speaks it |
-| 5 | Cloud TTS read-back (online) |
-| 6 | **Gemini vision** checks substitute proof |
-| — | **Server recheck:** Gemini re-reads audio and photos of offline claims |
+| Satellite verification | Check the claim location against Sentinel-1 / ISRO Bhuvan flood and damage maps, using PostGIS |
+| Advanced fraud detection | Flag the same photo, house or person claiming twice |
+| WhatsApp bot | File a claim by sending a voice note on WhatsApp |
+| IVR / missed-call line | Feature-phone users call in and speak their claim |
+| Voice/SMS status updates | Send each status change to the user in their own language |
+| Dashboard data | Provide the map and damage data for the government dashboard that Member 5 designs |
 
-## Tasks
-- [ ] Prompt that turns audio into claim JSON in the agreed format, never inventing facts
-- [ ] Detect missing required fields
-- [ ] Short, simple follow-up questions in all 6 languages
-- [ ] Cloud TTS with a good voice per language; cache common phrases
-- [ ] Vision check for substitute proof (what document is it, and is it readable?)
-- [ ] Vision check on damage photos (does this look like disaster damage?)
-- [ ] Server recheck of offline claims: compare the audio with the tapped answers, flag conflicts for review
-- [ ] Test set of 30+ sample recordings across languages; track accuracy
-- [ ] Fail fast with a clear error when AI is unavailable, so the phone falls back to the offline flow
-
-## Timeline
-| Week | Focus |
-|---|---|
-| 1 | Gemini audio → JSON prototype (Hindi + English) |
-| 2 | Structured output, missing-field detection |
-| 3 | Follow-up questions in 6 languages, Cloud TTS |
-| 4 | Read-back speech, phrase cache, test set v1 |
-| 5 | Vision proof check, server recheck of offline claims |
-| 6 | Accuracy tuning on the test set |
-
-## You work closely with
-- **Member 1:** playing questions and recording answers
-- **Member 4:** the voice API routes and where AI results are stored
-- **Member 5:** prompting for the "Ask your claims" feature
-
-## Done when
-Voice → claim field accuracy is **≥ 90 %** on the test set across all 6 languages, and every offline claim is rechecked after it syncs.
+## You work with
+- **Member 2:** stores your verification results
+- **Member 5:** uses your data for the dashboard
