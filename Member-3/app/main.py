@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import config, sync
 from app.dashboard import router as dashboard_router
+from app.geodata import get_geo
 from app.store import get_store
 from app.sync import router as sync_router
 from app.verify import router as verify_router
@@ -20,6 +21,11 @@ from app.verify import router as verify_router
 async def lifespan(app: FastAPI):
     # Restore photo fingerprints so duplicates are still caught after a restart.
     sync.dup_index.load(get_store().hashes())
+    # Load satellite flood maps and building maps once (logs what was found).
+    geo = get_geo()
+    log = logging.getLogger("uvicorn.error")
+    log.info("Flood maps: %s | building maps: %s",
+             [n for n, _ in geo.floods.coverage] or "none", [n for n, _ in geo.buildings.coverage] or "none")
     if not config.DASHBOARD_API_KEY:
         logging.getLogger("uvicorn.error").warning(
             "DASHBOARD_API_KEY is not set: /dashboard shows victim locations to anyone. "

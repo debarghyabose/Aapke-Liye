@@ -20,6 +20,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 
 from app import config
+from app.geodata import get_geo
 from app.store import get_store
 from app.verify import GPS_MISMATCH_KM
 
@@ -56,6 +57,10 @@ def flags_for(check: dict) -> list[str]:
         flags.append("possible_same_house")
     if (check.get("phone_other_claims") or 0) > config.PHONE_MAX_OTHER_CLAIMS_24H:
         flags.append("phone_many_claims")
+    if check.get("in_flood") is False:
+        flags.append("outside_flood_extent")
+    if check.get("building_found") is False:
+        flags.append("no_building_at_location")
     if check["lat"] is None:
         flags.append("no_location")
     elif not check["gps_ok"]:
@@ -77,7 +82,12 @@ def _claims() -> dict[str, dict]:
             "claim_id": cid, "lat": None, "lon": None, "gps_source": None, "photos": 0,
             "damage_score": 0, "damage_types": [], "sdrf_categories": [], "flags": [],
             "duplicate_of": [], "first_checked_at": c["checked_at"], "last_checked_at": c["checked_at"],
+            "in_flood": None, "building_found": None,
         })
+        # Satellite / map results: any photo confirming it is enough.
+        for k in ("in_flood", "building_found"):
+            if c.get(k) is True or (c.get(k) is False and cl[k] is None):
+                cl[k] = c[k]
         cl["photos"] += 1
         cl["last_checked_at"] = c["checked_at"]
         if cl["lat"] is None and c["lat"] is not None:
@@ -98,6 +108,10 @@ def _claims() -> dict[str, dict]:
         # A claim missing a location on one photo but located by another is fine.
         if cl["lat"] is not None and "no_location" in cl["flags"]:
             cl["flags"].remove("no_location")
+        # One photo inside the flood (or at a building) clears the claim-level flag.
+        for k, flag in (("in_flood", "outside_flood_extent"), ("building_found", "no_building_at_location")):
+            if cl[k] is True and flag in cl["flags"]:
+                cl["flags"].remove(flag)
     return claims
 
 
@@ -126,6 +140,12 @@ def summary() -> dict:
         "by_severity": {b: bands.get(b, 0) for b in ("severe", "moderate", "minor", "none")},
         "by_damage_type": dict(types),
         "flags": dict(flags),
+        "satellite": {
+            "flood_maps_loaded": [n for n, _ in get_geo().floods.coverage],
+            "claims_inside_flood": sum(1 for c in claims.values() if c["in_flood"] is True),
+            "claims_outside_flood": sum(1 for c in claims.values() if c["in_flood"] is False),
+            "claims_without_map": sum(1 for c in claims.values() if c["in_flood"] is None),
+        },
         "last_checked_at": checks[-1]["checked_at"] if checks else None,
     }
 
@@ -172,6 +192,12 @@ def heatmap(cell_km: float = Query(1.0, gt=0.1, le=50, description="Grid cell si
     return {"type": "FeatureCollection", "cell_km": cell_km, "features": features}
 
 
+@router.get("/flood-extent.geojson", dependencies=[Depends(require_key)])
+def flood_extent() -> dict:
+    """The loaded satellite flood polygons (simplified), for the dashboard's flood overlay."""
+    return get_geo().flood_geojson()
+
+
 @router.get("/fraud-flags", dependencies=[Depends(require_key)])
 def fraud_flags() -> dict:
     """Review queue for officials. Every item needs a human decision; none is proof of fraud."""
@@ -194,6 +220,15 @@ def fraud_flags() -> dict:
             items.append({**base, "type": "phone_many_claims", "other_claims": c["phone_other_claims"],
                           "action": "One phone number filed many claims in 24 h: confirm it is an NGO or "
                                     "volunteer filing for several families"})
+        if c.get("in_flood") is False:
+            items.append({**base, "type": "outside_flood_extent", "distance_km": c.get("flood_distance_km"),
+                          "flood_map": c.get("flood_map"),
+                          "action": "Satellite flood map shows no flooding here: check the damage cause "
+                                    "(the map shows water only at the time the satellite passed)"})
+        if c.get("building_found") is False:
+            items.append({**base, "type": "no_building_at_location",
+                          "action": "House claim, but no building is mapped at the photo location: field "
+                                    "visit (village building maps are often incomplete)"})
         if c["real_photo"] is False:
             items.append({**base, "type": "not_genuine_photo",
                           "action": "Image looks like a screenshot, stock, drawing or AI image: ask for a new photo"})
@@ -201,6 +236,7 @@ def fraud_flags() -> dict:
             items.append({**base, "type": "outside_disaster_area", "lat": c["lat"], "lon": c["lon"],
                           "action": "Location is outside the affected area: check before sanction"})
     order = {"duplicate_photo": 0, "possible_same_house": 1, "phone_many_claims": 2, "gps_mismatch": 3,
-             "not_genuine_photo": 4, "outside_disaster_area": 5}
+             "no_building_at_location": 4, "outside_flood_extent": 5, "not_genuine_photo": 6,
+             "outside_disaster_area": 7}
     items.sort(key=lambda x: (order[x["type"]], x["checked_at"]))
     return {"count": len(items), "items": items}

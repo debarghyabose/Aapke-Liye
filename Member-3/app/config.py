@@ -51,5 +51,18 @@ SAME_HOUSE_RADIUS_M = float(os.getenv("SAME_HOUSE_RADIUS_M", "25"))
 # More than this many *other* claims from one phone in 24 h is flagged (Member 5's spec:
 # "> 3 claims ... within 24 hours"). NGO workers filing for many families will trip it too.
 PHONE_MAX_OTHER_CLAIMS_24H = int(os.getenv("PHONE_MAX_OTHER_CLAIMS_24H", "3"))
+# --- Satellite / map checks (local files only; see app/geodata.py)
+_files = lambda name: [f.strip() for f in os.getenv(name, "").split(",") if f.strip()]
+# Flood-extent polygons (Copernicus EMS, ISRO Bhuvan/NRSC): .geojson or .shp, comma-separated.
+FLOOD_MAP_FILES = _files("FLOOD_MAP_FILES")
+# Inside the flood polygon, or this close to it, counts as "in the flooded area".
+FLOOD_TOLERANCE_M = float(os.getenv("FLOOD_TOLERANCE_M", "300"))
+# A flood map is used for points up to this far outside the area it covers.
+FLOOD_COVERAGE_MARGIN_KM = float(os.getenv("FLOOD_COVERAGE_MARGIN_KM", "10"))
+# Building footprints (Google Open Buildings CSV, OSM GeoJSON), comma-separated.
+BUILDING_FILES = _files("BUILDING_FILES")
+# A house photo needs a mapped building this close (covers GPS error of a few metres).
+BUILDING_SEARCH_M = float(os.getenv("BUILDING_SEARCH_M", "30"))
+
 # Secret for phone fingerprints. Set a long random value in production.
 PHONE_HASH_KEY = os.getenv("PHONE_HASH_KEY", "")

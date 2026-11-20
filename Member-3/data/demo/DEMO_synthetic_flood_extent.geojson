@@ -1,0 +1,56 @@
+{
+ "type": "FeatureCollection",
+ "name": "DEMO_synthetic_flood_extent",
+ "description": "SYNTHETIC DEMO DATA, not from any satellite. Replace with a real Copernicus EMS or ISRO Bhuvan/NRSC flood-extent file.",
+ "features": [
+  {
+   "type": "Feature",
+   "properties": {
+    "source": "synthetic demo"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       88.33,
+       22.545
+      ],
+      [
+       88.372,
+       22.54
+      ],
+      [
+       88.402,
+       22.556
+      ],
+      [
+       88.41,
+       22.584
+      ],
+      [
+       88.388,
+       22.603
+      ],
+      [
+       88.352,
+       22.606
+      ],
+      [
+       88.326,
+       22.59
+      ],
+      [
+       88.318,
+       22.566
+      ],
+      [
+       88.33,
+       22.545
+      ]
+     ]
+    ]
+   }
+  }
+ ]
+}
