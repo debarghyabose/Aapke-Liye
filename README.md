@@ -47,7 +47,7 @@ Officials, on the other side, drown in handwritten forms with no way to search, 
 
 ## 🔄 How it works
 
-![Aapke Liye app workflow](docs/assets/workflow.jpg)
+![Aapke Liye app workflow](assets/workflow.jpg)
 
 <details>
 <summary><b>📝 Step-by-step (click to expand)</b></summary>
@@ -117,8 +117,6 @@ flowchart LR
 | 6 | **Original filing time is kept** | Offline filers are never penalised |
 | 7 | **NL→SQL runs as a read-only DB role** | The AI can never change data |
 
-📖 Full detail: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · [`docs/OFFLINE_SYNC.md`](docs/OFFLINE_SYNC.md) · [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) · [`docs/API.md`](docs/API.md)
-
 ### 🧰 Tech stack
 
 | Layer | Technology |
@@ -133,7 +131,7 @@ flowchart LR
 
 ### 🌐 Languages
 
-Hindi · Bengali · Marathi · Tamil · Telugu · English *(easy to change in [`frontend/citizen-pwa/src/i18n`](frontend/citizen-pwa/src/i18n))*
+Hindi · Bengali · Marathi · Tamil · Telugu · English
 
 ---
 
@@ -141,45 +139,29 @@ Hindi · Bengali · Marathi · Tamil · Telugu · English *(easy to change in [`
 
 ```
 Aapke-Liye/
-├── 📱 frontend/
-│   ├── citizen-pwa/            👤 M1 (UI, i18n, guided flow) · 👤 M2 (offline + sync)
-│   │   ├── public/             manifest, service worker, icons, prerecorded audio
-│   │   └── src/
-│   │       ├── screens/        language → consent → capture → readback → documents → done
-│   │       ├── offline/        IndexedDB, network test, sync queue, SDRF estimator   (M2)
-│   │       ├── api/            client for the backend
-│   │       └── i18n/           6 language files
-│   └── officials-dashboard/    👤 M5
-├── ⚙️ backend/                  👤 M4 (API + data) · 👤 M3 (AI services)
-│   ├── app/
-│   │   ├── api/                claims, voice, officials routes
-│   │   ├── services/           gemini, tts, vision, nl_sql, relief, pdf, storage
-│   │   ├── db/                 SQLAlchemy models + session
-│   │   └── schemas/            Pydantic claim models
-│   └── tests/
-├── 🔗 shared/                   contract between phone and server (everyone)
-│   ├── schemas/claim.schema.json
-│   └── sdrf/sdrf_rates.json
-├── ☁️ infra/                    👤 M5 — migrations, read-only role, Cloud Run deploy
-├── 📚 docs/                     architecture, work plan, team, API, data model
-└── .github/                    CODEOWNERS, PR & issue templates (CI added by M5)
+├── Member-1/README.md    🎨 Citizen App & Experience
+├── Member-2/README.md    📴 Offline & Sync Engineer
+├── Member-3/README.md    🤖 AI Engineer
+├── Member-4/README.md    🗄️ Backend & Data Engineer
+├── Member-5/README.md    🖥️ Officials Dashboard & DevOps
+├── assets/workflow.jpg   app workflow diagram
+├── README.md
+└── LICENSE
 ```
 
 ---
 
 ## 👥 Team & ownership
 
-| Member | Role | Owns | Key deliverables |
-|---|---|---|---|
-| **M1** | 🎨 Citizen App & Experience | `frontend/citizen-pwa/src/screens`, `i18n`, `public/audio` | All citizen screens, 6 languages, offline guided-tap flow (3b), voice read-back UX, accessibility |
-| **M2** | 📴 Offline & Sync Engineer | `frontend/citizen-pwa/src/offline`, `public/sw.js` | Service worker, IndexedDB store, 5 s network test, sync queue & retries, SDRF estimator (4b), draft PDF + QR on device |
-| **M3** | 🤖 AI Engineer | `backend/app/services/{gemini,tts,vision}.py` | Voice → claim JSON, follow-up questions, Cloud TTS, substitute-proof vision check, server re-check of offline claims |
-| **M4** | 🗄️ Backend & Data Engineer | `backend/app/{api,db,schemas}`, `services/{relief,pdf,storage}.py`, `infra/migrations` | FastAPI routes, AlloyDB schema, idempotent upsert, Cloud Storage uploads, final PDF + QR, relief calculation |
-| **M5** | 🖥️ Officials Dashboard & DevOps | `frontend/officials-dashboard`, `services/nl_sql.py`, `infra/`, `.github/` | Dashboard, "Ask your claims" NL→SQL (read-only role), Cloud Run deploy, CI, monitoring |
+| Member | Role | Key deliverables |
+|---|---|---|
+| [**Member 1**](Member-1/README.md) | 🎨 Citizen App & Experience | All citizen screens, 6 languages, offline guided-tap flow (3b), voice read-back, accessibility |
+| [**Member 2**](Member-2/README.md) | 📴 Offline & Sync Engineer | Service worker, IndexedDB, 5 s network test, sync queue & retries, SDRF estimate (4b), draft PDF + QR on the phone |
+| [**Member 3**](Member-3/README.md) | 🤖 AI Engineer | Voice → claim JSON, follow-up questions, Cloud TTS, substitute-proof vision check, server recheck of offline claims |
+| [**Member 4**](Member-4/README.md) | 🗄️ Backend & Data Engineer | FastAPI, AlloyDB, safe-to-repeat uploads, Cloud Storage, final PDF + QR, relief calculation, claim format |
+| [**Member 5**](Member-5/README.md) | 🖥️ Officials Dashboard & DevOps | Dashboard, "Ask your claims" (read-only SQL), Cloud Run deploy, CI, monitoring |
 
-🔗 **Shared contract** — `shared/schemas/claim.schema.json` is owned by **M4**, but any change needs approval from **M1, M2 and M3** (enforced via [CODEOWNERS](.github/CODEOWNERS)).
-
-👉 Names, GitHub handles and detailed task lists: [`docs/TEAM.md`](docs/TEAM.md)
+👉 Each member's folder has their full task list, week-by-week timeline and "done when" goal.
 
 ---
 
@@ -203,7 +185,7 @@ Aapke-Liye/
 
 ## 🗓️ Work plan
 
-6 weeks, 3 phases. Full breakdown with per-member tasks: [`docs/WORK_PLAN.md`](docs/WORK_PLAN.md)
+6 weeks, 3 phases, starting Mon 23 Nov 2026. Per-member weekly tasks are in each `Member-N` folder.
 
 ```mermaid
 gantt
@@ -240,28 +222,24 @@ gantt
 
 ## 🚀 Getting started
 
-> 🚧 **The repo is at the structure stage.** Every folder has a `README.md` that names its owner and the files planned for it. Code arrives phase by phase, following the [work plan](docs/WORK_PLAN.md).
+> 🚧 **The repo is at the planning stage.** Code arrives phase by phase, following the work plan above.
+
+1. Clone the repo:
+   ```bash
+   git clone https://github.com/debarghyabose/Aapke-Liye.git
+   ```
+2. Open your `Member-N` folder and add your name and GitHub username to its README.
+3. **Week 1:** agree on the claim JSON format together. Everything else builds on it.
 
 ### Prerequisites (for when building starts)
 - Node.js 20+ · Python 3.12+ · PostgreSQL 15+ (local stand-in for AlloyDB)
 - A Google Cloud project with the Gemini API and Cloud TTS enabled
 
-### First steps for the team
-1. Clone the repo:
-   ```bash
-   git clone https://github.com/debarghyabose/Aapke-Liye.git
-   cd Aapke-Liye
-   cp .env.example .env
-   ```
-2. Fill in names and GitHub handles in [`docs/TEAM.md`](docs/TEAM.md), then enable [`.github/CODEOWNERS`](.github/CODEOWNERS).
-3. Open one issue per task in `docs/TEAM.md` using the **🧩 Task** template.
-4. **Week 1:** agree on `shared/schemas/claim.schema.json` together. Everything else builds on it.
-
 ---
 
 ## 🤝 Contributing
 
-Branch from `main` as `m<N>/<short-topic>` (e.g. `m2/sync-retry`), open a PR, get one review from a teammate. See [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Branch from `main` as `m<N>/<short-topic>` (e.g. `m2/sync-retry`), open a pull request, and get one review from a teammate.
 
 ## 🔐 Privacy
 
