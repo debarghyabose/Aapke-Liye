@@ -65,7 +65,8 @@ def _unit_word(cat: dict) -> str:
     return cat["unit"].replace("per ", "")
 
 
-def calculate_relief(losses: list[dict], crop_insured: bool | None = None) -> dict:
+def calculate_relief(losses: list[dict], crop_insured: bool | None = None,
+                     is_hilly: bool | None = None) -> dict:
     """
     losses: [{"category": "house", "item": "fully_damaged_plain", "quantity": 1,
               "damage_percent": 100}, ...]
@@ -78,6 +79,14 @@ def calculate_relief(losses: list[dict], crop_insured: bool | None = None) -> di
     """
     rules = load_sdrf_rules()
     cats = rules["categories"]
+    # Apply hilly-area rate swap before pricing
+    if is_hilly:
+        losses = [
+            {**l, "item": "fully_damaged_hilly"}
+            if l.get("category") == "house" and l.get("item") == "fully_damaged_plain"
+            else l
+            for l in (losses or [])
+        ]
     lines, unmatched, total = [], [], 0
     cat_used: dict[str, float] = {}
     item_used: dict[str, float] = {}

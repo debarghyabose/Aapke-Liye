@@ -48,3 +48,14 @@ async def save(kind: str, data: bytes) -> str:
 
 async def read(rel: str) -> bytes:
     return await run_in_threadpool(_read, rel)
+
+
+def _delete(rel: str) -> None:
+    path = settings.storage_dir / rel
+    if path.exists():
+        path.unlink()
+
+
+async def delete(rel: str) -> None:
+    """Remove an encrypted file from storage."""
+    await run_in_threadpool(_delete, rel)

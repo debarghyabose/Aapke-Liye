@@ -32,3 +32,9 @@ def verify_photo(lat, lon, taken_at) -> dict:
             "gps_ok": lat is not None and lon is not None,
             "timestamp_ok": taken_at is not None,
             "duplicate": False, "notes": ["[DEV MOCK] no real verification was run"]}
+
+
+def compare_photos() -> dict:
+    return {"same_property": True, "damage_score": 70, "level": "severe",
+            "damaged_items": ["[DEV MOCK] roof"], "reason": "[DEV MOCK] no real comparison was run",
+            "confidence": 0.5, "needs_human_review": True}

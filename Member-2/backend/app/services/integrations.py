@@ -161,3 +161,21 @@ async def next_escalation(days_pending: int, steps_done: list[str]) -> dict:
         raise ServiceUnavailable("escalation needs Member 1")
     return await _post(f"{settings.member1_ai_url}/v1/escalation/next",
                        json={"days_pending": days_pending, "steps_done": steps_done})
+
+
+async def compare_photos(before: bytes, before_type: str, after: bytes, after_type: str,
+                         context: str | None = None) -> dict:
+    """Member 1's before/after check: POST /v1/damage/compare (Member-1/app/schemas.py
+    DamageCompareRequest). Returns same_property, damage_score (0-100), level,
+    damaged_items, reason, confidence, needs_human_review."""
+    if settings.use_mock_member1:
+        from .. import dev_mocks
+        return dev_mocks.compare_photos()
+    if not settings.member1_ai_url:
+        raise ServiceUnavailable("MEMBER1_AI_URL is not set")
+    body = {"baseline_image_base64": base64.b64encode(before).decode(),
+            "damage_image_base64": base64.b64encode(after).decode(),
+            "baseline_media_type": before_type, "damage_media_type": after_type}
+    if context:
+        body["context"] = context
+    return await _post(f"{settings.member1_ai_url}/v1/damage/compare", json=body)

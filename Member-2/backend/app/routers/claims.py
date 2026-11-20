@@ -3,8 +3,9 @@ Claimant APIs. Every call except POST /claims needs the X-Claim-Token header ret
 by POST /claims; a wrong or missing token gives 404.
 """
 import hashlib
+import logging
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.responses import Response
 from pydantic import ValidationError
 from sqlalchemy import select
@@ -16,14 +17,17 @@ from ..config import SUPPORTED_LANGUAGES, settings
 from ..db import get_db
 from ..models import AudioRecording, AuditLog, Claim, Photo, StatusEvent, audit, now
 from ..schemas import (ClaimCreate, ClaimCreated, ClaimFields, ClaimFieldsUpdate, ClaimOut,
-                       ClaimText, iso_utc)
-from ..security import claim_for_claimant, hash_token, limiter, new_claim_token
+                       ClaimText, HouseholdLink, iso_utc)
+from ..security import (claim_for_claimant, hash_token, household_with_token, limiter,
+                        new_claim_token)
 from ..services import integrations, member1_adapter
 from ..services.integrations import ServiceUnavailable
 from ..services.pdf_builder import build_claim_pdf
 from ..services.relief import calculate_relief, suggest_proofs
 from ..services.validation import normalize_phone, parse_taken_at, submission_problems
 from ..uploads import AUDIO, MAX_PHOTOS_PER_CLAIM, PHOTO, read_upload
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/claims", tags=["claims"])
 
@@ -47,10 +51,14 @@ def _require_draft(claim: Claim):
 
 
 def _refresh_derived(claim: Claim):
-    """Recompute relief amount and proof suggestions whenever fields change."""
+    """Recompute relief amount and proof suggestions whenever fields change. Documents the
+    family saved in its vault are available, so they need no substitute proof."""
     claim.relief = calculate_relief(claim.fields.get("losses", []),
-                                    claim.fields.get("crop_insured"))
-    claim.proof_suggestions = suggest_proofs(claim.fields.get("documents_lost", []))
+                                    claim.fields.get("crop_insured"),
+                                    claim.fields.get("is_hilly"))
+    in_vault = {d["document"] for d in claim.documents_in_vault}
+    claim.proof_suggestions = suggest_proofs(
+        [d for d in claim.fields.get("documents_lost") or [] if d not in in_vault])
 
 
 def _clean_ai_fields(raw: dict) -> dict:
@@ -115,6 +123,25 @@ async def _verify(claim: Claim, photo: Photo, data: bytes) -> dict:
     except ServiceUnavailable:
         return {"status": "pending"}
     return {**v, "status": "complete"}
+
+
+async def _before_after(claim: Claim, photo: Photo, data: bytes) -> None:
+    """If the family saved a baseline photo in its vault, ask Member 1 to compare it with this
+    claim photo and keep the answer in photo.verification["before_after"]. Never fails the
+    upload: if Member 1 is down the result is {"status": "unavailable"}."""
+    baseline = next((d for d in (claim.household.documents if claim.household else [])
+                     if d.doc_type == "baseline_photo"), None)
+    if not baseline:
+        return
+    try:
+        result = await integrations.compare_photos(
+            await storage.read(baseline.path), baseline.content_type, data, photo.content_type,
+            claim.fields.get("disaster_type") or claim.disaster_type)
+        result = {**result, "status": "complete", "baseline_document_id": baseline.id}
+    except Exception as e:   # ServiceUnavailable, bad reply, unreadable file ...
+        log.warning("before/after comparison unavailable: %s", type(e).__name__)
+        result = {"status": "unavailable"}
+    photo.verification = {**(photo.verification or {}), "before_after": result}
 
 
 @router.post("", response_model=ClaimCreated, status_code=201)
@@ -225,6 +252,7 @@ async def upload_photo(
     p = Photo(path=await storage.save("photos", data), sha256=digest, content_type=content_type,
               lat=lat, lon=lon, taken_at=taken, duplicate_of_claim_id=other_claim)
     p.verification = await _verify(claim, p, data)
+    await _before_after(claim, p, data)
     claim.photos.append(p)
     await db.flush()
     audit(db, claim.id, "photo_uploaded", photo_id=p.id, verification=p.verification["status"],
@@ -248,6 +276,25 @@ async def reverify_photo(request: Request, photo_id: int,
     await db.commit()
     if p.verification["status"] == "pending":
         raise HTTPException(503, VERIFY_DOWN, headers={"Retry-After": "60"})
+    return _out(claim)
+
+
+@router.post("/{claim_id}/household", response_model=ClaimOut)
+async def link_household(body: HouseholdLink, x_household_token: str | None = Header(None),
+                         claim: Claim = Depends(claim_for_claimant),
+                         db: AsyncSession = Depends(get_db)):
+    """Use the family's document vault for this claim ("Use my household" on claim step 1).
+    Needs both tokens, so nobody can attach another family's papers to their claim.
+    Photos already on the claim are compared with the baseline photo now."""
+    _require_draft(claim)
+    claim.household = await household_with_token(db, body.household_id, x_household_token)
+    for p in claim.photos:
+        if "before_after" not in (p.verification or {}):
+            await _before_after(claim, p, await storage.read(p.path))
+    _refresh_derived(claim)
+    audit(db, claim.id, "household_linked", household_id=claim.household.id,
+          vault_documents=[d["document"] for d in claim.documents_in_vault])
+    await db.commit()
     return _out(claim)
 
 

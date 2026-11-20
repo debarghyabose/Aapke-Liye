@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .config import settings
 from .db import get_db
-from .models import Claim
+from .models import Claim, Household
 
 limiter = Limiter(key_func=get_remote_address)
 
@@ -41,3 +41,17 @@ def staff_member(x_staff_key: str | None = Header(None)) -> str:
         if x_staff_key and hmac.compare_digest(x_staff_key.encode(), key.encode()):
             return label
     raise HTTPException(401, "A valid X-Staff-Key header is required")
+
+
+async def household_with_token(db: AsyncSession, household_id: str,
+                               token: str | None) -> Household:
+    """The household, if `token` matches its X-Household-Token. Otherwise 404."""
+    hh = await db.get(Household, household_id)
+    if not hh or not token or not hmac.compare_digest(hh.token_hash, hash_token(token)):
+        raise HTTPException(404, "Household not found")
+    return hh
+
+
+async def household_for_owner(household_id: str, x_household_token: str | None = Header(None),
+                              db: AsyncSession = Depends(get_db)) -> Household:
+    return await household_with_token(db, household_id, x_household_token)

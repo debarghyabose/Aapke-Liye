@@ -57,6 +57,7 @@ class ClaimFields(BaseModel):
     vulnerability: Annotated[list[Literal["elderly", "disabled", "single_mother", "child_under_5"]],
                              Field(max_length=4)] | None = None
     crop_insured: bool | None = None   # PMFBY: enables the crop insurance estimate
+    is_hilly: bool | None = None        # hilly area: higher house rate
 
 
 class ClaimCreate(BaseModel):
@@ -69,6 +70,11 @@ class ClaimCreate(BaseModel):
 class ClaimText(BaseModel):
     """POST /claims/{id}/text: typed or phone-transcribed input for the claim AI."""
     text: str = Field(min_length=1, max_length=2000)
+
+
+class HouseholdLink(BaseModel):
+    """POST /claims/{id}/household (with the X-Household-Token header)."""
+    household_id: str = Field(min_length=1, max_length=20, examples=["HH-K7Q2MZX4P9TB"])
 
 
 class ClaimFieldsUpdate(BaseModel):
@@ -139,6 +145,9 @@ class ClaimOut(BaseModel):
     proof_suggestions: list
     status: str
     pdf_url: str | None = None
+    household_id: str | None = None
+    # [{"document": "aadhaar", "source": "upload" | "digilocker_mock"}]; not "lost"
+    documents_in_vault: list[dict] = []
     photos: list[PhotoOut] = []
     recordings: list[RecordingOut] = []
     history: list[StatusEventOut] = []

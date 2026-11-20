@@ -122,6 +122,32 @@ Languages: `en hi bn te mr ta`. Timestamps are UTC ISO 8601 with `Z`
 **Status flow:** `Draft → Submitted → Verified → Approved → Paid`. `Rejected` is allowed from
 Submitted or Verified. Only `/submit` moves Draft → Submitted.
 
+### Document vault + DigiLocker (demo), for the `/prepare` page
+
+A family saves papers and "before" photos **before** a disaster. All files are encrypted.
+
+| Call | Headers | Body | Returns |
+|---|---|---|---|
+| `POST /households` | none | none | `{household_id, household_token}`. The token is shown **once**; keep it on the phone |
+| `POST /households/{id}/documents` | `X-Household-Token` | form: `doc_type`, `file` (JPEG/PNG/WebP/PDF, ≤10 MB) | the document |
+| `GET /households/{id}/documents` | `X-Household-Token` | none | `[{id, doc_type, content_type, source, created_at, file_url}]` |
+| `GET /households/{id}/documents/{doc_id}/file` | `X-Household-Token` | none | the file (decrypted) |
+| `DELETE /households/{id}/documents/{doc_id}` | `X-Household-Token` | none | 204; the file is deleted too |
+| `POST /claims/{id}/household` | `X-Claim-Token` **and** `X-Household-Token` | `{"household_id": "HH-…"}` | the claim, with `household_id` and `documents_in_vault` |
+
+- `doc_type`: `aadhaar`, `ration_card`, `land_record`, `bank_passbook`, `house_ownership`, `voter_id`, `death_certificate` (the keys of `rules/proof_substitution.json`), or `baseline_photo` (image only: house, fields or livestock in normal times).
+- `source` is `upload` or `digilocker_mock`. **Always show `digilocker_mock` as "DigiLocker (demo)"**, never as a real DigiLocker document.
+- After linking, vault documents are no longer "lost": they leave `proof_suggestions` and the PDF lists them as "Available in vault".
+- **Before/after:** if the household has a `baseline_photo`, every claim photo gets `verification.before_after` from Member 1's `/v1/damage/compare`: `{status: "complete", same_property, damage_score (0-100), level, damaged_items, reason, confidence, needs_human_review, baseline_document_id}`, or `{status: "unavailable"}` if Member 1 is down. Photos uploaded before linking are compared when the household is linked.
+- **Hilly area:** `PATCH /claims/{id}` with `{"fields": {"is_hilly": true}}` → a fully damaged house uses the hilly rate (₹1,30,000 instead of ₹1,20,000).
+
+**DigiLocker (demo) flow** (`DIGILOCKER_MODE=mock`):
+1. `GET /households/{id}/digilocker/start?return_to=<your page URL>` with `X-Household-Token` → `{mode, demo: true, banner, consent_url}`.
+2. Open `BACKEND_URL + consent_url` in the browser (`window.location`). It is a consent page with a red **"Demo: DigiLocker mock"** banner and Allow / Deny.
+3. Allow → a sample Aadhaar and ration card (PDFs marked DEMO) are added with `source=digilocker_mock`, then the browser returns to `return_to?digilocker=added` (or `=denied`). `return_to` must start with one of `CORS_ORIGINS`; otherwise a "you can close this page" page is shown. Then call `GET /households/{id}/documents` again.
+
+Real DigiLocker later: only `app/services/digilocker.py` changes (same four steps: authorization URL → exchange code → list issued → fetch file).
+
 ### Examples (from a real dev run)
 
 ```http
