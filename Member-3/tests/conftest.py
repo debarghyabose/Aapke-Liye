@@ -44,3 +44,11 @@ def make_photo(seed: int = 0, lat=None, lon=None, taken_at: datetime | None = No
 @pytest.fixture
 def photo_factory():
     return make_photo
+
+
+@pytest.fixture(autouse=True)
+def no_real_api_calls(monkeypatch):
+    """Tests never call the paid vision API, even when .env has a real key."""
+    from app import config
+
+    monkeypatch.setattr(config, "VISION_API_KEY", "")

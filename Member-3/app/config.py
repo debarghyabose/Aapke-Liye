@@ -12,6 +12,8 @@ ZONE_RADIUS_KM = float(os.getenv("DISASTER_ZONE_RADIUS_KM", "50"))
 DISASTER_START = datetime.fromisoformat(os.getenv("DISASTER_START_DATE", "2026-11-01"))
 
 VISION_API_KEY = os.getenv("VISION_API_KEY", "")
+VISION_MODEL = os.getenv("VISION_MODEL", "claude-opus-5-5")
+VISION_EFFORT = os.getenv("VISION_EFFORT", "medium")  # low | medium | high
 
 # Photos whose perceptual hashes differ by this many bits or fewer count as the same photo.
 PHASH_MAX_DISTANCE = 8
