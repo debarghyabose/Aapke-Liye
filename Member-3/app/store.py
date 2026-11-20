@@ -61,6 +61,14 @@ CREATE TABLE IF NOT EXISTS ivr_calls (
     updated_at   TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS ix_ivr_phone ON ivr_calls (phone);
+-- Mesh envelopes already delivered (app/mesh.py): stops a claim carried twice being filed twice.
+CREATE TABLE IF NOT EXISTS mesh_envelopes (
+    envelope_id  TEXT PRIMARY KEY,   -- claim_id made on the first phone
+    reference    TEXT,               -- Member 2 claim id
+    received_at  TEXT NOT NULL,
+    priority     TEXT,
+    state        TEXT                -- submitted | draft | draft_missing_details
+);
 """
 IVR_FIELDS = {"phone", "language", "claim_id", "token_enc", "processing"}
 WA_FIELDS = {"step", "language", "claim_id", "token_enc", "lat", "lon", "last_status"}
@@ -257,6 +265,21 @@ class Store:
             row = self._db.execute("SELECT * FROM ivr_calls WHERE phone = ? AND claim_id IS NOT NULL "
                                    "ORDER BY updated_at DESC, rowid DESC LIMIT 1", (phone,)).fetchone()
         return dict(row) if row else None
+
+    # ------------------------------------------------------------ mesh envelopes
+
+    def mesh_get(self, envelope_id: str) -> Optional[dict]:
+        with self._lock:
+            row = self._db.execute("SELECT * FROM mesh_envelopes WHERE envelope_id = ?", (envelope_id,)).fetchone()
+        return dict(row) if row else None
+
+    def mesh_record(self, envelope_id: str, reference: str, received_at: str, priority: str, state: str) -> bool:
+        """False if this envelope was already recorded."""
+        with self._lock:
+            cur = self._db.execute("INSERT OR IGNORE INTO mesh_envelopes VALUES (?, ?, ?, ?, ?)",
+                                   (envelope_id, reference, received_at, priority, state))
+            self._db.commit()
+            return cur.rowcount == 1
 
     def hashes(self) -> list[tuple[str, Optional[str]]]:
         with self._lock:

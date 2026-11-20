@@ -6,11 +6,11 @@
 
 ### Mesh "lite" (no Android needed today)
 A native phone-to-phone mesh takes weeks. For today, the same idea with what a browser can do: a **sealed claim passed by QR code or file** to a neighbour's phone, which uploads it when it has signal.
-- [ ] `GET /mesh/public-key` and `POST /mesh/envelopes` in Member 3's service. Generate the key pair once (keys in `.env`). Decrypt the envelope, reject expired or too-large ones (limits in `Member-5/rules/mesh_policy.json`), ignore duplicates by `claim_id`, then file the claim through Member 2's normal `/claims` APIs (as `whatsapp.py` already does).
-- [ ] `GET /mesh/receipts/{claim_id}` → a signed receipt, so the first phone can show "Delivered".
-- [ ] A small browser helper for Member 4: `sealClaim(claim, publicKey)` (WebCrypto: AES-GCM for the data, RSA-OAEP or X25519 for the key) → envelope JSON (+ text for a QR code).
-- [ ] Tests: tampered, expired, duplicate and oversized envelopes rejected; valid envelope becomes a claim.
-- [ ] **WhatsApp + IVR live (20 min):** run `cloudflared tunnel --url http://localhost:8002` (or `ngrok http 8002`), put the https URL in `PUBLIC_BASE_URL` in `Member-3/.env`, and set the Twilio WhatsApp sandbox webhook to `<url>/webhook` and the voice number to `<url>/voice`. This makes the computer reachable from the internet while the tunnel runs; stop it after the demo.
+- [x] `GET /mesh/public-key` and `POST /mesh/envelopes` in Member 3's service. Generate the key pair once (keys in `.env`). Decrypt the envelope, reject expired or too-large ones (limits in `Member-5/rules/mesh_policy.json`), ignore duplicates by `claim_id`, then file the claim through Member 2's normal `/claims` APIs (as `whatsapp.py` already does).
+- [x] `GET /mesh/receipts/{claim_id}` → a signed receipt, so the first phone can show "Delivered".
+- [x] A small browser helper for Member 4 (`offline-client/mesh.js`): `sealClaim(claim, publicKey)` (WebCrypto: AES-GCM for the data, RSA-OAEP or X25519 for the key) → envelope JSON (+ text for a QR code).
+- [x] Tests: tampered, expired, duplicate and oversized envelopes rejected; valid envelope becomes a claim.
+- [ ] **WhatsApp + IVR live (20 min):** run `cloudflared tunnel --url http://localhost:8002` (or `ngrok http 8002`), put the https URL in `PUBLIC_BASE_URL` in `Member-3/.env`, and set the Twilio WhatsApp sandbox webhook to `<url>/whatsapp/webhook` and the voice number to `<url>/ivr/voice`. This makes the computer reachable from the internet while the tunnel runs; stop it after the demo.
 - **Done when:** phone A (airplane mode) shows a QR code, phone B scans it, turns on data, and the claim appears on `/official`.
 
 **Rules:** work on your own branch `member-3/<feature>`, edit only your own folder (ask the owner otherwise), never commit `.env`, run your tests before pushing, then open a pull request into `main`. The team lead merges all four and builds the final web app (with mobile UI).
@@ -264,6 +264,29 @@ Notes:
   location. Satellite checks need the photo's own GPS, so they do not run on WhatsApp photos.
 - A tunnel makes the whole service public, `/verify` included: stop it after testing. In
   production, put the service behind a proper HTTPS address.
+
+## Mesh "lite" (claim carried phone to phone)
+
+When phone A has no network, it seals the claim with this server's public key and shows it as a
+**QR code** (text-only claims, about 1.3 KB) or shares it as a **file** (with a photo). Phone B
+carries it and, once online, posts it to `/mesh/envelopes`. The claim is filed through Member 2
+like any other, and a **signed receipt** goes back to phone A: "Your claim reached the relief office".
+
+- Envelope: AES-256-GCM for the claim, RSA-OAEP-4096 (SHA-256) for its key. The visible header
+  (`claim_id`, `created_at`, `priority`) is bound to the ciphertext, so a relay cannot change
+  anything, not even the priority. Receipts are signed with Ed25519.
+- Rejected: changed on the way or sealed for another server (400), expired after the 7-day
+  time-to-live (410), over 1.5 MB (413), no consent (422). Limits come from
+  `Member-5/rules/mesh_policy.json`. The same envelope delivered twice returns the first receipt
+  and files nothing new. If Member 2 is down: 503, and the carrier keeps it and retries.
+- For Member 4: `offline-client/mesh.js` has `fetchMeshKey`, `sealClaim`, `envelopeText`
+  (`fitsInQr`), `parseEnvelope`, `deliverEnvelope`, `fetchReceipt` and `verifyReceipt` (WebCrypto,
+  browsers and Node). Fetch the key while online and keep it: phone A needs it offline. The page
+  needs CORS: `http://localhost:5173` is allowed; add the deployed app's address to `DASHBOARD_CORS_ORIGINS`.
+- Setup once: `python scripts/make_mesh_keys.py` saves the keys in `.env` (never printed or
+  committed), then restart. Try it: `python scripts/try_mesh.py` (or `--photo`).
+- Not in the lite version: device signatures and per-device rate limits from the spec
+  (`Member-5/docs/network_mesh_spec.md`), and Bluetooth/Wi-Fi Direct transfer (needs the Android app).
 
 ## IVR line (phone call)
 

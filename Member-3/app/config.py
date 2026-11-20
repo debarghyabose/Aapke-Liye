@@ -36,7 +36,8 @@ DASHBOARD_API_KEY = os.getenv("DASHBOARD_API_KEY", "")
 # "null" = the dashboard opened straight from a file (file://). Remove it in production.
 DASHBOARD_CORS_ORIGINS = [o.strip() for o in os.getenv(
     "DASHBOARD_CORS_ORIGINS",
-    "null,http://localhost:5500,http://127.0.0.1:5500,http://localhost:8080,http://localhost:3000",
+    "null,http://localhost:5500,http://127.0.0.1:5500,http://localhost:8080,http://localhost:3000,"
+    "http://localhost:5173,http://127.0.0.1:5173",
 ).split(",") if o.strip()]
 
 # Photos whose perceptual hashes differ by this many bits or fewer count as the same photo.
@@ -85,3 +86,11 @@ MEMBER2_API_URL = os.getenv("MEMBER2_API_URL", "http://localhost:8000").strip().
 # How often the bot checks claim status and messages people when it changes (0 = never).
 WHATSAPP_STATUS_POLL_SECONDS = float(os.getenv("WHATSAPP_STATUS_POLL_SECONDS", "60"))
 WHATSAPP_CONSENT_VERSION = os.getenv("WHATSAPP_CONSENT_VERSION", "whatsapp-v1")
+
+# --- Mesh "lite" (app/mesh.py): sealed claims carried phone to phone.
+# Made by scripts/make_mesh_keys.py. MESH_PRIVATE_KEY opens envelopes; MESH_RECEIPT_KEY signs receipts.
+MESH_PRIVATE_KEY = os.getenv("MESH_PRIVATE_KEY", "").strip()
+MESH_RECEIPT_KEY = os.getenv("MESH_RECEIPT_KEY", "").strip()
+# Size, time-to-live and priority limits (shared with Member 4's app).
+MESH_POLICY_FILE = os.getenv("MESH_POLICY_FILE", os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "..", "Member-5", "rules", "mesh_policy.json"))

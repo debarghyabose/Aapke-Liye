@@ -243,9 +243,13 @@ class Member2:
             raise Member2Error(r.status_code, detail)
         return r.json()
 
-    async def create_claim(self, language: str) -> dict:
+    async def create_claim(self, language: str, consent_text_version: Optional[str] = None) -> dict:
         return await self._call("POST", "/claims", json={
-            "language": language, "consent": True, "consent_text_version": config.WHATSAPP_CONSENT_VERSION})
+            "language": language, "consent": True,
+            "consent_text_version": consent_text_version or config.WHATSAPP_CONSENT_VERSION})
+
+    async def update_fields(self, claim_id: str, token: str, fields: dict) -> dict:
+        return await self._call("PATCH", f"/claims/{claim_id}", token, json={"fields": fields})
 
     async def set_phone(self, claim_id: str, token: str, phone: str) -> dict:
         return await self._call("PATCH", f"/claims/{claim_id}", token, json={"fields": {"phone": phone}})
@@ -259,8 +263,8 @@ class Member2:
         return await self._call("POST", f"/claims/{claim_id}/audio/retry", token, timeout=120)
 
     async def upload_photo(self, claim_id: str, token: str, data: bytes, content_type: str,
-                           lat: Optional[float], lon: Optional[float]) -> dict:
-        form = {k: str(v) for k, v in (("lat", lat), ("lon", lon)) if v is not None}
+                           lat: Optional[float], lon: Optional[float], taken_at: Optional[str] = None) -> dict:
+        form = {k: str(v) for k, v in (("lat", lat), ("lon", lon), ("taken_at", taken_at)) if v is not None}
         return await self._call("POST", f"/claims/{claim_id}/photos", token, timeout=60, data=form,
                                 files={"photo": ("photo.jpg", data, content_type)})
 
