@@ -69,6 +69,7 @@ Organised by the relief journey. **✅ = in the MVP demo** · 🛣️ = roadmap
 | Proof substitution | Suggests accepted alternatives when documents are lost | ✅ |
 | Auto-filled relief form PDF | Official form, ready to submit | ✅ |
 | Offline-first app | Works with no network; uploads when signal returns | ✅ |
+| Network mesh | Phones relay sealed claims to each other over Bluetooth/Wi-Fi Direct until one reaches signal | 🛣️ |
 | Replacement applications | Drafts reissue requests for lost Aadhaar, ration cards and land records | 🛣️ |
 | Insurance claims | Generates home, vehicle and crop insurance claims from the same data | 🛣️ |
 | WhatsApp bot + IVR line | For people without smartphones or data | 🛣️ |
