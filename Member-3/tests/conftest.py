@@ -55,6 +55,8 @@ def no_real_api_calls(monkeypatch):
     monkeypatch.setattr(config, "GEMINI_API_KEY", "")
     monkeypatch.setattr(config, "DASHBOARD_API_KEY", "")
     monkeypatch.setattr(config, "NDVI_ENABLED", False)   # no satellite image requests in tests
+    for k in ("TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_WHATSAPP_FROM", "PUBLIC_BASE_URL"):
+        monkeypatch.setattr(config, k, "")                # no real WhatsApp messages in tests
     # Fixed disaster area and date: tests must not depend on whatever is in someone's .env
     # (for example the Puri demo settings).
     monkeypatch.setattr(config, "ZONE_LAT", 22.5726)
