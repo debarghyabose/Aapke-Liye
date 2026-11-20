@@ -12,13 +12,14 @@ Member 2 then stores the photo as "pending" and can call /verify again later
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 from app import config, sync
 from app.exif_check import distance_km, gps_in_zone, read_exif, timestamp_valid
 from app.geodata import get_geo
+from app.ndvi import crop_check
 from app.store import get_store
 from app.vision import assess_damage
 
@@ -70,8 +71,17 @@ def _parse_time(value: Optional[str]) -> Optional[datetime]:
     return t
 
 
+def run_crop_check(check_id: int, lat: float, lon: float, taken_at: datetime) -> None:
+    """Background task: Sentinel-2 before/after check, saved to the store when done."""
+    r = crop_check(lat, lon, taken_at)
+    get_store().update(check_id, ndvi_status=r["status"], ndvi_before=r["ndvi_before"],
+                       ndvi_after=r["ndvi_after"], ndvi_date_before=r["date_before"],
+                       ndvi_date_after=r["date_after"], ndvi_note=r.get("note"))
+
+
 @router.post("/verify", response_model=VerifyResponse)
 async def verify(
+    background: BackgroundTasks,
     photo: UploadFile = File(...),
     lat: Optional[str] = Form(None),
     lon: Optional[str] = Form(None),
@@ -200,10 +210,18 @@ async def verify(
         notes.append(f"Building map: no building mapped within {config.BUILDING_SEARCH_M:.0f} m of the photo "
                      "location (maps of rural areas can be incomplete)")
 
+    # --- Crop before/after from Sentinel-2 (slow: runs after we reply, result on the dashboard).
+    crop_check_due = (config.NDVI_ENABLED and damage.type == "crop" and gps_source == "exif"
+                      and use_time is not None)
+    if crop_check_due:
+        notes.append("Satellite crop check (Sentinel-2, field 2-4 months before vs now) started: "
+                     "the result appears on the dashboard in about a minute")
+
     detected = damage.type not in ("none", "unknown") and damage.severity > 0
     score = round(damage.severity if detected else 0.0, 2)
     sync.dup_index.add_hash(fingerprint, claim_id)
-    store.record(
+    check_id = store.record(
+        ndvi_status="pending" if crop_check_due else None,
         claim_id=claim_id, lat=use_lat, lon=use_lon, gps_source=gps_source,
         phone_hash=phone_fp, nearby_claims=nearby, phone_other_claims=len(phone_others) if phone_fp else None,
         in_flood=None if flood["in_flood"] is None else int(flood["in_flood"]),
@@ -217,6 +235,8 @@ async def verify(
         duplicate_of=duplicate_of, hash_distance=hash_distance,
         phash=str(fingerprint), notes=notes,
     )
+    if crop_check_due:
+        background.add_task(run_crop_check, check_id, use_lat, use_lon, use_time)
 
     return VerifyResponse(
         damage_detected=detected,

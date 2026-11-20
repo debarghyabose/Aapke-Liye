@@ -80,6 +80,24 @@ For photos with their own GPS (EXIF), `/verify` also checks local map files:
 - Outside the flood map is **not** flagged when satellite grading shows the building damaged
   (cyclone wind damage).
 - `data/demo/DEMO_synthetic_flood_extent.geojson` is **synthetic demo data**, not from a satellite.
+- **Crop before/after (Sentinel-2 NDVI):** for a *crop* photo with its own GPS and capture time,
+  the service compares the field's greenness (NDVI) in the clearest image **45–120 days before**
+  the photo with the clearest image **after the disaster started** (up to 7 days after the photo).
+  It runs **in the background** (10–30 s) after `/verify` replies, and the result appears on the
+  dashboard as `crop_satellite`:
+
+  | Result | Meaning |
+  |---|---|
+  | `vegetation_loss` | Greenness dropped by 0.15 or more: consistent with crop damage |
+  | `water_after` | The field is under water after: consistent with flood damage |
+  | `no_change` | About the same: flag `crop_unchanged_after`, check on site |
+  | `little_vegetation_before` | Little green before: flag `crop_no_vegetation_before` (may be between crop seasons) |
+  | `no_clear_image` | Clouds (common in the monsoon): no verdict, never a guess |
+
+  Images come from Earth Search (AWS open data, Sentinel-2 L2A, no account). **Privacy:** only a
+  ~25 km box is sent in the search, never the exact field, and no claim ID, name or phone is sent.
+  Tested on real Cyclone Fani data: villages west of Puri **0.80 → 0.26** (vegetation loss), while
+  a control area far inland stayed **0.63 → 0.67** (no change). Turn off with `NDVI_ENABLED=false`.
 - **Not possible with free data:** checking whether one specific house was intact before the
   disaster needs ~0.5 m imagery (ISRO Cartosat through NRSC, or Maxar Open Data for major
   disasters). Free Sentinel imagery is 10 m per pixel, about one pixel per house.
@@ -161,7 +179,7 @@ Multipart `photo` (required), plus `lat`, `lon`, `taken_at` (ISO 8601), `claim_i
 ## Phase 2: Roadmap features (after the demo works)
 | Feature | What to do |
 |---|---|
-| 🟡 Satellite verification | Check the claim location against Sentinel-1 / ISRO Bhuvan flood and damage maps (flood map + building map checks done; real Copernicus/Bhuvan data still to load; crop before/after NDVI next) |
+| ✅ Satellite verification | Flood maps + satellite building damage grading (real Copernicus EMS data) and crop before/after from Sentinel-2 NDVI. ISRO Bhuvan layers need a login; house-level before/after needs ISRO Cartosat (roadmap) |
 | ✅ Advanced fraud detection | Flag the same photo, house or person claiming twice (see "Fraud checks" below) |
 | WhatsApp bot | File a claim by sending a voice note on WhatsApp |
 | IVR / missed-call line | Feature-phone users call in and speak their claim |

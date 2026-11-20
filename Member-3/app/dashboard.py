@@ -63,6 +63,10 @@ def flags_for(check: dict) -> list[str]:
         flags.append("outside_flood_extent")
     if check.get("building_found") is False:
         flags.append("no_building_at_location")
+    if check.get("ndvi_status") == "little_vegetation_before":
+        flags.append("crop_no_vegetation_before")
+    elif check.get("ndvi_status") == "no_change":
+        flags.append("crop_unchanged_after")
     if check["lat"] is None:
         flags.append("no_location")
     elif not check["gps_ok"]:
@@ -88,6 +92,9 @@ def _claims() -> dict[str, dict]:
         })
         if c.get("satellite_damage_grade"):
             cl["satellite_damage_grade"] = c["satellite_damage_grade"]
+        if c.get("ndvi_status"):   # Sentinel-2 crop before/after (latest crop photo wins)
+            cl["crop_satellite"] = {k: c.get(f"ndvi_{k}") for k in
+                                    ("status", "before", "after", "date_before", "date_after", "note")}
         # Satellite / map results: any photo confirming it is enough.
         for k in ("in_flood", "building_found"):
             if c.get(k) is True or (c.get(k) is False and cl[k] is None):
@@ -229,6 +236,11 @@ def fraud_flags() -> dict:
                           "flood_map": c.get("flood_map"),
                           "action": "Satellite flood map shows no flooding here: check the damage cause "
                                     "(the map shows water only at the time the satellite passed)"})
+        if c.get("ndvi_status") in ("little_vegetation_before", "no_change"):
+            items.append({**base, "type": "crop_satellite_mismatch", "ndvi_status": c["ndvi_status"],
+                          "ndvi_before": c.get("ndvi_before"), "ndvi_after": c.get("ndvi_after"),
+                          "date_before": c.get("ndvi_date_before"), "date_after": c.get("ndvi_date_after"),
+                          "action": c.get("ndvi_note") or "Satellite images don't show crop loss here: check on site"})
         if c.get("building_found") is False:
             items.append({**base, "type": "no_building_at_location",
                           "action": "House claim, but no building is mapped at the photo location: field "
@@ -240,7 +252,7 @@ def fraud_flags() -> dict:
             items.append({**base, "type": "outside_disaster_area", "lat": c["lat"], "lon": c["lon"],
                           "action": "Location is outside the affected area: check before sanction"})
     order = {"duplicate_photo": 0, "possible_same_house": 1, "phone_many_claims": 2, "gps_mismatch": 3,
-             "no_building_at_location": 4, "outside_flood_extent": 5, "not_genuine_photo": 6,
-             "outside_disaster_area": 7}
+             "no_building_at_location": 4, "crop_satellite_mismatch": 5, "outside_flood_extent": 6,
+             "not_genuine_photo": 7, "outside_disaster_area": 8}
     items.sort(key=lambda x: (order[x["type"]], x["checked_at"]))
     return {"count": len(items), "items": items}

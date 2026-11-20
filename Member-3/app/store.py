@@ -50,6 +50,13 @@ LATER_COLUMNS = {
     "building_found": "INTEGER",        # building map: 1 found, 0 none nearby, NULL no data
     "building_distance_m": "REAL",
     "satellite_damage_grade": "TEXT",   # e.g. Copernicus EMS grading: Destroyed / Damaged / ...
+    # Sentinel-2 crop before/after check (filled in the background, see app/ndvi.py)
+    "ndvi_status": "TEXT",              # pending / vegetation_loss / water_after / no_change / ...
+    "ndvi_before": "REAL",
+    "ndvi_after": "REAL",
+    "ndvi_date_before": "TEXT",
+    "ndvi_date_after": "TEXT",
+    "ndvi_note": "TEXT",
 }
 
 
@@ -126,7 +133,7 @@ class Store:
 
     # ------------------------------------------------------------ rows
 
-    def record(self, **row) -> None:
+    def record(self, **row) -> int:
         row = {**row, "notes": json.dumps(row.get("notes", []), ensure_ascii=False),
                "checked_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
         if "nearby_claims" in row:
@@ -134,7 +141,18 @@ class Store:
         cols = ", ".join(row)
         marks = ", ".join(f":{k}" for k in row)
         with self._lock:
-            self._db.execute(f"INSERT INTO photo_checks ({cols}) VALUES ({marks})", row)
+            cur = self._db.execute(f"INSERT INTO photo_checks ({cols}) VALUES ({marks})", row)
+            self._db.commit()
+            return cur.lastrowid
+
+    def update(self, check_id: int, **fields) -> None:
+        """Add results that arrive later (the background satellite crop check)."""
+        unknown = set(fields) - set(LATER_COLUMNS)
+        if unknown:
+            raise ValueError(f"Not updatable: {unknown}")
+        sets = ", ".join(f"{k} = :{k}" for k in fields)
+        with self._lock:
+            self._db.execute(f"UPDATE photo_checks SET {sets} WHERE id = :id", {**fields, "id": check_id})
             self._db.commit()
 
     def all_checks(self) -> list[dict]:
