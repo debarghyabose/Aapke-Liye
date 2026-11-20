@@ -153,8 +153,12 @@ def calculate_relief(losses: list[dict], crop_insured: bool | None = None) -> di
         lines.append({**loss, "quantity": qty, "rate": rate, "unit": cat["unit"],
                       "amount": amount, "note": "; ".join(notes) or None})
 
+    claimed = [l.get("claimed_amount") for l in losses or [] if l.get("claimed_amount")]
     return {"rules_version": rules["version"], "estimate_only": rules_are_sample(),
             "lines": lines, "unmatched": unmatched, "total": total,
+            # What the person said they lost, for comparison. SDRF relief is fixed by MHA
+            # norms per item, so it is usually much lower than the real loss.
+            "claimed_total": int(round(sum(claimed))) if claimed else None,
             "may_also_qualify": other_schemes(losses, crop_insured)}
 
 

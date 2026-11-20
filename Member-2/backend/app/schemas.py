@@ -30,6 +30,9 @@ class Loss(BaseModel):
     item: str = Field(max_length=60, examples=["fully_damaged_plain"])
     quantity: float = Field(1, ge=0, le=100000)
     damage_percent: float | None = Field(None, ge=0, le=100)
+    # What the person said the loss is worth (₹). Shown next to the SDRF amount; SDRF pays
+    # fixed government rates, not this figure.
+    claimed_amount: float | None = Field(None, ge=0, le=10_000_000_000)
 
 
 Text = Annotated[str, Field(max_length=120)]

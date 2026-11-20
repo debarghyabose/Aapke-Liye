@@ -501,7 +501,12 @@ export const Claim: React.FC = () => {
             {understood.length > 0 && (
               <p style={{ margin: '0 0 8px 0', fontWeight: 700, color: 'var(--text)' }}>
                 {t('claim.understood', 'Understood:')} {understood.join(' · ')}
-                {claim.relief?.total ? ` · ₹${claim.relief.total.toLocaleString('en-IN')}` : ''}
+                {claim.relief?.total
+                  ? ` · ${t('claim.sdrfShort', 'SDRF relief')} ₹${claim.relief.total.toLocaleString('en-IN')}`
+                  : ''}
+                {claim.relief?.claimed_total
+                  ? ` · ${t('claim.youReported', 'you reported')} ₹${claim.relief.claimed_total.toLocaleString('en-IN')}`
+                  : ''}
               </p>
             )}
             {nextQuestion ? (
@@ -1282,6 +1287,17 @@ export const Claim: React.FC = () => {
               <div className="sdrf-banner-amount" style={{ fontSize: '2.6rem', fontWeight: 800 }}>
                 ₹{claim.relief?.total ? claim.relief.total.toLocaleString('en-IN') : DEMO_MODE ? '2,06,300' : '0'}
               </div>
+              {!DEMO_MODE && (
+                <div style={{ fontSize: '0.88rem', color: '#D2E3EE', marginTop: '4px', fontWeight: 600, maxWidth: '560px' }}>
+                  {claim.relief?.claimed_total
+                    ? `${t('claim.youReportedLoss', 'Loss you reported')}: ₹${claim.relief.claimed_total.toLocaleString('en-IN')}. `
+                    : ''}
+                  {t(
+                    'claim.sdrfFixedNote',
+                    'SDRF relief is a fixed government amount per item (e.g. ₹1,20,000 for a fully destroyed house), not the full value of the loss. Insurance and PMAY-G can add more.'
+                  )}
+                </div>
+              )}
               <div style={{ fontSize: '0.92rem', color: '#FFE082', marginTop: '4px', fontWeight: 700 }}>
                 {t('claim.matchedSchemes', {
                   schemes: claim.relief?.matched_schemes.join(' · ') || (DEMO_MODE ? 'SDRF, PMFBY, PMAY-G' : 'SDRF'),
@@ -1323,6 +1339,11 @@ export const Claim: React.FC = () => {
                   <div style={{ fontWeight: 800, color: 'var(--accent)', marginTop: '4px', fontSize: '1.18rem' }}>
                     ₹{item.amount.toLocaleString('en-IN')}
                   </div>
+                  {item.description && (
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px', fontWeight: 600 }}>
+                      {item.description}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

@@ -55,7 +55,16 @@ def _crop_item(crop: str | None) -> str:
 
 
 def map_loss(loss: dict) -> list[dict]:
-    """One Member 1 loss -> zero or more Member 2 / SDRF loss lines."""
+    """One Member 1 loss -> zero or more Member 2 / SDRF loss lines. The amount the person
+    reported (amount_inr) goes on the first line as claimed_amount."""
+    lines = _map_loss(loss)
+    amount = loss.get("amount_inr")
+    if lines and isinstance(amount, (int, float)) and amount > 0:
+        lines[0]["claimed_amount"] = float(amount)
+    return lines
+
+
+def _map_loss(loss: dict) -> list[dict]:
     kind = loss.get("type")
     level = loss.get("damage_level")
     pct = DAMAGE_PERCENT.get(level) if level else None

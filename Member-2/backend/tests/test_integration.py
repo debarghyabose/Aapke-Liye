@@ -182,3 +182,25 @@ def test_staff_dashboard_proxy(client, services, monkeypatch):
     assert client.get("/staff/dashboard/summary", headers=STAFF).json() == {"claims": 3}
     assert route.calls[0].request.headers["X-Dashboard-Key"] == "dash-key"
     assert client.get("/staff/dashboard/secrets", headers=STAFF).status_code == 404
+
+
+# ---------- reported loss amount and invalid fields ----------
+
+def test_reported_amount_is_kept_next_to_sdrf():
+    from app.services.member1_adapter import map_loss
+    line = map_loss({"type": "house", "damage_level": "destroyed", "amount_inr": 20_000_000})[0]
+    assert line["claimed_amount"] == 20_000_000
+    r = calculate_relief([line])
+    assert r["total"] == 120000 and r["claimed_total"] == 20_000_000      # SDRF is a fixed norm
+    assert r["lines"][0]["claimed_amount"] == 20_000_000
+    split = map_loss({"type": "belongings", "amount_inr": 5000})
+    assert split[0]["claimed_amount"] == 5000 and "claimed_amount" not in split[1]
+
+
+def test_invalid_phone_stays_missing(client, services):
+    ai = __import__("copy").deepcopy(AI_RESPONSE)
+    ai["claim"]["claimant"]["phone"] = "80"
+    services.m1.respond(json=ai)
+    cid, h = new_claim(client)
+    r = client.post(f"/claims/{cid}/text", headers=h, json={"text": "phone 80"})
+    assert "phone" in r.json()["missing_fields"]
