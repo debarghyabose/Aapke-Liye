@@ -1,0 +1,25 @@
+### PLACEHOLDER TEMPLATE - replace with Member 5's reviewed legal wording before use ###
+
+To,
+The District Supply Officer,
+{{district}}, {{state}}
+
+Subject: Application for duplicate ration card lost in the {{disaster}} of {{incident_date}}
+
+Sir/Madam,
+
+{{incident_narrative}}
+
+My ration card (number: {{ration_card_no}}, category: {{ration_card_category}}) was lost in this
+disaster. I request issue of a duplicate ration card so that my family can continue to receive
+rations.
+
+Fair price shop: {{fps_name}}
+Number of family members on the card: {{family_members}}
+
+Yours faithfully,
+
+{{name}}
+Address: {{address}}
+Mobile: {{phone}}
+Date: {{today}}

@@ -1,0 +1,32 @@
+### PLACEHOLDER TEMPLATE - replace with Member 5's reviewed legal wording before use ###
+
+To,
+The Branch Manager / Insurance Company: {{insurer_name}}
+(copy to the Agriculture Officer, {{district}})
+
+Subject: Intimation of crop loss due to {{disaster}} on {{incident_date}}
+
+Sir/Madam,
+
+{{incident_narrative}}
+
+Farmer name: {{name}}
+Village: {{village}}, District: {{district}}, State: {{state}}
+Policy / application number: {{policy_no}}
+Bank account linked to policy (last 4 digits): {{bank_last4}}
+Season: {{season}}
+Survey / Khasra number: {{survey_no}}
+
+Crop loss details:
+{{losses_table}}
+
+Estimated total loss: {{total_loss}}
+
+I request you to register this intimation and conduct the loss assessment.
+
+Yours faithfully,
+
+{{name}}
+Address: {{address}}
+Mobile: {{phone}}
+Date: {{today}}

@@ -1,0 +1,25 @@
+### PLACEHOLDER TEMPLATE - replace with Member 5's reviewed legal wording before use ###
+
+To,
+The Tehsildar / Revenue Officer,
+{{district}}, {{state}}
+
+Subject: Application for certified copies of land records lost in the {{disaster}} of {{incident_date}}
+
+Sir/Madam,
+
+{{incident_narrative}}
+
+My land documents were lost in this disaster. Details of the land:
+  Village: {{village}}
+  Survey / Khasra number: {{survey_no}}
+  Area: {{land_area}}
+
+I request certified copies of the record of rights for the above land.
+
+Yours faithfully,
+
+{{name}}
+Address: {{address}}
+Mobile: {{phone}}
+Date: {{today}}

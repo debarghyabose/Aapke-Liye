@@ -1,0 +1,30 @@
+### PLACEHOLDER TEMPLATE - replace with Member 5's reviewed legal wording before use ###
+
+To,
+The Claims Manager,
+{{insurer_name}}
+
+Subject: Intimation of claim under home insurance policy no. {{policy_no}}
+
+Sir/Madam,
+
+{{incident_narrative}}
+
+Policy number: {{policy_no}}
+Insured property address: {{address}}
+Date of loss: {{incident_date}}
+Cause of loss: {{disaster}}
+
+Details of loss:
+{{losses_table}}
+
+Estimated total loss: {{total_loss}}
+
+I request you to register my claim and depute a surveyor. Photographs of the damage are attached.
+
+Yours faithfully,
+
+{{name}}
+Address: {{address}}
+Mobile: {{phone}}
+Date: {{today}}

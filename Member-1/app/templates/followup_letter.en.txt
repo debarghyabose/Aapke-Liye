@@ -1,0 +1,24 @@
+### PLACEHOLDER TEMPLATE - replace with Member 5's reviewed legal wording before use ###
+
+To,
+{{office_name}}
+{{office_address}}
+
+Subject: Follow-up on relief claim no. {{claim_id}} filed on {{application_date}}
+
+Sir/Madam,
+
+I filed a relief claim (no. {{claim_id}}) on {{application_date}} for losses in the {{disaster}}
+of {{incident_date}}. It has been {{days_pending}} days and I have not received a decision.
+
+Details of loss:
+{{losses_table}}
+
+I request you to kindly inform me of the status of my claim and the expected date of payment.
+
+Yours faithfully,
+
+{{name}}
+Address: {{address}}
+Mobile: {{phone}}
+Date: {{today}}

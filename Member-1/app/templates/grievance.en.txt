@@ -1,0 +1,25 @@
+### PLACEHOLDER TEMPLATE - replace with Member 5's reviewed legal wording before use ###
+
+To,
+The District Collector / District Magistrate,
+{{district}}, {{state}}
+
+Subject: Grievance regarding delay in disaster relief, claim no. {{claim_id}}
+
+Sir/Madam,
+
+{{incident_narrative}}
+
+I filed relief claim no. {{claim_id}} with {{office_name}} on {{application_date}}. I also sent a
+follow-up letter on {{followup_date}}. It has now been {{days_pending}} days without a decision.
+
+Total loss claimed: {{total_loss}}
+
+I request your intervention so that my claim is decided at the earliest.
+
+Yours faithfully,
+
+{{name}}
+Address: {{address}}
+Mobile: {{phone}}
+Date: {{today}}

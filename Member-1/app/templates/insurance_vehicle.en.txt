@@ -1,0 +1,29 @@
+### PLACEHOLDER TEMPLATE - replace with Member 5's reviewed legal wording before use ###
+
+To,
+The Claims Manager,
+{{insurer_name}}
+
+Subject: Intimation of own-damage claim, policy no. {{policy_no}}, vehicle {{vehicle_reg_no}}
+
+Sir/Madam,
+
+{{incident_narrative}}
+
+Policy number: {{policy_no}}
+Vehicle registration number: {{vehicle_reg_no}}
+Place where the vehicle is now: {{vehicle_location}}
+Date of loss: {{incident_date}}
+Cause of loss: {{disaster}}
+
+Details of loss:
+{{losses_table}}
+
+I request you to register my claim and arrange inspection.
+
+Yours faithfully,
+
+{{name}}
+Address: {{address}}
+Mobile: {{phone}}
+Date: {{today}}

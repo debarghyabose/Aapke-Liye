@@ -1,0 +1,26 @@
+### PLACEHOLDER TEMPLATE - replace with Member 5's reviewed legal wording before use ###
+
+To,
+The In-charge,
+Aadhaar Enrolment / Update Centre, {{district}}
+
+Subject: Request for reprint of Aadhaar card lost in the {{disaster}} of {{incident_date}}
+
+Sir/Madam,
+
+{{incident_narrative}}
+
+My Aadhaar card was lost in this disaster. Aadhaar number (last 4 digits): {{aadhaar_last4}}.
+Mobile number linked to Aadhaar: {{phone}}.
+
+I request you to kindly help me obtain a reprint of my Aadhaar card. I am ready to provide
+biometric verification at the centre.
+
+Other documents lost: {{documents_lost}}
+
+Yours faithfully,
+
+{{name}}
+Address: {{address}}
+Mobile: {{phone}}
+Date: {{today}}
