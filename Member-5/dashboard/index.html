@@ -59,6 +59,13 @@
     .modal-header { font-size: 1.2rem; font-weight: 700; margin-bottom: 16px; }
     .modal-close { position: absolute; top: 16px; right: 16px; background: transparent; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; }
     .export-bar { margin-top: 24px; padding: 16px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+    /* Live data from Member 3 */
+    .source-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; margin-bottom: 20px; font-size: 0.85rem; }
+    .source-bar input { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: 6px; font-size: 0.8rem; min-width: 0; }
+    .source-bar .grow { flex: 1 1 200px; }
+    .source-note { color: var(--text-muted); font-size: 0.75rem; flex-basis: 100%; }
+    .fraud-item { background: rgba(15,23,42,0.8); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; font-size: 0.85rem; }
+    .fraud-list { max-height: 50vh; overflow-y: auto; margin-bottom: 16px; }
   </style>
 </head>
 <body>
@@ -80,26 +87,36 @@
     </div>
   </div>
 
+  <!-- Data source: sample (built in) or live from Member 3's verification service -->
+  <div class="source-bar">
+    <span>Data: <span id="source-badge" class="badge badge-yellow">SAMPLE DATA</span></span>
+    <input id="m3-url" class="grow" value="http://localhost:8002" aria-label="Member 3 service address">
+    <input id="m3-key" type="password" placeholder="Dashboard key (if set)" aria-label="Member 3 dashboard key">
+    <button class="btn" onclick="connectLive()">Connect live</button>
+    <button class="btn btn-outline" onclick="useSample()">Use sample</button>
+    <span id="source-note" class="source-note">Showing built-in sample data. Start Member 3's service and press "Connect live" for real photo checks.</span>
+  </div>
+
   <div class="kpis">
     <div class="kpi-card">
-      <div class="kpi-title">Total Voice Claims Filed</div>
+      <div class="kpi-title" id="kpi-total-title">Total Voice Claims Filed</div>
       <div class="kpi-value" id="kpi-total">4,892</div>
-      <div class="kpi-sub">↑ 412 in last 24 hrs</div>
+      <div class="kpi-sub" id="kpi-total-sub">↑ 412 in last 24 hrs</div>
     </div>
     <div class="kpi-card">
-      <div class="kpi-title">Field Verified</div>
+      <div class="kpi-title" id="kpi-verified-title">Field Verified</div>
       <div class="kpi-value" id="kpi-verified">3,120</div>
-      <div class="kpi-sub" style="color: #60a5fa;">63.7% completion</div>
+      <div class="kpi-sub" id="kpi-verified-sub" style="color: #60a5fa;">63.7% completion</div>
     </div>
     <div class="kpi-card">
-      <div class="kpi-title">Sanctioned & Approved</div>
+      <div class="kpi-title" id="kpi-approved-title">Sanctioned & Approved</div>
       <div class="kpi-value" id="kpi-approved">2,410</div>
-      <div class="kpi-sub" style="color: var(--warning);">710 awaiting sign-off</div>
+      <div class="kpi-sub" id="kpi-approved-sub" style="color: var(--warning);">710 awaiting sign-off</div>
     </div>
     <div class="kpi-card">
-      <div class="kpi-title">Total Relief Disbursed</div>
+      <div class="kpi-title" id="kpi-disbursed-title">Total Relief Disbursed</div>
       <div class="kpi-value" id="kpi-disbursed">₹18.42 Cr</div>
-      <div class="kpi-sub">Direct Benefit Transfer (DBT)</div>
+      <div class="kpi-sub" id="kpi-disbursed-sub">Direct Benefit Transfer (DBT)</div>
     </div>
   </div>
 
@@ -108,31 +125,31 @@
     <div class="panel">
       <div class="panel-header">
         <div class="panel-title">🗺️ Live Village Damage Heatmap & Telemetry</div>
-        <span class="badge badge-red">LIVE SENTINEL-1 INUNDATION</span>
+        <span class="badge badge-red" id="map-badge">LIVE SENTINEL-1 INUNDATION</span>
       </div>
       <div class="map-container">
         <canvas id="mapCanvas" class="canvas-map"></canvas>
         <div class="map-overlay-controls">
-          <label><input type="checkbox" id="toggleSat" checked onchange="drawMap()"> Sentinel-1 Satellite Mask</label>
+          <label id="toggleSatLabel"><input type="checkbox" id="toggleSat" checked onchange="drawMap()"> Sentinel-1 Satellite Mask</label>
           <label><input type="checkbox" id="toggleHeat" checked onchange="drawMap()"> Damage Density Heatmap</label>
           <span style="font-size: 0.7rem; color: var(--text-muted);">Click clusters for village breakdown</span>
         </div>
       </div>
       <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-top: 10px;">
-        <span>Critical Hotspots: <strong>Gosaba</strong>, <strong>Basanti</strong>, <strong>Sandeshkhali</strong></span>
-        <span>GPS Accuracy: ± 4.2m verified</span>
+        <span id="map-hotspots">Critical Hotspots: <strong>Gosaba</strong>, <strong>Basanti</strong>, <strong>Sandeshkhali</strong></span>
+        <span id="map-accuracy">GPS Accuracy: ± 4.2m verified</span>
       </div>
     </div>
 
     <!-- Vulnerability Priority Dispatch List -->
     <div class="panel">
       <div class="panel-header">
-        <div class="panel-title">👥 Vulnerability Priority Index (VPI) Queue</div>
-        <span class="badge badge-yellow">ALGORITHMIC DISPATCH</span>
+        <div class="panel-title" id="queue-title">👥 Vulnerability Priority Index (VPI) Queue</div>
+        <span class="badge badge-yellow" id="queue-badge">ALGORITHMIC DISPATCH</span>
       </div>
       <div class="table-container">
         <table>
-          <thead>
+          <thead id="vpi-table-head">
             <tr>
               <th>VPI</th>
               <th>Beneficiary</th>
@@ -159,7 +176,7 @@
       </p>
     </div>
     <div class="actions">
-      <button class="btn btn-outline" onclick="showFraudModal()">⚠️ View Anomaly Alerts (14)</button>
+      <button class="btn btn-outline" id="fraud-button" onclick="showFraudModal()">⚠️ View Anomaly Alerts (14)</button>
       <button class="btn btn-success" onclick="exportPFMSBatch()">📥 Export PFMS Batch (XML/CSV)</button>
     </div>
   </div>
@@ -169,6 +186,9 @@
     <div class="modal-content">
       <button class="modal-close" onclick="closeFraudModal()">&times;</button>
       <div class="modal-header">🚫 Anti-Fraud & Perceptual Duplicate Detection</div>
+      <!-- Live mode: real review items from Member 3 /dashboard/fraud-flags -->
+      <div id="fraud-live" style="display: none;"></div>
+      <div id="fraud-sample">
       <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
         Member 3's perceptual image hashing detected identical photo evidence submitted in two distinct claims:
       </p>
@@ -183,6 +203,7 @@
       <div style="display: flex; justify-content: flex-end; gap: 8px;">
         <button class="btn btn-outline" onclick="closeFraudModal()">Dismiss</button>
         <button class="btn btn-danger" onclick="alert('Claim CLM-2026-WB-8921 flagged for Tehsildar spot enquiry.'); closeFraudModal();">Flag for Spot Inspection</button>
+      </div>
       </div>
     </div>
   </div>
@@ -217,6 +238,7 @@
     }
 
     function drawMap() {
+      if (live) return drawLiveMap();
       const canvas = document.getElementById("mapCanvas");
       const ctx = canvas.getContext("2d");
       canvas.width = canvas.parentElement.clientWidth;
@@ -297,9 +319,170 @@
       alert("PFMS DBT batch generated successfully (3 approved records exported for direct treasury clearing).");
     }
 
+    // =====================================================================
+    // LIVE DATA from Member 3's verification service (/dashboard/*).
+    // Member 3 supplies damage scores, photo locations and fraud flags.
+    // Names, villages, rupee amounts and claim status come from Member 2:
+    // join on claim_id (not wired yet), so those KPIs are hidden in live mode.
+    // =====================================================================
+    let live = null;          // { summary, claims, heat, fraud } when connected
+    let liveTimer = null;
+    const SAMPLE_TEXT = {};   // original texts, restored by useSample()
+    const SWAP_IDS = ["kpi-total-title", "kpi-total", "kpi-total-sub", "kpi-verified-title", "kpi-verified",
+      "kpi-verified-sub", "kpi-approved-title", "kpi-approved", "kpi-approved-sub", "kpi-disbursed-title",
+      "kpi-disbursed", "kpi-disbursed-sub", "map-badge", "map-hotspots", "map-accuracy", "queue-title",
+      "queue-badge", "vpi-table-head", "fraud-button"];
+
+    const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (ch) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+    const setHTML = (id, html) => { document.getElementById(id).innerHTML = html; };
+    const FLAG_TEXT = {
+      duplicate_photo: "Duplicate photo", gps_mismatch: "GPS mismatch", not_genuine_photo: "Not a genuine photo",
+      outside_disaster_area: "Outside disaster area", no_location: "No location", no_capture_time: "No capture time",
+      time_invalid: "Time invalid", damage_not_assessed: "Damage not assessed",
+    };
+    const bandColor = (s) => s >= 70 ? "rgba(239, 68, 68, 0.75)" : s >= 40 ? "rgba(245, 158, 11, 0.75)" : s > 0 ? "rgba(250, 204, 21, 0.7)" : "rgba(148, 163, 184, 0.6)";
+
+    async function m3get(path) {
+      const base = document.getElementById("m3-url").value.trim().replace(/\/+$/, "");
+      const key = document.getElementById("m3-key").value;
+      const res = await fetch(base + path, { headers: key ? { "X-Dashboard-Key": key } : {} });
+      if (res.status === 401) throw new Error("Member 3 needs the dashboard key (wrong or missing)");
+      if (!res.ok) throw new Error(`Member 3 replied HTTP ${res.status}`);
+      return res.json();
+    }
+
+    async function connectLive(quiet = false) {
+      const note = document.getElementById("source-note");
+      if (!quiet) note.textContent = "Connecting to Member 3…";
+      try {
+        const [summary, claims, heat, fraud] = await Promise.all([
+          m3get("/dashboard/summary"), m3get("/dashboard/claims.geojson"),
+          m3get("/dashboard/heatmap.geojson?cell_km=1"), m3get("/dashboard/fraud-flags"),
+        ]);
+        if (!live) SWAP_IDS.forEach((id) => { SAMPLE_TEXT[id] = document.getElementById(id).innerHTML; });
+        live = { summary, claims, heat, fraud };
+        renderLive();
+        clearInterval(liveTimer);
+        liveTimer = setInterval(() => connectLive(true), 30000);   // refresh every 30 s
+      } catch (e) {
+        if (quiet && live) { note.textContent = `Live refresh failed (${e.message}). Showing the last data received.`; return; }
+        useSample();
+        note.textContent = `Could not reach Member 3 (${e.message}). Showing built-in sample data.`;
+      }
+    }
+
+    function useSample() {
+      clearInterval(liveTimer);
+      if (live) SWAP_IDS.forEach((id) => { document.getElementById(id).innerHTML = SAMPLE_TEXT[id]; });
+      live = null;
+      const badge = document.getElementById("source-badge");
+      badge.textContent = "SAMPLE DATA"; badge.className = "badge badge-yellow";
+      document.getElementById("source-note").textContent =
+        "Showing built-in sample data. Start Member 3's service and press \"Connect live\" for real photo checks.";
+      document.getElementById("toggleSatLabel").style.display = "";
+      document.getElementById("fraud-live").style.display = "none";
+      document.getElementById("fraud-sample").style.display = "";
+      renderTable();
+      drawMap();
+    }
+
+    function renderLive() {
+      const { summary: s, claims, fraud } = live;
+      const badge = document.getElementById("source-badge");
+      badge.textContent = "LIVE · MEMBER 3"; badge.className = "badge badge-green";
+      const when = s.last_checked_at ? new Date(s.last_checked_at).toLocaleString("en-IN") : "no photos yet";
+      document.getElementById("source-note").textContent =
+        `Live photo checks from Member 3 (refreshes every 30 s; last photo checked: ${when}). ` +
+        "Names, villages, amounts and approvals come from Member 2 and are not shown yet.";
+
+      setHTML("kpi-total-title", "Claims With Photos Checked"); setHTML("kpi-total", esc(s.claims));
+      setHTML("kpi-total-sub", `${esc(s.photos)} photos · ${esc(s.claims_without_location)} without location`);
+      setHTML("kpi-verified-title", "Severe Damage"); setHTML("kpi-verified", esc(s.by_severity.severe));
+      setHTML("kpi-verified-sub", `${esc(s.by_severity.moderate)} moderate · ${esc(s.by_severity.minor)} minor`);
+      setHTML("kpi-approved-title", "Flagged For Review"); setHTML("kpi-approved", esc(s.claims_flagged));
+      setHTML("kpi-approved-sub", `${esc(fraud.count)} items in the anomaly queue`);
+      setHTML("kpi-disbursed-title", "Relief Disbursed"); setHTML("kpi-disbursed", "—");
+      setHTML("kpi-disbursed-sub", "Needs Member 2's claim status");
+
+      setHTML("map-badge", "LIVE · PHOTO GPS");
+      document.getElementById("toggleSatLabel").style.display = "none";   // no real satellite layer yet
+      const top = claims.features.slice(0, 3).map((f) =>
+        `<strong>${esc(f.properties.claim_id)}</strong> (${esc(f.properties.damage_score)})`).join(", ");
+      setHTML("map-hotspots", `Most damaged: ${top || "none yet"}`);
+      setHTML("map-accuracy", `${esc(live.heat.features.length)} areas of ${esc(live.heat.cell_km)} km`);
+
+      setHTML("queue-title", "👥 Damage Priority Queue (Member 3 damage score)");
+      setHTML("queue-badge", "S_DAMAGE ONLY");
+      setHTML("vpi-table-head", "<tr><th>Damage</th><th>Claim</th><th>Photos</th><th>Loss found</th><th>Flags</th><th>Action</th></tr>");
+      document.getElementById("vpi-table-body").innerHTML = claims.features.length ? claims.features.map((f) => {
+        const p = f.properties;
+        const loss = (p.sdrf_categories.length ? p.sdrf_categories : p.damage_types).map(esc).join(", ") || "No damage visible";
+        const flags = p.flags.map((x) => `<span class="badge badge-red">${esc(FLAG_TEXT[x] || x)}</span>`).join(" ") || '<span class="badge badge-green">OK</span>';
+        return `<tr>
+          <td><span class="badge ${p.damage_score >= 70 ? "badge-red" : "badge-yellow"}">${esc(p.damage_score)}</span></td>
+          <td><strong>${esc(p.claim_id)}</strong><br><span style="font-size: 0.75rem; color: var(--text-muted);">${esc(p.severity_band)}</span></td>
+          <td>${esc(p.photos)}</td><td>${loss}</td><td>${flags}</td>
+          <td><button class="btn btn-outline" data-claim="${esc(p.claim_id)}" onclick="alert('Open claim ' + this.dataset.claim + ' in Member 2 staff view')">Open</button></td>
+        </tr>`;
+      }).join("") : `<tr><td colspan="6" style="color: var(--text-muted);">No photos checked yet.</td></tr>`;
+
+      setHTML("fraud-button", `⚠️ View Anomaly Alerts (${esc(fraud.count)})`);
+      document.getElementById("fraud-sample").style.display = "none";
+      const box = document.getElementById("fraud-live");
+      box.style.display = "";
+      const detail = (i) => i.type === "duplicate_photo" ? `Same photo as claim <strong>${esc(i.other_claim_id)}</strong> (hash distance ${esc(i.hash_distance)})`
+        : i.type === "gps_mismatch" ? `Photo taken ${esc(i.distance_km)} km from the phone's location` : "";
+      box.innerHTML = `<p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">
+          Live review queue from Member 3. Each item needs an official's decision; none is proof of fraud.</p>
+        <div class="fraud-list">${fraud.items.length ? fraud.items.map((i) => `
+          <div class="fraud-item"><p><strong>${esc(FLAG_TEXT[i.type] || i.type)}</strong> · Claim <strong>${esc(i.claim_id)}</strong></p>
+          ${detail(i) ? `<p>${detail(i)}</p>` : ""}
+          <p style="color: var(--text-muted); font-size: 0.8rem;">${esc(i.action)}</p></div>`).join("")
+          : '<p style="color: var(--text-muted);">No anomalies.</p>'}</div>
+        <div style="display: flex; justify-content: flex-end;"><button class="btn btn-outline" onclick="closeFraudModal()">Close</button></div>`;
+      drawMap();
+    }
+
+    // Real photo locations, fitted to the canvas (no basemap: positions are relative).
+    function drawLiveMap() {
+      const canvas = document.getElementById("mapCanvas");
+      const ctx = canvas.getContext("2d");
+      canvas.width = canvas.parentElement.clientWidth;
+      canvas.height = canvas.parentElement.clientHeight;
+      ctx.fillStyle = "#090d16";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      const cells = live.heat.features;
+      if (!cells.length) {
+        ctx.fillStyle = "#94a3b8"; ctx.font = "13px sans-serif";
+        ctx.fillText("No located photos yet", canvas.width / 2 - 70, canvas.height / 2);
+        return;
+      }
+      const lons = cells.map((c) => c.geometry.coordinates[0]), lats = cells.map((c) => c.geometry.coordinates[1]);
+      const minLon = Math.min(...lons), maxLon = Math.max(...lons), minLat = Math.min(...lats), maxLat = Math.max(...lats);
+      const pad = 50, spanLon = Math.max(maxLon - minLon, 0.02), spanLat = Math.max(maxLat - minLat, 0.02);
+      const x = (lon) => pad + ((lon - minLon) / spanLon) * (canvas.width - 2 * pad) + (maxLon === minLon ? (canvas.width - 2 * pad) / 2 : 0);
+      const y = (lat) => canvas.height - pad - ((lat - minLat) / spanLat) * (canvas.height - 2 * pad) - (maxLat === minLat ? (canvas.height - 2 * pad) / 2 : 0);
+      const showHeat = document.getElementById("toggleHeat").checked;
+      cells.forEach((c) => {
+        const p = c.properties, cx = x(c.geometry.coordinates[0]), cy = y(c.geometry.coordinates[1]);
+        const r = Math.min(60, 14 + 10 * Math.sqrt(p.claims));
+        if (showHeat) {
+          const grad = ctx.createRadialGradient(cx, cy, 2, cx, cy, r);
+          grad.addColorStop(0, bandColor(p.max_damage_score)); grad.addColorStop(1, "rgba(0,0,0,0)");
+          ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.fillStyle = "#fff"; ctx.font = "bold 11px sans-serif";
+        ctx.fillText(`${p.claims} claim${p.claims === 1 ? "" : "s"} · max ${p.max_damage_score}`, cx - 40, cy + 4);
+      });
+      ctx.fillStyle = "#94a3b8"; ctx.font = "10px sans-serif";
+      ctx.fillText(`${minLat.toFixed(3)}°N–${maxLat.toFixed(3)}°N, ${minLon.toFixed(3)}°E–${maxLon.toFixed(3)}°E`, 8, canvas.height - 8);
+    }
+
     window.addEventListener("load", () => {
       renderTable();
       drawMap();
+      connectLive(true);   // use live data automatically if Member 3 is running
     });
     window.addEventListener("resize", drawMap);
   </script>

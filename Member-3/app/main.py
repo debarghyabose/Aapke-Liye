@@ -7,6 +7,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app import config, sync
 from app.dashboard import router as dashboard_router
@@ -27,6 +28,14 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Aapke Liye: Verification + Offline Sync", version="0.3.0", lifespan=lifespan)
+# Lets Member 5's dashboard page read /dashboard from the browser. GET only:
+# browsers still can't read /verify replies from other sites.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=config.DASHBOARD_CORS_ORIGINS,
+    allow_methods=["GET"],
+    allow_headers=["X-Dashboard-Key"],
+)
 app.include_router(verify_router)
 app.include_router(dashboard_router)
 app.include_router(sync_router)
