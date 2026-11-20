@@ -52,3 +52,4 @@ def no_real_api_calls(monkeypatch):
     from app import config
 
     monkeypatch.setattr(config, "VISION_API_KEY", "")
+    monkeypatch.setattr(config, "GEMINI_API_KEY", "")
