@@ -432,6 +432,65 @@ export const Claim: React.FC = () => {
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
   };
 
+  // The AI's reply to the last voice note or typed answer: what it understood and what it
+  // asks next. Shown right under the transcript so the person sees an answer immediately.
+  const understood = [
+    claim.fields.name,
+    claim.fields.village,
+    claim.fields.district,
+    claim.fields.state,
+    claim.fields.disaster_type,
+    claim.fields.date_of_incident,
+    claim.fields.phone,
+  ].filter(Boolean) as string[];
+  const nextQuestion = claim.follow_up_questions[0]?.question;
+  const aiReply =
+    DEMO_MODE || (!loading && !claim.transcript) ? null : (
+      <div
+        aria-live="polite"
+        style={{
+          marginTop: '16px',
+          textAlign: 'left',
+          backgroundColor: '#FFFFFF',
+          padding: '18px 20px',
+          borderRadius: '14px',
+          border: '1.5px solid var(--primary)',
+        }}
+      >
+        {loading ? (
+          <strong>{t('claim.thinking', 'Understanding what you said…')}</strong>
+        ) : (
+          <>
+            {understood.length > 0 && (
+              <p style={{ margin: '0 0 8px 0', fontWeight: 700, color: 'var(--text)' }}>
+                {t('claim.understood', 'Understood:')} {understood.join(' · ')}
+                {claim.relief?.total ? ` · ₹${claim.relief.total.toLocaleString('en-IN')}` : ''}
+              </p>
+            )}
+            {nextQuestion ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary)' }}>{nextQuestion}</span>
+                <button
+                  onClick={() => handleSpeakQuestion(nextQuestion)}
+                  className="btn-outline-pill"
+                  style={{ padding: '6px 14px', minHeight: '40px', fontWeight: 700 }}
+                >
+                  <Volume2 size={16} /> {t('common.listen', 'Listen')}
+                </button>
+              </div>
+            ) : (
+              <span style={{ fontWeight: 800, color: 'var(--leaf)' }}>
+                {t('claim.allFilled', 'Everything needed is filled. You can add photos now.')}
+              </span>
+            )}
+            <p style={{ margin: '8px 0 0 0', fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+              {t('claim.answerHint', 'Answer by speaking again, or type below.')}
+            </p>
+          </>
+        )}
+      </div>
+    );
+
   // Typed answers go through the same claim AI as voice (live mode only).
   const typeBox = DEMO_MODE ? null : (
     <form
@@ -799,6 +858,8 @@ export const Claim: React.FC = () => {
               </p>
             </div>
           )}
+
+          {aiReply}
 
           {typeBox}
 
