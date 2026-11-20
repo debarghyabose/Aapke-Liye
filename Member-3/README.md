@@ -182,6 +182,43 @@ duplicates. To start over: stop the service, delete `member3.db`, start it, and 
 Photos taken live at the venue fall outside the Puri disaster area, which is correct. For a live
 demo, set `DISASTER_ZONE_*` to where you are.
 
+## Damage AI accuracy (CrisisMMD benchmark)
+
+Tested on a **balanced, reproducible sample of 30 photos** (10 per label, random seed 42) from the
+**CrisisMMD damage-severity test split** (QCRI; 7 disasters, including the 2017 Sri Lanka floods).
+Labels are by human annotators. Model: Gemini free tier (`gemini-3.6-flash`, falling back to
+`gemini-3.5-flash-lite` when busy). Run on 20 Nov 2026.
+
+| Measure | Result |
+|---|---|
+| Exact agreement (none / mild / severe; chance = 33%) | **47%** (14/30) |
+| Within one level | **100%** (30/30): never "none" for severe or "severe" for none |
+| Damage vs no damage | **70%** (21/30) |
+
+Confusion (rows = human label, columns = model):
+
+| | none | mild | severe |
+|---|---|---|---|
+| **none** | 3 | 7 | 0 |
+| **mild** | 2 | 5 | 3 |
+| **severe** | 0 | 4 | 6 |
+
+What the misses show:
+- **Human "none" → model "mild" (7/10):** mostly damage that isn't to a home, such as snapped
+  trees, downed power poles or debris. CrisisMMD calls these "little or no damage"; the relief
+  prompt counts any visible damage. This is a different definition of the task more than an error.
+- **Human "severe" floods → model "mild" (4):** flood water around a house is scored about 0.4 by
+  the inundation rule in the prompt.
+
+**Limits:** 30 photos is a rough estimate (about ±15%). The photos are mostly US hurricanes and
+wildfires from Twitter, not Indian claim photos. Free-tier model quality varies. Every claim is
+reviewed by an official anyway. To improve without overfitting, tune on CrisisMMD's **dev** split
+and report on **test**, with 100+ photos.
+
+Reproduce: download CrisisMMD (`huggingface.co/datasets/QCRI/CrisisMMD`, CC BY-NC-SA 4.0) and run
+`python scripts/eval_accuracy.py labels.csv --out results.csv`. The script retries when the free AI
+is busy, so busy moments are never scored as wrong answers.
+
 ## API
 
 **`POST /verify`**, called by Member 2 for every claim photo.
