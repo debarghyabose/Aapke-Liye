@@ -1,0 +1,50 @@
+{
+  "_note": "Human-readable labels for the relief form PDF. Keys match rules/sdrf_rules.json and rules/proof_substitution.json. Missing keys fall back to a tidied version of the key.",
+  "categories": {
+    "house": "House",
+    "crop": "Crop",
+    "livestock": "Livestock",
+    "household": "Household Items",
+    "ex_gratia": "Ex Gratia"
+  },
+  "items": {
+    "house.fully_damaged_plain": "House – fully damaged (plains)",
+    "house.fully_damaged_hilly": "House – fully damaged (hilly area)",
+    "house.partially_damaged_pucca": "House – partially damaged (pucca)",
+    "house.partially_damaged_kutcha": "House – partially damaged (kutcha)",
+    "house.hut_damaged": "Hut – damaged or destroyed",
+    "house.cattle_shed": "Cattle shed",
+    "crop.rainfed": "Crop – rainfed",
+    "crop.irrigated": "Crop – irrigated",
+    "crop.perennial": "Crop – perennial",
+    "livestock.milch_large": "Milch animal (cow/buffalo)",
+    "livestock.milch_small": "Milch animal (sheep/goat)",
+    "livestock.draught_large": "Draught animal (ox/horse)",
+    "livestock.draught_small": "Draught animal (calf/donkey)",
+    "livestock.poultry": "Poultry (per bird)",
+    "household.clothing": "Clothing (per family)",
+    "household.utensils": "Utensils (per family)",
+    "ex_gratia.death": "Ex gratia – loss of life",
+    "ex_gratia.disability_40_60": "Ex gratia – disability 40–60%",
+    "ex_gratia.disability_above_60": "Ex gratia – disability above 60%"
+  },
+  "documents": {
+    "aadhaar": "Aadhaar card",
+    "ration_card": "Ration card",
+    "land_record": "Land record (Khatian / RoR)",
+    "bank_passbook": "Bank passbook",
+    "house_ownership": "House ownership proof",
+    "voter_id": "Voter ID"
+  },
+  "languages": {
+    "en": "English",
+    "hi": "Hindi (हिन्दी)",
+    "bn": "Bengali (বাংলা)",
+    "te": "Telugu (తెలుగు)",
+    "mr": "Marathi (मराठी)",
+    "ta": "Tamil (தமிழ்)"
+  },
+  "consent": {
+    "v1": "I agree that the information, recordings and photos I provide may be collected and used by the disaster relief authorities only to process my relief claim, as described to me in my language. I can ask for my data to be corrected."
+  }
+}

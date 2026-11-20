@@ -1,20 +1,22 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.orm import DeclarativeBase
 
-from .config import DATABASE_URL
+from .config import settings
 
-connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
-engine = create_engine(DATABASE_URL, connect_args=connect_args, pool_pre_ping=True)
-SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+engine = create_async_engine(settings.async_database_url, pool_pre_ping=True)
+SessionLocal = async_sessionmaker(engine, autoflush=False, expire_on_commit=False)
 
 
 class Base(DeclarativeBase):
     pass
 
 
-def get_db():
-    db = SessionLocal()
-    try:
+async def get_db():
+    async with SessionLocal() as db:
         yield db
-    finally:
-        db.close()
+
+
+async def create_tables():
+    """Development only. Production uses `alembic upgrade head`."""
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)

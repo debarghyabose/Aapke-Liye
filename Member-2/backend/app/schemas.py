@@ -1,33 +1,101 @@
-from datetime import datetime
-from typing import Any
+from datetime import date, datetime, timezone
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PlainSerializer, field_serializer
+
+
+def iso_utc(d: datetime) -> str:
+    """Always UTC with a Z suffix, e.g. 2026-11-20T04:30:00.000Z. Naive values are UTC
+    (SQLite drops the timezone; we only ever store UTC)."""
+    if d.tzinfo is not None:
+        d = d.astimezone(timezone.utc).replace(tzinfo=None)
+    return d.isoformat(timespec="milliseconds") + "Z"
+
+
+UTCDateTime = Annotated[datetime, PlainSerializer(iso_utc, return_type=str)]
 
 STATUSES = ["Draft", "Submitted", "Verified", "Approved", "Paid", "Rejected"]
+# Staff moves claims along this path with PUT /status. Draft -> Submitted happens only
+# through POST /claims/{id}/submit, which validates the claim and builds the PDF.
+STAFF_TRANSITIONS = {
+    "Submitted": {"Verified", "Rejected"},
+    "Verified": {"Approved", "Rejected"},
+    "Approved": {"Paid"},
+}
+
+
+class Loss(BaseModel):
+    model_config = {"extra": "forbid"}
+    category: str = Field(max_length=40, examples=["house"])
+    item: str = Field(max_length=60, examples=["fully_damaged_plain"])
+    quantity: float = Field(1, ge=0, le=100000)
+    damage_percent: float | None = Field(None, ge=0, le=100)
+
+
+Text = Annotated[str, Field(max_length=120)]
+
+
+class ClaimFields(BaseModel):
+    """The claim fields Member 1 extracts and the Review screen edits. Unknown keys are
+    rejected on PATCH (and ignored when they come from Member 1)."""
+    model_config = {"extra": "forbid"}
+    name: Text | None = None
+    phone: Annotated[str, Field(max_length=20)] | None = None
+    village: Text | None = None
+    district: Text | None = None
+    state: Text | None = None
+    disaster_type: Annotated[str, Field(max_length=40)] | None = None
+    date_of_incident: date | None = None
+    losses: Annotated[list[Loss], Field(max_length=50)] | None = None
+    documents_lost: Annotated[list[Annotated[str, Field(max_length=60)]],
+                              Field(max_length=20)] | None = None
+    bank_account_available: bool | None = None
 
 
 class ClaimCreate(BaseModel):
     language: str = Field("en", examples=["bn"])
-    disaster_type: str | None = Field(None, examples=["flood"])
+    disaster_type: str | None = Field(None, max_length=40, examples=["flood"])
+    consent: Literal[True] = Field(description="The claimant agreed to the consent text")
+    consent_text_version: str = Field(min_length=1, max_length=40, examples=["v1"])
 
 
 class ClaimFieldsUpdate(BaseModel):
     """Sent by the Review screen when the user taps Edit and corrects fields."""
-    fields: dict[str, Any]
+    fields: ClaimFields
 
 
 class StatusUpdate(BaseModel):
     status: str
-    note: str | None = None
+    note: str | None = Field(None, max_length=300)
 
 
 class PhotoOut(BaseModel):
+    """What the claimant sees. Duplicate flags are for officials only (GET /staff/claims)."""
     id: int
     sha256: str
     lat: float | None
     lon: float | None
-    taken_at: str | None
+    taken_at: UTCDateTime | None
     verification: dict
+
+    model_config = {"from_attributes": True}
+
+    @field_serializer("verification")
+    def _hide_duplicate(self, v: dict) -> dict:
+        return {k: val for k, val in v.items() if k != "duplicate"}
+
+
+class StaffPhotoOut(PhotoOut):
+    duplicate_of_claim_id: str | None   # same photo already used in this other claim
+
+    @field_serializer("verification")
+    def _hide_duplicate(self, v: dict) -> dict:
+        return v
+
+
+class RecordingOut(BaseModel):
+    id: int
+    status: str   # "pending" = waiting for Member 1; call POST /claims/{id}/audio/retry
 
     model_config = {"from_attributes": True}
 
@@ -35,9 +103,16 @@ class PhotoOut(BaseModel):
 class StatusEventOut(BaseModel):
     status: str
     note: str | None
-    at: datetime
+    at: UTCDateTime
 
     model_config = {"from_attributes": True}
+
+
+class StatusOut(BaseModel):
+    claim_id: str
+    status: str
+    updated_at: UTCDateTime
+    timeline: list[StatusEventOut]
 
 
 class ClaimOut(BaseModel):
@@ -53,8 +128,21 @@ class ClaimOut(BaseModel):
     status: str
     pdf_url: str | None = None
     photos: list[PhotoOut] = []
+    recordings: list[RecordingOut] = []
     history: list[StatusEventOut] = []
-    created_at: datetime
-    updated_at: datetime
+    consent_text_version: str
+    consent_given_at: UTCDateTime
+    submitted_at: UTCDateTime | None
+    created_at: UTCDateTime
+    updated_at: UTCDateTime
 
     model_config = {"from_attributes": True}
+
+
+class ClaimCreated(ClaimOut):
+    claim_token: str = Field(description="Shown once. Send it as X-Claim-Token on every call "
+                                         "for this claim. It cannot be recovered if lost.")
+
+
+class StaffClaimOut(ClaimOut):
+    photos: list[StaffPhotoOut] = []
