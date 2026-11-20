@@ -58,6 +58,31 @@ def test_rate_limit_is_handled(gemini, photo_factory):
     assert vision.assess_damage(photo_factory()).description == "vision daily limit reached, retry later"
 
 
+def test_busy_model_falls_back_to_next(monkeypatch, photo_factory):
+    calls = []
+
+    class Busy:
+        def generate_content(self, **kw):
+            calls.append(kw["model"])
+            if len(calls) == 1:
+                raise errors.ServerError(503, {"error": {"message": "high demand", "status": "UNAVAILABLE"}})
+            return SimpleNamespace(text=GOOD)
+
+    monkeypatch.setattr(config, "VISION_PROVIDER", "gemini")
+    monkeypatch.setattr(config, "GEMINI_API_KEY", "test-key")
+    monkeypatch.setattr(config, "GEMINI_MODELS", ["model-a", "model-b"])
+    monkeypatch.setattr(vision, "_gemini_client", SimpleNamespace(models=Busy()))
+    result = vision.assess_damage(photo_factory())
+    assert calls == ["model-a", "model-b"]
+    assert result.type == "crop"
+
+
+def test_all_models_busy_is_retryable(monkeypatch, gemini, photo_factory):
+    monkeypatch.setattr(config, "GEMINI_MODELS", ["model-a", "model-b"])
+    gemini(exc=errors.ServerError(503, {"error": {"message": "high demand", "status": "UNAVAILABLE"}}))
+    assert vision.assess_damage(photo_factory()).description == "vision service error"
+
+
 def test_unknown_provider(monkeypatch, photo_factory):
     monkeypatch.setattr(config, "VISION_PROVIDER", "nope")
     assert "unknown VISION_PROVIDER" in vision.assess_damage(photo_factory()).description
