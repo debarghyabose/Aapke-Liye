@@ -1,0 +1,36 @@
+# CODEOWNERS: GitHub asks these people to review PRs that touch their area.
+# 1. Replace each @mN-handle with that member's real GitHub username (see docs/TEAM.md).
+# 2. Remove the leading "# " from the rule lines below.
+
+# * @m5-handle
+
+# --- M1: Citizen App & Experience ---
+# /frontend/citizen-pwa/src/screens/   @m1-handle
+# /frontend/citizen-pwa/src/i18n/      @m1-handle
+# /frontend/citizen-pwa/public/audio/  @m1-handle
+
+# --- M2: Offline & Sync ---
+# /frontend/citizen-pwa/src/offline/   @m2-handle
+# /frontend/citizen-pwa/src/api/       @m2-handle
+# /frontend/citizen-pwa/public/        @m2-handle
+
+# --- M3: AI ---
+# /backend/app/services/gemini.py      @m3-handle
+# /backend/app/services/tts.py         @m3-handle
+# /backend/app/services/vision.py      @m3-handle
+# /backend/app/api/voice.py            @m3-handle
+
+# --- M4: Backend & Data ---
+# /backend/                            @m4-handle
+# /infra/migrations/                   @m4-handle
+
+# --- M5: Officials Dashboard & DevOps ---
+# /frontend/officials-dashboard/       @m5-handle
+# /backend/app/api/officials.py        @m5-handle
+# /backend/app/services/nl_sql.py      @m5-handle
+# /infra/                              @m5-handle
+# /.github/                            @m5-handle
+
+# --- Shared contract: needs M1, M2, M3, M4 ---
+# /shared/                             @m1-handle @m2-handle @m3-handle @m4-handle
+# /docs/API.md                         @m1-handle @m2-handle @m3-handle @m4-handle
