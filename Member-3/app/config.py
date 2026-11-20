@@ -72,3 +72,16 @@ NDVI_RADIUS_M = float(os.getenv("NDVI_RADIUS_M", "30"))
 
 # Secret for phone fingerprints. Set a long random value in production.
 PHONE_HASH_KEY = os.getenv("PHONE_HASH_KEY", "")
+
+# --- WhatsApp bot (app/whatsapp.py), through Twilio. Off unless all three are set.
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "").strip()
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "").strip()
+TWILIO_WHATSAPP_FROM = os.getenv("TWILIO_WHATSAPP_FROM", "").strip()   # whatsapp:+1...
+# The public https address Twilio calls (your tunnel), without a path. Needed to check that
+# webhook requests really come from Twilio when this service sits behind a tunnel.
+PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "").strip().rstrip("/")
+# Member 2's backend: the bot files claims through it, like the app does.
+MEMBER2_API_URL = os.getenv("MEMBER2_API_URL", "http://localhost:8000").strip().rstrip("/")
+# How often the bot checks claim status and messages people when it changes (0 = never).
+WHATSAPP_STATUS_POLL_SECONDS = float(os.getenv("WHATSAPP_STATUS_POLL_SECONDS", "60"))
+WHATSAPP_CONSENT_VERSION = os.getenv("WHATSAPP_CONSENT_VERSION", "whatsapp-v1")

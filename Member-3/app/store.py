@@ -37,7 +37,21 @@ CREATE TABLE IF NOT EXISTS photo_checks (
 );
 CREATE INDEX IF NOT EXISTS ix_checks_claim ON photo_checks (claim_id);
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+-- WhatsApp conversations (app/whatsapp.py). The number is kept because status updates must
+-- be sent to it; the claim token is encrypted.
+CREATE TABLE IF NOT EXISTS wa_sessions (
+    phone        TEXT PRIMARY KEY,   -- whatsapp:+91...
+    step         TEXT NOT NULL,      -- language | consent | claim
+    language     TEXT,
+    claim_id     TEXT,
+    token_enc    TEXT,
+    lat          REAL,               -- last location the person shared
+    lon          REAL,
+    last_status  TEXT,               -- last claim status we told them about
+    updated_at   TEXT NOT NULL
+);
 """
+WA_FIELDS = {"step", "language", "claim_id", "token_enc", "lat", "lon", "last_status"}
 
 # Columns added after the first release: created on older databases at startup.
 LATER_COLUMNS = {
@@ -170,6 +184,38 @@ class Store:
                 d[k] = None if d.get(k) is None else bool(d[k])
             out.append(d)
         return out
+
+    def secret_for(self, purpose: str) -> bytes:
+        """A 32-byte key for one purpose, derived from this service's secret."""
+        return hmac.new(self._phone_key, purpose.encode(), hashlib.sha256).digest()
+
+    # ------------------------------------------------------------ WhatsApp sessions
+
+    def wa_get(self, phone: str) -> Optional[dict]:
+        with self._lock:
+            row = self._db.execute("SELECT * FROM wa_sessions WHERE phone = ?", (phone,)).fetchone()
+        return dict(row) if row else None
+
+    def wa_save(self, phone: str, **fields) -> None:
+        unknown = set(fields) - WA_FIELDS
+        if unknown:
+            raise ValueError(f"Unknown session fields: {unknown}")
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        with self._lock:
+            if self._db.execute("SELECT 1 FROM wa_sessions WHERE phone = ?", (phone,)).fetchone():
+                sets = ", ".join(f"{k} = :{k}" for k in fields)
+                self._db.execute(f"UPDATE wa_sessions SET {sets + ', ' if sets else ''}updated_at = :now "
+                                 "WHERE phone = :phone", {**fields, "now": now, "phone": phone})
+            else:
+                row = {"step": "language", **fields, "phone": phone, "updated_at": now}
+                self._db.execute(f"INSERT INTO wa_sessions ({', '.join(row)}) "
+                                 f"VALUES ({', '.join(':' + k for k in row)})", row)
+            self._db.commit()
+
+    def wa_with_claims(self) -> list[dict]:
+        with self._lock:
+            rows = self._db.execute("SELECT * FROM wa_sessions WHERE claim_id IS NOT NULL").fetchall()
+        return [dict(r) for r in rows]
 
     def hashes(self) -> list[tuple[str, Optional[str]]]:
         with self._lock:

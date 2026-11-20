@@ -219,6 +219,36 @@ Reproduce: download CrisisMMD (`huggingface.co/datasets/QCRI/CrisisMMD`, CC BY-N
 `python scripts/eval_accuracy.py labels.csv --out results.csv`. The script retries when the free AI
 is busy, so busy moments are never scored as wrong answers.
 
+## WhatsApp bot
+
+People can file a claim from WhatsApp: pick a language (English, हिन्दी, বাংলা), agree to the
+consent text, send a **voice note**, share their **location**, send **photos**, then `SUBMIT`.
+The bot (`app/whatsapp.py`) files the claim through Member 2's API exactly like the app, so
+Member 1's speech AI and the photo checks above run as usual. It messages people when an official
+changes their claim's status (checked every 60 s). Commands: `SUBMIT`, `STATUS`, `NEW`, `HELP`, `RETRY`
+(also in Hindi and Bengali, e.g. `जमा`, `স্থিতি`).
+
+**Try it on this computer (no phone, nothing sent):** start Member 2 (port 8000) and this
+service (port 8002), then run `python scripts/try_whatsapp.py` (scripted demo) or
+`python scripts/try_whatsapp.py --chat` (type messages yourself).
+
+**On a real phone (Twilio WhatsApp sandbox, free, no Facebook account):**
+1. Twilio Console → Messaging → Try it out → Send a WhatsApp message. From your phone, send
+   the `join ...` code to the sandbox number (everyone who tests must do this).
+2. In `.env`: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM=whatsapp:+<sandbox number>`.
+3. Make this service reachable: `cloudflared tunnel --url http://localhost:8002` prints an
+   `https://….trycloudflare.com` address. Put it in `.env` as `PUBLIC_BASE_URL` and restart the service.
+4. Sandbox settings → "When a message comes in": `<PUBLIC_BASE_URL>/whatsapp/webhook` (POST).
+
+Notes:
+- Requests not signed by Twilio are refused (403). Without the Twilio settings the webhook is off (404).
+- The bot keeps each person's WhatsApp number (needed for status messages) and their claim
+  token (encrypted) in `member3.db`. An Indian WhatsApp number is added to the claim as its phone number.
+- WhatsApp removes photo GPS, so the shared location is sent with the photos as the phone's
+  location. Satellite checks need the photo's own GPS, so they do not run on WhatsApp photos.
+- A tunnel makes the whole service public, `/verify` included: stop it after testing. In
+  production, put the service behind a proper HTTPS address.
+
 ## API
 
 **`POST /verify`**, called by Member 2 for every claim photo.
@@ -241,9 +271,9 @@ Multipart `photo` (required), plus `lat`, `lon`, `taken_at` (ISO 8601), `claim_i
 |---|---|
 | ✅ Satellite verification | Flood maps + satellite building damage grading (real Copernicus EMS data) and crop before/after from Sentinel-2 NDVI. ISRO Bhuvan layers need a login; house-level before/after needs ISRO Cartosat (roadmap) |
 | ✅ Advanced fraud detection | Flag the same photo, house or person claiming twice (see "Fraud checks" below) |
-| WhatsApp bot | File a claim by sending a voice note on WhatsApp |
+| ✅ WhatsApp bot | File a claim by sending a voice note on WhatsApp (Twilio; see "WhatsApp bot" above) |
 | IVR / missed-call line | Feature-phone users call in and speak their claim |
-| Voice/SMS status updates | Send each status change to the user in their own language |
+| ✅ Status updates (WhatsApp) | Each status change is sent on WhatsApp in the user's language. SMS/voice: roadmap |
 | ✅ Dashboard data | Provide the map and damage data for the government dashboard that Member 5 designs (see "Dashboard data" below) |
 
 ## You work with

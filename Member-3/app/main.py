@@ -3,13 +3,14 @@
 Run on port 8002 (the port Member 2's backend expects in MEMBER3_VERIFY_URL):
     uvicorn app.main:app --port 8002 --reload
 """
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import config, sync
+from app import config, sync, whatsapp
 from app.dashboard import router as dashboard_router
 from app.geodata import get_geo
 from app.store import get_store
@@ -30,7 +31,15 @@ async def lifespan(app: FastAPI):
         logging.getLogger("uvicorn.error").warning(
             "DASHBOARD_API_KEY is not set: /dashboard shows victim locations to anyone. "
             "Set it before sharing this server.")
+    poller = None
+    if whatsapp.enabled():
+        log.info("WhatsApp bot on: webhook %s/whatsapp/webhook, claims go to %s",
+                 config.PUBLIC_BASE_URL or "(set PUBLIC_BASE_URL)", config.MEMBER2_API_URL)
+        if config.WHATSAPP_STATUS_POLL_SECONDS > 0:
+            poller = asyncio.create_task(whatsapp.status_loop())
     yield
+    if poller:
+        poller.cancel()
 
 
 app = FastAPI(title="Aapke Liye: Verification + Offline Sync", version="0.3.0", lifespan=lifespan)
@@ -45,6 +54,7 @@ app.add_middleware(
 app.include_router(verify_router)
 app.include_router(dashboard_router)
 app.include_router(sync_router)
+app.include_router(whatsapp.router)
 
 
 @app.get("/health")
