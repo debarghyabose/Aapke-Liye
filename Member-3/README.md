@@ -10,7 +10,11 @@ A native phone-to-phone mesh takes weeks. For today, the same idea with what a b
 - [x] `GET /mesh/receipts/{claim_id}` → a signed receipt, so the first phone can show "Delivered".
 - [x] A small browser helper for Member 4 (`offline-client/mesh.js`): `sealClaim(claim, publicKey)` (WebCrypto: AES-GCM for the data, RSA-OAEP or X25519 for the key) → envelope JSON (+ text for a QR code).
 - [x] Tests: tampered, expired, duplicate and oversized envelopes rejected; valid envelope becomes a claim.
-- [ ] **WhatsApp + IVR live (20 min):** run `cloudflared tunnel --url http://localhost:8002` (or `ngrok http 8002`), put the https URL in `PUBLIC_BASE_URL` in `Member-3/.env`, and set the Twilio WhatsApp sandbox webhook to `<url>/whatsapp/webhook` and the voice number to `<url>/ivr/voice`. This makes the computer reachable from the internet while the tunnel runs; stop it after the demo.
+- [x] **WhatsApp + IVR for the demo: local simulators.** A live test is blocked by the Twilio free trial: the new console offers no WhatsApp sandbox webhook without upgrading, and $0 trial credit means no phone number for the IVR. Both are built and tested, so on stage run them on the laptop against the real Member 2: `python scripts/try_whatsapp.py --chat` and `python scripts/try_ivr.py --call`. Going live later needs a paid Twilio account: tunnel, then `<url>/whatsapp/webhook` and `<url>/ivr/voice` (see the sections below).
+  <details><summary>Original task</summary>
+
+  **WhatsApp + IVR live (20 min):** run `cloudflared tunnel --url http://localhost:8002` (or `ngrok http 8002`), put the https URL in `PUBLIC_BASE_URL` in `Member-3/.env`, and set the Twilio WhatsApp sandbox webhook to `<url>/whatsapp/webhook` and the voice number to `<url>/ivr/voice`. This makes the computer reachable from the internet while the tunnel runs; stop it after the demo.
+  </details>
 - **Done when:** phone A (airplane mode) shows a QR code, phone B scans it, turns on data, and the claim appears on `/official`.
 
 **Rules:** work on your own branch `member-3/<feature>`, edit only your own folder (ask the owner otherwise), never commit `.env`, run your tests before pushing, then open a pull request into `main`. The team lead merges all four and builds the final web app (with mobile UI).
