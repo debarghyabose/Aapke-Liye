@@ -53,6 +53,7 @@ class Settings:
     rate_limit_create: str = "10/minute"
     rate_limit_upload: str = "30/minute"
     log_level: str = "INFO"
+    digilocker_mode: str = "mock"   # only "mock" exists this sprint
 
     @property
     def use_mock_member1(self) -> bool:
@@ -85,6 +86,7 @@ class Settings:
             rate_limit_create=env.get("RATE_LIMIT_CREATE") or "10/minute",
             rate_limit_upload=env.get("RATE_LIMIT_UPLOAD") or "30/minute",
             log_level=env.get("LOG_LEVEL") or "INFO",
+            digilocker_mode=(env.get("DIGILOCKER_MODE") or "mock").strip().lower(),
         )
 
     def validate(self) -> None:

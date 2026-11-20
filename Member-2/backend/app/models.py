@@ -2,7 +2,7 @@ import base64
 import secrets
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -53,9 +53,20 @@ class Claim(Base):
         back_populates="claim", cascade="all, delete-orphan", lazy="selectin",
         order_by="StatusEvent.id"
     )
-    household_id: Mapped[str | None] = mapped_column(
-        ForeignKey("households.id"), nullable=True
-    )
+    household_id: Mapped[str | None] = mapped_column(ForeignKey("households.id"))
+    # The family's document vault (saved before the disaster), linked with
+    # POST /claims/{id}/household. Loaded with the claim, documents included.
+    household: Mapped["Household | None"] = relationship(lazy="selectin")
+
+    @property
+    def documents_in_vault(self) -> list[dict]:
+        """Documents the family saved in its vault (baseline photos excluded), one per type.
+        A family's own upload wins over a DigiLocker demo copy."""
+        found: dict[str, str] = {}
+        for d in (self.household.documents if self.household else []):
+            if d.doc_type != "baseline_photo" and found.get(d.doc_type) != "upload":
+                found[d.doc_type] = d.source
+        return [{"document": t, "source": s} for t, s in found.items()]
 
 
 class AudioRecording(Base):
@@ -140,12 +151,6 @@ class Household(Base):
     )
 
 
-# Document types that can be stored in the vault (matches proof_substitution.json keys + baseline_photo)
-VAULT_DOC_TYPES = {
-    "aadhaar", "ration_card", "land_record", "bank_passbook",
-    "house_ownership", "voter_id", "death_certificate", "disability_certificate",
-    "baseline_photo",
-}
 
 
 class VaultDocument(Base):

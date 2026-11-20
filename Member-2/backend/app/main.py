@@ -51,7 +51,7 @@ async def limit_body_size(request: Request, call_next):
 
 app.add_middleware(
     CORSMiddleware, allow_origins=settings.cors_origins,
-    allow_methods=["GET", "POST", "PATCH", "PUT"],
+    allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE"],
     allow_headers=["Content-Type", "X-Claim-Token", "X-Staff-Key", "X-Request-ID", "X-Household-Token"],
     expose_headers=["X-Request-ID", "Retry-After", "Content-Disposition"],
 )

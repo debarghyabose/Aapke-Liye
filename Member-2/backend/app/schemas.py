@@ -69,6 +69,11 @@ class ClaimText(BaseModel):
     text: str = Field(min_length=1, max_length=2000)
 
 
+class HouseholdLink(BaseModel):
+    """POST /claims/{id}/household (with the X-Household-Token header)."""
+    household_id: str = Field(min_length=1, max_length=20, examples=["HH-K7Q2MZX4P9TB"])
+
+
 class ClaimFieldsUpdate(BaseModel):
     """Sent by the Review screen when the user taps Edit and corrects fields."""
     fields: ClaimFields
@@ -137,6 +142,9 @@ class ClaimOut(BaseModel):
     proof_suggestions: list
     status: str
     pdf_url: str | None = None
+    household_id: str | None = None
+    # [{"document": "aadhaar", "source": "upload" | "digilocker_mock"}]; not "lost"
+    documents_in_vault: list[dict] = []
     photos: list[PhotoOut] = []
     recordings: list[RecordingOut] = []
     history: list[StatusEventOut] = []

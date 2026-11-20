@@ -203,8 +203,24 @@ def build_claim_pdf(claim, photo_bytes: dict[int, bytes] | None = None) -> bytes
             pdf.para(f"•  {u.get('category') or '—'} / {u.get('item') or '—'}, "
                      f"quantity {u.get('quantity', '—')}: {u['reason']}")
 
-    if claim.proof_suggestions:
+    vault = getattr(claim, "documents_in_vault", None) or []
+    if vault or claim.proof_suggestions:
         pdf.heading("3. Documents lost and substitute proof offered")
+    if vault:
+        pdf.para("Available in the family's document vault (saved before the disaster), "
+                 "so these are not lost:", bold=True)
+        with pdf.table(col_widths=(50, 130), headings_style=HEAD, line_height=5.5,
+                       padding=1.5) as t:
+            head = t.row()
+            head.cell("Document")
+            head.cell("Where it came from")
+            for d in vault:
+                row = t.row()
+                row.cell(document_label(d["document"]))
+                row.cell("DigiLocker (demo): sample document for demonstration only, "
+                         "not issued by DigiLocker" if d["source"] == "digilocker_mock"
+                         else "Available in vault: uploaded by the family")
+    if claim.proof_suggestions:
         with pdf.table(col_widths=(50, 130), headings_style=HEAD, line_height=5.5,
                        padding=1.5) as t:
             head = t.row()

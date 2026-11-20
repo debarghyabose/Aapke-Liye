@@ -1,70 +1,93 @@
 """
-DigiLocker integration service.
-DIGILOCKER_MODE=mock (default): returns sample documents with a "Demo: DigiLocker mock" banner.
-When the real DigiLocker API is registered (DIGILOCKER_MODE=live), only this file changes.
+DigiLocker, the same four steps as the real API (OAuth 2 "Pull documents"):
+
+    authorization_url(state)      -> where to send the user for consent
+    exchange_code(code)           -> access token
+    list_issued(access_token)     -> [{"doc_type", "uri", "name"}]
+    fetch_file(access_token, uri) -> (bytes, content_type)
+
+DIGILOCKER_MODE=mock (the only mode this sprint): consent is a local page with a
+"Demo: DigiLocker mock" banner and the "issued" documents are generated PDFs that say
+DEMO on them. Real DigiLocker needs the team registered as a requester; then only this
+file changes (real OAuth URLs and HTTP calls), the routes in routers/vault.py stay.
 """
-import os
+import secrets
+import time
+from urllib.parse import urlencode
 
+from fpdf import FPDF
 
-DIGILOCKER_MODE = os.environ.get("DIGILOCKER_MODE", "mock").strip().lower()
+from ..config import settings
 
-# Sample documents the mock "issues" via the consent flow
-MOCK_ISSUED_DOCS = [
-    {"doc_type": "aadhaar", "filename": "aadhaar_digilocker_demo.pdf",
-     "content_type": "application/pdf"},
-    {"doc_type": "ration_card", "filename": "ration_card_digilocker_demo.pdf",
-     "content_type": "application/pdf"},
+MOCK_ACCESS_TOKEN = "mock-access-token"
+MOCK_CODE = "mock-code"
+MOCK_ISSUED = [
+    {"doc_type": "aadhaar", "uri": "in.gov.uidai-ADHAR-demo", "name": "Aadhaar Card"},
+    {"doc_type": "ration_card", "uri": "in.gov.food-RATCR-demo", "name": "Ration Card"},
 ]
+STATE_TTL_SECONDS = 600
+
+# state -> (household_id, return_to, expires_at). One process, short-lived: fine for the mock.
+_states: dict[str, tuple[str, str | None, float]] = {}
 
 
-def _mock_pdf(doc_type: str) -> bytes:
-    """A tiny PDF that says 'Demo: DigiLocker mock' so it is never confused with a real doc."""
-    # Minimal valid PDF with the demo banner
-    text = f"Demo: DigiLocker mock - {doc_type.replace('_', ' ').title()}"
-    stream = text.encode()
-    length = len(stream)
-    return (
-        b"%PDF-1.0\n"
-        b"1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
-        b"2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
-        b"3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 300 100]"
-        b"/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>endobj\n"
-        b"5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj\n"
-        + f"4 0 obj<</Length {length + 30}>>\nstream\nBT /F1 12 Tf 10 60 Td ({text}) Tj ET\nendstream\nendobj\n".encode()
-        + b"xref\n0 6\ntrailer<</Size 6/Root 1 0 R>>\nstartxref\n0\n%%EOF"
-    )
+def _require_mock():
+    if settings.digilocker_mode != "mock":
+        raise NotImplementedError("Only DIGILOCKER_MODE=mock exists this sprint")
 
 
-async def start(household_id: str) -> dict:
-    """
-    Begin the DigiLocker consent flow.
-    Mock: returns a consent URL that is really just a callback trigger.
-    Real: would return the DigiLocker OAuth authorize URL.
-    """
-    if DIGILOCKER_MODE != "mock":
-        raise NotImplementedError("Real DigiLocker integration not yet available")
-    return {
-        "mode": "mock",
-        "banner": "Demo: DigiLocker mock",
-        "consent_url": f"/households/{household_id}/digilocker/callback",
-        "message": "In production, this would redirect to DigiLocker's consent screen.",
-    }
+def new_state(household_id: str, return_to: str | None) -> str:
+    now = time.monotonic()
+    for s, (_, _, exp) in list(_states.items()):
+        if exp < now:
+            del _states[s]
+    state = secrets.token_urlsafe(24)
+    _states[state] = (household_id, return_to, now + STATE_TTL_SECONDS)
+    return state
 
 
-async def callback(household_id: str) -> list[dict]:
-    """
-    Complete the consent flow and return the issued documents.
-    Mock: returns sample Aadhaar and Ration Card PDFs.
-    Real: would exchange the auth code, call /v2/file/issued, fetch each document.
-    """
-    if DIGILOCKER_MODE != "mock":
-        raise NotImplementedError("Real DigiLocker integration not yet available")
-    results = []
-    for doc_info in MOCK_ISSUED_DOCS:
-        results.append({
-            "doc_type": doc_info["doc_type"],
-            "content_type": doc_info["content_type"],
-            "data": _mock_pdf(doc_info["doc_type"]),
-            "source": "digilocker_mock",
-        })
-    return results
+def peek_state(state: str) -> tuple[str, str | None] | None:
+    entry = _states.get(state)
+    if not entry or entry[2] < time.monotonic():
+        return None
+    return entry[0], entry[1]
+
+
+def pop_state(state: str) -> tuple[str, str | None] | None:
+    entry = peek_state(state)
+    _states.pop(state, None)
+    return entry
+
+
+def authorization_url(state: str) -> str:
+    _require_mock()
+    return "/digilocker/consent?" + urlencode({"state": state})
+
+
+def exchange_code(code: str) -> str:
+    _require_mock()
+    if code != MOCK_CODE:
+        raise ValueError("invalid authorization code")
+    return MOCK_ACCESS_TOKEN
+
+
+def list_issued(access_token: str) -> list[dict]:
+    _require_mock()
+    return [dict(d) for d in MOCK_ISSUED]
+
+
+def fetch_file(access_token: str, uri: str) -> tuple[bytes, str]:
+    _require_mock()
+    doc = next(d for d in MOCK_ISSUED if d["uri"] == uri)
+    pdf = FPDF(format="A4")
+    pdf.add_page()
+    pdf.set_font("Helvetica", "B", 22)
+    pdf.set_text_color(200, 0, 0)
+    pdf.cell(0, 14, "DEMO - DigiLocker mock", new_x="LMARGIN", new_y="NEXT", align="C")
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font("Helvetica", "", 14)
+    pdf.cell(0, 10, f"Sample {doc['name']}", new_x="LMARGIN", new_y="NEXT", align="C")
+    pdf.multi_cell(0, 7, "This is NOT a real document. It was generated by the Aapke Liye "
+                         "demo to show how documents pulled from DigiLocker are kept in the "
+                         "family's vault.", align="C")
+    return bytes(pdf.output()), "application/pdf"
