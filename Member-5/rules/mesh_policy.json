@@ -1,0 +1,28 @@
+{
+  "_note": "Operational policy parameters for the Aapke Liye Store-and-Forward Network Mesh. Enforced by Member 3 (relay intake) and Member 4 (Android client).",
+  "version": "mesh-policy-v1.0",
+  "storage": {
+    "max_payload_bytes": 1572864,
+    "max_relay_storage_mb": 30,
+    "max_envelopes_per_device": 25,
+    "ttl_seconds": 604800
+  },
+  "battery": {
+    "battery_floor_percent": 25,
+    "halt_on_battery_saver": true,
+    "duty_cycle_scan_seconds": 30,
+    "duty_cycle_sleep_seconds": 900
+  },
+  "security": {
+    "encryption_algorithm": "AES-256-GCM",
+    "key_encapsulation": "RSA-4096 / X25519",
+    "signature_algorithm": "Ed25519",
+    "per_device_rate_limit_per_hour": 10,
+    "allowed_priority_flags": ["urgent", "normal"]
+  },
+  "receipts": {
+    "receipt_signature_algorithm": "Ed25519",
+    "approx_receipt_size_bytes": 100,
+    "confirmation_text": "Your claim reached the relief office"
+  }
+}

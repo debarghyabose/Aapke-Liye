@@ -1,10 +1,11 @@
 {
-  "_note": "Official Ministry of Home Affairs (MHA) SDRF/NDRF assistance norms (Letter No. 33-03/2020-NDM-I dated 10-10-2022 under the Disaster Management Act 2005). Checked and validated by Member 5. Version identifier keeps 'sample' prefix for mock/test compatibility while containing exact statutory rates.",
+  "_note": "Based on Ministry of Home Affairs (MHA) SDRF/NDRF assistance norms 2022-23 to 2025-26 (Letter No. 33-03/2020-NDM-I dated 10-10-2022 under Disaster Management Act 2005). Estimate until verified by official survey.",
   "version": "sample-mha-sdrf-2022-26-v1.1",
   "currency": "INR",
   "statutory_authority": "Ministry of Home Affairs, Disaster Management Division, Government of India",
   "categories": {
     "house": {
+      "source": "MHA Letter 33-03/2020-NDM-I, Item 4(i) (Housing Assistance)",
       "unit": "per house",
       "items": {
         "fully_damaged_plain": 120000,
@@ -16,6 +17,7 @@
       }
     },
     "crop": {
+      "source": "MHA Letter 33-03/2020-NDM-I, Item 2 (Agriculture/Horticulture input subsidy)",
       "unit": "per hectare",
       "max_quantity": 2,
       "min_damage_percent": 33,
@@ -31,6 +33,7 @@
       }
     },
     "livestock": {
+      "source": "MHA Letter 33-03/2020-NDM-I, Item 3 (Animal Husbandry assistance)",
       "unit": "per animal",
       "items": {
         "milch_large": 37500,
@@ -39,11 +42,18 @@
         "draught_small": 20000,
         "poultry": 100
       },
+      "max_quantity_per_household": {
+        "milch_large": 3,
+        "milch_small": 30,
+        "draught_large": 3,
+        "draught_small": 6
+      },
       "max_amount": {
         "poultry": 10000
       }
     },
     "household": {
+      "source": "MHA Letter 33-03/2020-NDM-I, Item 4(ii) (Clothing & Utensils)",
       "unit": "per family",
       "items": {
         "clothing": 2500,
@@ -51,6 +61,7 @@
       }
     },
     "ex_gratia": {
+      "source": "MHA Letter 33-03/2020-NDM-I, Item 1 (Ex-Gratia for loss of life/disability)",
       "unit": "per person",
       "items": {
         "death": 400000,

@@ -13,7 +13,7 @@
 ## 🎯 Role & Domain Ownership
 
 Member 5 leads the **Policy, Legal, Entitlement, and Pitch** architecture for Aapke Liye:
-1. **SDRF / NDRF Entitlement Rules:** Official financial assistance norm calculations under Ministry of Home Affairs guidelines (Letter No. 33-03/2020-NDM-I).
+1. **SDRF / NDRF Entitlement Rules:** Financial assistance norm calculations based on MHA SDRF norms 2022-26 (estimate until verified by revenue officials; Letter No. 33-03/2020-NDM-I).
 2. **Proof Substitution Framework:** Overcoming the "lost document barrier" via certified administrative and community alternatives under Section 12 of the Disaster Management Act, 2005.
 3. **Data Privacy & Statutory Protection:** End-to-end compliance with India's Digital Personal Data Protection Act (DPDP Act) 2023, multi-lingual consent notices, and India sovereign data residency.
 4. **Statutory Escalation & RTI Templates:** Legally vetted grievance and RTI applications invoking the **Section 7(1) Life & Liberty 48-Hour emergency proviso**.
@@ -70,7 +70,7 @@ Member-5/
 | **Living Memory Tracker** | [memory.md](memory.md) | ✅ Active | Tracks active status, completed items, and next steps |
 | **Future Goals Backlog** | [goals.md](goals.md) | ✅ Active | Stores future enhancements not being built right now |
 | **Product Requirements Document** | [prd.md](prd.md) | ✅ Complete | Complete system blueprint, data flows, and specifications |
-| **SDRF Relief Rules** | [rules/sdrf_rules.json](rules/sdrf_rules.json) | ✅ Complete | Official MHA rates across 5 categories, tested & validated |
+| **SDRF Relief Rules** | [rules/sdrf_rules.json](rules/sdrf_rules.json) | ✅ Complete | Based on MHA SDRF norms 2022-26 (estimate until verified) across 5 categories, tested & validated |
 | **Proof Substitution Matrix** | [rules/proof_substitution.json](rules/proof_substitution.json) | ✅ Complete | Complete statutory substitutes for 8 lost document types |
 | **Multi-Lingual Consent & Labels** | [rules/labels.json](rules/labels.json) | ✅ Complete | Plain-language consent across 6 official Indian languages |
 | **Pitch Deck** | [pitch/pitch_deck.md](pitch/pitch_deck.md) | ✅ Complete | 10-slide startup narrative, unit economics, market size |
@@ -84,7 +84,7 @@ Member-5/
 | **Proof Substitution Framework** | [docs/proof_substitution_framework.md](docs/proof_substitution_framework.md) | ✅ Documented | State-by-state administrative SOPs (WB, OD, AS, MH, TN) |
 | **DPDP Privacy Framework** | [docs/dpdp_compliance_privacy_framework.md](docs/dpdp_compliance_privacy_framework.md) | ✅ Documented | 6 privacy pillars, encryption, retention, and GRO details |
 | **Government Operations Dashboard** | [docs/government_dashboard_spec.md](docs/government_dashboard_spec.md) | ✅ Documented | Damage heatmap, Vulnerability Priority Index, DBT export |
-| **Network Mesh (phone-to-phone relay)** | [below](#-network-mesh-phone-to-phone-relay) | 🛣️ Planned | Spec, DPDP consent and pitch story for relaying sealed claims between phones |
+| **Network Mesh (phone-to-phone relay)** | [docs/network_mesh_spec.md](docs/network_mesh_spec.md) | ✅ Complete | End-to-end spec, DPDP carrier consent (6 langs), policy JSON, and 30-sec pitch demo |
 
 ---
 
@@ -157,10 +157,10 @@ How it works (store and forward):
 4. The server ignores duplicates (same `claim_id`) and sends a receipt back through the mesh, so the original phone shows "Delivered".
 
 ### Your tasks (Member 5)
-- [ ] **Spec:** one page covering the flow above, what a relay phone stores, how long it keeps a claim (e.g. 7 days), and the size limit per claim (voice note compressed, photos resized)
-- [ ] **Privacy and legal:** consent wording for "let my phone carry others' sealed claims"; check against the DPDP Act (relay phones hold encrypted data only; delete it after delivery)
-- [ ] **Battery and trust rules:** relaying is opt-in, stops below 20% battery; volunteers / NGO workers can be marked as trusted "carrier" phones
-- [ ] **Pitch:** a mock-up and a 30-second demo story: two phones in airplane mode, one hands a claim to the other, the second turns on data and the claim appears on the dashboard
+- [x] **Spec:** one page covering the flow above, what a relay phone stores, how long it keeps a claim (7 days TTL), and the size limit per claim (1.5 MB envelope, 30 MB / 25 claims relay cap) — see [docs/network_mesh_spec.md](docs/network_mesh_spec.md) and [rules/mesh_policy.json](rules/mesh_policy.json)
+- [x] **Privacy and legal:** consent wording for "let my phone carry others' sealed claims" across 6 languages in [rules/labels.json](rules/labels.json); IT Act Section 79 mere conduit and DPDP Act 2023 compliance documented in [docs/network_mesh_spec.md](docs/network_mesh_spec.md)
+- [x] **Battery and trust rules:** relaying is opt-in, halts below 25% battery floor, duty-cycled BLE scanning, and trusted volunteer carriers documented in [rules/mesh_policy.json](rules/mesh_policy.json)
+- [x] **Pitch:** 30-second live two-phone airplane-mode relay demonstration script and evaluator Q&A integrated into [pitch/demo_script.md](pitch/demo_script.md)
 
 ### Who builds it
 | Member | Part |

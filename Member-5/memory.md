@@ -17,14 +17,15 @@
 | **Living Memory (`memory.md`)** | ✅ **Accurate** | Reflects internal completion vs. cross-team sync status |
 | **Future Backlog (`goals.md`)** | ✅ **Populated** | Holds long-term research items (parametric IoT weather stations, ZKP, etc.) |
 | **Product Requirements Document (`prd.md`)** | ✅ **Complete** | Comprehensive end-to-end architecture & policy blueprint |
-| **SDRF Rules Engine** | ✅ **Complete & Tested** | `Member-5/engine/entitlement.py` + `rules/sdrf_rules.json` (MHA 2022-26) |
-| **Multi-Scheme Aggregator** | ✅ **Complete & Tested** | `Member-5/engine/multi_scheme.py` evaluates SDRF + PMFBY + PMAY-G |
-| **Proof Substitution Engine** | ✅ **Complete & Tested** | `Member-5/engine/proofs.py` + `rules/states/*.json` (WB, OD, AS, MH, TN) |
-| **Multilingual Labels & DPDP** | ✅ **Complete & Tested** | `Member-5/engine/dpdp.py` + `rules/labels.json` (6 languages; M2 wording aligned) |
+| **SDRF Rules Engine** | ✅ **Complete & Tested** | `Member-5/engine/entitlement.py` + `rules/sdrf_rules.json` (MHA 2022-26; C1 2ha crop cap across lines, C2 missing damage% handling, C4 livestock caps & citations) |
+| **Multi-Scheme Aggregator** | ✅ **Complete & Tested** | `Member-5/engine/multi_scheme.py` evaluates SDRF + PMFBY + PMAY-G (I1 two-block separation: Relief Owed vs May Also Qualify, C3 0% loss fix, C5 0.80 indemnity, C6 JSON loaded amounts) |
+| **Proof Substitution Engine** | ✅ **Complete & Tested** | `Member-5/engine/proofs.py` + `rules/states/*.json` (WB, OD, AS, MH, TN) with statutory legal citations |
+| **Multilingual Labels & DPDP** | ✅ **Complete & Tested** | `Member-5/engine/dpdp.py` + `rules/labels.json` (6 languages; M2 wording aligned + `carrier_v1` mesh consent) |
+| **Network Mesh Spec & Policy** | ✅ **Complete & Tested** | `docs/network_mesh_spec.md`, `rules/mesh_policy.json` (store-and-forward, 1.5MB budget, 25-claim cap, 25% battery floor, IT Act s.79 mere conduit) |
 | **Statutory Escalation Templates** | ✅ **Complete & Tested** | 9 templates in `templates/` with `templates_validator.py` |
 | **Interactive Government Dashboard** | ✅ **Complete & Runnable** | `Member-5/dashboard/index.html` (heatmap, VPI list, fraud alert, DBT export) |
 | **Interactive CLI Utility** | ✅ **Windows UTF-8 Fixed** | `Member-5/cli.py` (status, calculate, multi-scheme, proofs, rti) |
-| **Member-5 Test Suite** | ✅ **20 / 20 Passing** | `Member-5/tests/` passes in 0.11s |
+| **Member-5 Test Suite** | ✅ **27 / 27 Passing** | `Member-5/tests/` passes in 0.16s |
 | **Cross-Member Synchronization** | ⚠️ **Out of Sync / Pending** | Members 1 and 2 have not yet adopted our files into their folders |
 
 ---
@@ -98,4 +99,15 @@ Content comparison performed by `Member-5/engine/connector.py`:
   2. Enhanced `connector.py` to perform deep content comparisons and accurately flag "Out of sync".
   3. Fixed Windows console UTF-8 emoji crash in `Member-5/cli.py`.
   4. Corrected `memory.md` to reflect honest synchronization status (Member 5 internal complete, cross-team sync pending adoption).
+- **2026-11-21 (Turn 6)**: Completed all audit and proposal deliverables:
+  1. C1: Household-wide 2.0 ha crop cap enforced across all crop lines in `entitlement.py`.
+  2. C2: Missing damage percent handling routed to unmatched ("Damage percent needed") with 0 payout.
+  3. C3: PMFBY 0% damage fix (pays ₹0 rather than defaulting to 100%).
+  4. C4: Livestock per-household maximum caps enforced (3 large milch, 30 small milch, 3 large draught, 6 small draught) with source citations.
+  5. C5: PMFBY 0.80 indemnity level applied; disclaimer disclaims benchmark estimate.
+  6. C6: PMAY-G amounts dynamically loaded from `pmay_g_disaster.json` (zero hardcoded rupees).
+  7. I1: Two-block separation strictly enforced: `relief_owed` (SDRF statutory) vs `may_also_qualify` (PMAY-G, PMFBY).
+  8. Network Mesh: Spec (`docs/network_mesh_spec.md`), Policy (`rules/mesh_policy.json`), 6-language carrier consent (`rules/labels.json`), and 30s offline relay demo (`pitch/demo_script.md`).
+  9. Test suite expanded to 27/27 passing tests (0.16s).
+  10. Updated `MEMBER5_PROPOSAL.md` with complete documentation of implemented Member 5 items and explicit copy-paste prompts for Members 1, 2, 3, and 4.
 - **2026-11-20 (Turn 6)**: Re-verified all fixes (20/20 tests, all CLI commands, M1 42/42 and M2 91/92 against Member 5 files). Wrote `REPORT.md` describing contents and how each part works.

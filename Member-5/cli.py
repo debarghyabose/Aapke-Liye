@@ -66,8 +66,12 @@ def cmd_calculate(_args):
         print(f"{idx}. {line['category'].title()} -> {line['item']}: ₹{line['amount']:,} ({line['unit']})")
         if line.get("note"):
             print(f"   [Note: {line['note']}]")
+    if res.get("unmatched"):
+        print("\nUnmatched / Action Needed:")
+        for u in res["unmatched"]:
+            print(f"   ⚠️ {u.get('category')}.{u.get('item')}: {u.get('reason')}")
     print("-" * 65)
-    print(f"TOTAL RELIEF ENTITLEMENT: ₹{res['total_inr_formatted']}")
+    print(f"TOTAL RELIEF OWED (SDRF ESTIMATE): ₹{res['total_inr_formatted']}")
     print("=" * 65)
 
 
@@ -87,16 +91,34 @@ def cmd_multi_scheme(_args):
     }
     res = agg.evaluate_all(sample_claim)
     print("=" * 65)
-    print(f"🏛️ Multi-Scheme Disaster Entitlement: {res['claimant_name']} ({res['village']})")
+    print(f"🏛️ Disaster Entitlement Breakdown: {res['claimant_name']} ({res['village']})")
     print("=" * 65)
-    for s in res["qualifying_schemes"]:
-        print(f"\n📦 [{s['scheme_code']}] {s['scheme_name']}")
-        print(f"   Category: {s['category']}")
-        print(f"   Sanctioning Authority: {s['statutory_authority']}")
-        print(f"   Estimated Amount: ₹{s['formatted_amount']}")
+
+    # Block 1: Relief Owed
+    owed = res["relief_owed"]
+    print(f"\n[BLOCK 1: RELIEF OWED — STATUTORY ESTIMATE]")
+    print(f"Scheme: {owed['scheme_name']} ({owed['statutory_authority']})")
+    print(f"Estimated Entitlement: ₹{owed['formatted_amount']}")
+    for line in owed["lines"]:
+        print(f"  • {line['category'].title()} -> {line['item']}: ₹{line['amount']:,} ({line['unit']})")
+        if line.get("note"):
+            print(f"    Note: {line['note']}")
+
+    # Block 2: May Also Qualify
+    qualify = res["may_also_qualify"]
+    print(f"\n" + "-" * 65)
+    print(f"[BLOCK 2: YOU MAY ALSO QUALIFY FOR — CONDITIONAL RECONSTRUCTION/INSURANCE]")
+    if not qualify:
+        print("  (No additional schemes identified based on reported losses)")
+    for s in qualify:
+        print(f"\n  📦 {s['scheme_name']}")
+        print(f"     Estimated Assistance: ₹{s['formatted_amount']}")
+        print(f"     Authority: {s['statutory_authority']}")
+        print(f"     Mandatory Eligibility Conditions:")
+        for c in s["conditions"]:
+            print(f"       ✓ {c}")
+
     print("\n" + "=" * 65)
-    print(f"🌟 COMBINED MULTI-SCHEME PACKAGE: ₹{res['grand_total_formatted']}")
-    print("=" * 65)
 
 
 def cmd_proofs(args):

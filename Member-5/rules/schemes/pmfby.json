@@ -2,9 +2,10 @@
   "scheme_name": "Pradhan Mantri Fasal Bima Yojana (PMFBY)",
   "scheme_code": "PMFBY",
   "ministry": "Ministry of Agriculture and Farmers Welfare",
-  "statutory_basis": "PMFBY Revised Operational Guidelines (2020/2024)",
+  "source": "PMFBY Revised Operational Guidelines (2020/2024), Section 19 (Localized Calamities)",
   "perils_covered": ["localized_calamity", "post_harvest_loss", "prevented_sowing", "mid_season_adversity"],
   "localized_calamity_window_hours": 72,
+  "sum_insured_note": "Sample benchmark values per hectare; exact sum insured is notified annually per district by the State Level Coordination Committee on Crop Insurance (SLCCCI)",
   "sum_insured_per_hectare": {
     "paddy": 65000,
     "wheat": 60000,
@@ -14,6 +15,7 @@
     "oilseeds": 42000,
     "vegetables": 80000
   },
+  "default_indemnity_level": 0.80,
   "indemnity_levels": [0.70, 0.80, 0.90],
   "farmer_premium_share": {
     "kharif_food_oilseeds": 0.02,

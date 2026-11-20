@@ -34,59 +34,66 @@
 > "Notice that? Under India's **DPDP Act 2023**, plain-language voice consent is collected first. Now Ramesh simply holds down the microphone and speaks in his own words."
 
 *(Member 4 plays sample audio or speaks into mic in Bengali:  
-'আমার নাম রমেশ মণ্ডল, গোসাবা গ্রামে থাকি। ঝড়ে আমার মাটির বাড়িটা ভেঙে গেছে, আর দুটো ছাগল মারা গেছে। দলিল সব ভেসে গেছে।')*
+'আমার নাম রমেশ মণ্ডল, গোসাবা গ্রামে থাকি। ঝড়ে আমার মাতির বাড়িটা ভেঙে গেছে, আর দুটো ছাগল মারা গেছে। দলিল সব ভেসে গেছে।')*
 
 **Member 5:**
 > "While Ramesh speaks, Member 1's Whisper AI transcribes the regional audio locally. Then, our extraction pipeline structures the spoken words into clean administrative data: Name: Ramesh Mandal. Location: Gosaba. Losses: Destroyed kutcha house, 2 goats. Documents lost: All."
 
 ---
 
-### [1:15 – 1:55] Damage Vision & The Entitlement Engine (Screen 3 & 4)
+### [1:15 – 1:50] Proof Alternatives & Two-Tier Entitlement (Screen 3 & 4)
 *(Stage Action: Member 4 snaps photo of damaged structure.)*
 
 **Member 5:**
 > "Now, Ramesh points his camera at the collapsed roof.
 > Member 3's computer vision verifies the structural damage score. Our geo-verification extracts the tamper-proof GPS coordinates and timestamp, verifying Ramesh was physically present in the cyclone zone.
 > 
-> But what about the lost documents? Look at this screen!"
-
-*(Member 4 scrolls to 'Proof Alternatives' on Review Screen.)*
-
-**Member 5:**
-> "Under Section 12 of the **Disaster Management Act 2005**, our **Proof Substitution Engine** informs Ramesh: *'No Aadhaar? Your Gram Panchayat Pradhan certificate or electronic ration dealer record is legally accepted.'*
+> And what about the lost documents? Look at this screen!
+> Under Section 12 of the **Disaster Management Act 2005**, our **Proof Substitution Engine** informs Ramesh: *'No Aadhaar? Your Gram Panchayat Pradhan certificate or electronic ration dealer record is legally accepted.'*
 > 
-> And behind the scenes, Member 5's **SDRF Entitlement Engine** evaluates the official Ministry of Home Affairs rules. It calculates:  
-> • Kutcha house fully destroyed: ₹1,20,000  
-> • 2 small milch animals: ₹8,000  
-> • Emergency clothing and utensils: ₹5,000  
-> **Total entitlement: ₹1,33,000.** Ramesh taps Confirm."
+> And look at how we display the money: we never over-promise or blend numbers into one false total. We show two transparent blocks:  
+> 1. **Relief Owed (SDRF Estimate): ₹1,33,000** — calculated strictly from Ministry of Home Affairs SDRF norms.  
+> 2. **You May Also Qualify For (Subject to Eligibility):** PMAY-G Permanent Housing Rebuild (₹1,56,750), clearly listing the condition that Ramesh must be on the rural Awaas+ list.
+> 
+> Ramesh taps Confirm."
 
 *(Member 4 taps 'Confirm & Generate Relief Claim'.)*
 
 ---
 
-### [1:55 – 2:30] Official PDF Generation & Claim Tracking (Screen 4 & 5)
-*(Stage Action: In 1.5 seconds, the official multi-lingual PDF appears on screen with claim ID `CLM-2026-WB-8921`.)*
+### [1:50 – 2:20] The 30-Second Network Mesh Demo (Offline Hand-Off)
+*(Stage Action: Member 5 brings out a second phone — Phone B, representing a volunteer / rescue worker.)*
 
 **Member 5:**
-> "Within seconds, Member 2's backend renders the official government relief claim PDF—with text shaping in Bengali and English—ready for immediate submission.
+> "Now here is our breakthrough. What happens when the cellular towers are destroyed and the village has no signal for 5 days?
 > 
-> And Ramesh isn't left in the dark. Screen 5 gives him a live tracking timeline: **Submitted ➔ Verified ➔ Approved ➔ Paid**.
+> Look at Phone A: **Airplane Mode is ON. Zero bars.**
+> Ramesh taps 'Submit via Community Mesh'. Phone A seals the claim into an encrypted 40 KB binary envelope using the government's public key. Phone A discovers Phone B over Bluetooth Low Energy.
 > 
-> And if the local office delays his relief for more than 30 days? Our automated legal bot invokes the **Life & Liberty 48-Hour emergency proviso under Section 7(1) of the RTI Act 2005**, legally compelling officials to answer."
+> Watch: in 2 seconds, the sealed envelope hops to Phone B.
+> Phone B's owner cannot read Ramesh's photos or name—it is completely sealed.
+> Now, Phone B walks out of the village toward the main highway."
+
+*(Stage Action: Member 5 toggles Phone B's Cellular Data ON.)*
+
+**Member 5:**
+> "The instant Phone B hits LTE, look at the laptop projector! The SDMA Dashboard beeps: **Claim CLM-2026-WB-8921 received via Mesh Relay.**
+> And the server sends back an Ed25519 cryptographic receipt. When Phone B returns to the village, Phone A's screen automatically flips to: **'Your claim reached the relief office'**."
 
 ---
 
-### [2:30 – 3:00] The Government Heatmap & The Vision
+### [2:20 – 3:00] The Government Heatmap & The Vision
 *(Stage Action: Switch laptop display to the SDMA Operations Dashboard.)*
 
 **Member 5:**
-> "Finally, look at what the District Magistrate sees.
-> A live village-level damage heatmap powered by verified citizen claims. An algorithmic Vulnerability Index sorting widows, infants, and the disabled to the top of the morning inspection queue. And with one click, a direct export to the Ministry of Finance PFMS portal for Direct Benefit Transfer straight into bank accounts.
+> "Finally, look at what the District Magistrate sees:
+> A live village damage heatmap, an algorithmic Vulnerability Priority Index routing inspectors to widows and infants first, and a one-click PFMS export for direct bank transfer.
 > 
-> Free for victims. A high-efficiency B2G SaaS deployment for State Disaster Management Authorities.
+> And if officials stall for 30 days without food or shelter relief? Our legal engine invokes the **Life & Liberty 48-Hour emergency proviso under Section 7(1) of the RTI Act 2005**.
 > 
-> Disasters can destroy a home. They can destroy paper. But with **Aapke Liye**, they will never destroy a citizen's right to relief.
+> Free for victims. A high-efficiency B2G SaaS deployment for State Governments.
+> 
+> Disasters can take a home. They can take documents. But with **Aapke Liye**, they will never take away rightful relief.
 > 
 > Thank you."
 
@@ -96,12 +103,12 @@
 
 ### Q1: "How do you prevent fraudulent claims if documents are lost?"
 **Answer:**  
-*"Three layers of cryptographic defense: First, Member 3's perceptual hashing detects if the same photo is reused across claims. Second, EXIF GPS and timestamp verification confirms the photo was taken inside the declared disaster zone during the storm window. Third, the SDMA dashboard cross-references the coordinates against ISRO Bhuvan and Sentinel-1 satellite flood inundation masks."*
+*"Three layers of cryptographic defense: First, Member 3's perceptual hashing (pHash) detects if the same photo is reused across claims. Second, EXIF GPS and timestamp verification confirms the photo was taken inside the declared disaster zone during the storm window. Third, the SDMA dashboard cross-references the coordinates against ISRO Bhuvan and Sentinel-1 satellite flood inundation masks."*
 
-### Q2: "What if there is no internet in the disaster zone?"
+### Q2: "What if intermediate phones in the mesh tamper with or steal claims?"
 **Answer:**  
-*"Aapke Liye is offline-first. Member 3's client queue stores the audio note, photos, and GPS in browser IndexedDB. The moment the phone catches even a 2G/EDGE cellular signal or connects to an emergency relief truck Wi-Fi, claims sync idempotently without data loss."*
+*"Mathematically impossible. We use Hybrid Envelope Encryption: the payload is encrypted with AES-256-GCM and wrapped with the SDMA server's RSA-4096 public key. Intermediary phones hold only an opaque binary envelope. They possess no decryption keys, cannot read transcripts or photos, and under Section 79 of the IT Act, operate strictly as mere cryptographic conduits."*
 
-### Q3: "Why will State Governments adopt this?"
+### Q3: "Doesn't mesh relaying drain rural phone batteries in a power outage?"
 **Answer:**  
-*"Currently, District Magistrates spend 3 to 6 months manually sorting paper claims and answering public grievances. Aapke Liye provides instant audit trails, eliminates duplicate payouts, and qualifies for 100% funding under the 15th Finance Commission Disaster Preparedness Grant."*
+*"No. Scanning is strictly duty-cycled: only 30 seconds every 15 minutes, or on accelerometer motion. The entire mesh hard-halts if battery drops below 25% or if Android Battery Saver mode activates."*
