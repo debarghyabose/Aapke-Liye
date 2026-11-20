@@ -42,6 +42,14 @@ Look at the photo and report:
   or news image with a watermark, a drawing, or an AI-generated image; otherwise true.
 - description: one short sentence describing what is damaged, for an official to read.
 
+Common cases in India:
+- Flood water around a house: if the water reaches the walls or enters the house, severity is
+  at least 0.3 (inundation weakens mud and brick walls and spoils what is inside). More if
+  walls are cracked, leaning or collapsed.
+- Paddy is normally grown in shallow standing water, so standing water alone is not damage.
+  It IS flood damage when the plants are submerged or flattened, the water is muddy or silty,
+  or there is debris or a broken field bund. Say which signs you saw in the description.
+
 Judge only what is visible. Do not guess damage you cannot see."""
 
 USER_PROMPT = "Assess the damage in this claim photo."
