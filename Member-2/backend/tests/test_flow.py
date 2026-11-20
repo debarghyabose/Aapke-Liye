@@ -130,3 +130,24 @@ def test_mock_only_member1_uses_real_member3(client, services, monkeypatch):
     r = client.post(f"/claims/{cid}/photos", headers=h, files={"photo": ("p.jpg", JPEG, "image/jpeg")})
     assert r.status_code == 200
     assert services.m3.call_count == 1
+
+
+def test_phone_is_sent_to_member3_when_known(client, services):
+    """Member 3's "one phone, many claims" check gets the normalised number, once known."""
+    cid, h = new_claim(client)
+    client.post(f"/claims/{cid}/photos", headers=h, files={"photo": ("p.jpg", JPEG, "image/jpeg")})
+    first = services.m3.calls.last.request.content
+    assert b'name="phone"' not in first                       # no phone yet: field left out
+
+    client.patch(f"/claims/{cid}", headers=h, json={"fields": {"phone": "+91 98000-00000"}})
+    client.post(f"/claims/{cid}/photos", headers=h, files={"photo": ("p2.jpg", JPEG + b"\0", "image/jpeg")})
+    second = services.m3.calls.last.request.content
+    assert b'name="phone"' in second and b"9800000000" in second   # normalised 10 digits
+    assert b"+91" not in second
+
+
+def test_invalid_phone_is_not_sent_to_member3(client, services):
+    cid, h = new_claim(client)
+    client.patch(f"/claims/{cid}", headers=h, json={"fields": {"phone": "12345"}})
+    client.post(f"/claims/{cid}/photos", headers=h, files={"photo": ("p.jpg", JPEG, "image/jpeg")})
+    assert b'name="phone"' not in services.m3.calls.last.request.content
