@@ -11,6 +11,7 @@ to an official for review.
 import base64
 import io
 import logging
+import time
 from typing import Literal, Optional
 
 from PIL import Image
@@ -83,45 +84,69 @@ _gemini_client = None
 
 
 def _assess_gemini(jpeg: bytes) -> DamageResult:
+    """Try each model in GEMINI_MODELS until one answers, within VISION_DEADLINE_SECONDS.
+
+    Free-tier models are often busy (503) or rate-limited (429); those fall through
+    to the next model. A bad key or a blocked image stops immediately."""
     global _gemini_client
     from google import genai
     from google.genai import errors, types
 
     if _gemini_client is None:
         _gemini_client = genai.Client(api_key=config.GEMINI_API_KEY)
-    try:
-        response = _gemini_client.models.generate_content(
-            model=config.GEMINI_MODEL,
-            contents=[types.Part.from_bytes(data=jpeg, mime_type="image/jpeg"), USER_PROMPT],
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_PROMPT,
-                response_mime_type="application/json",
-                response_schema=_VisionOutput,
-                temperature=0.0,
-            ),
-        )
-    except errors.ClientError as e:
-        if e.code == 429:
-            log.warning("Gemini free-tier limit reached")
-            return _unknown("vision daily limit reached, retry later")
-        if e.code in (400, 401, 403) and "key" in str(e).lower():
-            log.error("Gemini key rejected; check GEMINI_API_KEY in .env")
-            return _unknown("vision API key invalid")
-        log.warning("Gemini error %s: %s", e.code, str(e)[:200])
-        return _unknown("vision service error")
-    except errors.APIError as e:
-        log.warning("Gemini server error %s", getattr(e, "code", "?"))
-        return _unknown("vision service error")
-    except Exception as e:  # network problems, timeouts
-        log.warning("Gemini unreachable: %s", type(e).__name__)
-        return _unknown("vision service unreachable")
+    deadline = time.monotonic() + config.VISION_DEADLINE_SECONDS
+    last_problem = "vision service error"
 
-    try:
-        out = _VisionOutput.model_validate_json(response.text or "")
-    except (ValidationError, ValueError):
-        # Empty text usually means the safety filter blocked the image.
-        return _unknown("vision output could not be parsed")
-    return _to_result(out)
+    models = config.GEMINI_MODELS
+    for i, model in enumerate(models):
+        remaining = deadline - time.monotonic()
+        if remaining < 2:
+            break
+        if i < len(models) - 1:
+            # Leave time for the next model if this one is slow.
+            remaining = min(remaining, config.VISION_PER_MODEL_SECONDS)
+        try:
+            response = _gemini_client.models.generate_content(
+                model=model,
+                contents=[types.Part.from_bytes(data=jpeg, mime_type="image/jpeg"), USER_PROMPT],
+                config=types.GenerateContentConfig(
+                    system_instruction=SYSTEM_PROMPT,
+                    response_mime_type="application/json",
+                    response_schema=_VisionOutput,
+                    temperature=0.0,
+                    # Low thinking keeps answers to a few seconds.
+                    thinking_config=types.ThinkingConfig(thinking_level="low"),
+                    http_options=types.HttpOptions(timeout=int(remaining * 1000)),
+                ),
+            )
+        except errors.ClientError as e:
+            if e.code == 429:
+                log.warning("Gemini %s: free-tier limit reached, trying next model", model)
+                last_problem = "vision daily limit reached, retry later"
+                continue
+            if e.code in (400, 401, 403) and "key" in str(e).lower():
+                log.error("Gemini key rejected; check GEMINI_API_KEY in .env")
+                return _unknown("vision API key invalid")
+            log.warning("Gemini %s error %s: %s", model, e.code, str(e)[:200])
+            last_problem = "vision service error"
+            continue
+        except errors.APIError as e:  # 5xx, e.g. 503 "high demand"
+            log.warning("Gemini %s busy (%s), trying next model", model, getattr(e, "code", "?"))
+            last_problem = "vision service error"
+            continue
+        except Exception as e:  # network problems, timeouts
+            log.warning("Gemini %s unreachable: %s", model, type(e).__name__)
+            last_problem = "vision service unreachable"
+            continue
+
+        try:
+            out = _VisionOutput.model_validate_json(response.text or "")
+        except (ValidationError, ValueError):
+            # Empty text usually means the safety filter blocked the image.
+            return _unknown("vision output could not be parsed")
+        return _to_result(out)
+
+    return _unknown(last_problem)
 
 
 # ---------------------------------------------------------------- Claude (paid credits)

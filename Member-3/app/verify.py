@@ -1,0 +1,152 @@
+"""POST /verify: the endpoint Member 2's backend calls for each claim photo.
+
+Contract (Member-2/backend/app/services/integrations.py):
+  request  multipart: photo=<file>, lat, lon, taken_at (ISO 8601), claim_id  (all but photo optional)
+  response {"damage_detected": bool, "damage_score": 0-1, "gps_ok": bool,
+            "timestamp_ok": bool, "duplicate": bool, "notes": [str]}
+
+If damage vision is only temporarily unavailable (daily limit, network), we answer 503.
+Member 2 then stores the photo as "pending" and can call /verify again later
+(POST /claims/{id}/photos/{photo_id}/reverify) instead of saving a wrong "no damage".
+"""
+from datetime import datetime, timedelta, timezone
+from typing import Optional
+
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from pydantic import BaseModel
+from starlette.concurrency import run_in_threadpool
+
+from app import sync
+from app.exif_check import distance_km, gps_in_zone, read_exif, timestamp_valid
+from app.vision import assess_damage
+
+router = APIRouter()
+
+IST = timezone(timedelta(hours=5, minutes=30))
+MAX_PHOTO_BYTES = 15 * 1024 * 1024
+# Photo GPS vs phone GPS further apart than this is suspicious.
+GPS_MISMATCH_KM = 2.0
+# Photo capture time vs time reported by the phone, further apart than this is suspicious.
+TIME_MISMATCH = timedelta(hours=24)
+# Vision answers that mean "try again later", not "no damage".
+RETRYABLE_VISION = {
+    "vision daily limit reached, retry later",
+    "vision rate limited, retry later",
+    "vision service unreachable",
+    "vision service error",
+}
+
+
+class VerifyResponse(BaseModel):
+    damage_detected: bool
+    damage_score: float
+    gps_ok: bool
+    timestamp_ok: bool
+    duplicate: bool
+    notes: list[str]
+
+
+def _parse_float(value: Optional[str], name: str) -> Optional[float]:
+    if value in (None, ""):
+        return None
+    try:
+        return float(value)
+    except ValueError:
+        raise HTTPException(422, f"{name} must be a number") from None
+
+
+def _parse_time(value: Optional[str]) -> Optional[datetime]:
+    """ISO 8601 -> naive India time (EXIF times and DISASTER_START are local)."""
+    if not value:
+        return None
+    try:
+        t = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        raise HTTPException(422, "taken_at must be an ISO 8601 timestamp") from None
+    if t.tzinfo is not None:
+        t = t.astimezone(IST).replace(tzinfo=None)
+    return t
+
+
+@router.post("/verify", response_model=VerifyResponse)
+async def verify(
+    photo: UploadFile = File(...),
+    lat: Optional[str] = Form(None),
+    lon: Optional[str] = Form(None),
+    taken_at: Optional[str] = Form(None),
+    claim_id: Optional[str] = Form(None),
+) -> VerifyResponse:
+    data = await photo.read()
+    if not data:
+        raise HTTPException(422, "photo is empty")
+    if len(data) > MAX_PHOTO_BYTES:
+        raise HTTPException(413, "photo is too large")
+
+    device_lat, device_lon = _parse_float(lat, "lat"), _parse_float(lon, "lon")
+    device_time = _parse_time(taken_at)
+    exif = read_exif(data)
+    notes: list[str] = []
+
+    # --- GPS: trust the photo's own EXIF location first, then the phone's.
+    if exif["lat"] is not None:
+        use_lat, use_lon = exif["lat"], exif["lon"]
+        if device_lat is not None and device_lon is not None:
+            gap = distance_km(use_lat, use_lon, device_lat, device_lon)
+            if gap > GPS_MISMATCH_KM:
+                notes.append(f"Photo GPS is {gap:.0f} km from the phone's reported location")
+    else:
+        use_lat, use_lon = device_lat, device_lon
+        if device_lat is not None and device_lon is not None:
+            notes.append("Photo has no GPS data; used the phone's location")
+    in_zone = gps_in_zone(use_lat, use_lon)
+    if in_zone is None:
+        notes.append("No location available")
+    elif not in_zone:
+        notes.append("Location is outside the disaster area")
+
+    # --- Time: same order, EXIF first.
+    if exif["taken_at"] is not None:
+        use_time = exif["taken_at"]
+        if device_time is not None and abs(use_time - device_time) > TIME_MISMATCH:
+            notes.append("Photo capture time differs from the phone's reported time by over a day")
+    else:
+        use_time = device_time
+        if device_time is not None:
+            notes.append("Photo has no capture time; used the phone's time")
+    time_ok = timestamp_valid(use_time)
+    if time_ok is None:
+        notes.append("No capture time available")
+    elif not time_ok:
+        notes.append("Photo was taken before the disaster or in the future")
+
+    # --- Duplicate: same (or near-identical) photo already used by another claim.
+    match = sync.dup_index.find_photo(data)
+    duplicate = match is not None and match != claim_id
+    if duplicate:
+        notes.append("Same photo was already submitted with another claim")
+
+    # --- Damage vision (slow network call: run off the event loop).
+    damage = await run_in_threadpool(assess_damage, data)
+    if damage.type == "unknown" and damage.description in RETRYABLE_VISION:
+        raise HTTPException(503, f"Damage check temporarily unavailable: {damage.description}",
+                            headers={"Retry-After": "60"})
+    if damage.real_photo is False:
+        notes.append("Image may not be a genuine photo (screenshot, stock, drawing or AI-generated)")
+    if damage.type == "unknown":
+        notes.append(f"Damage not assessed: {damage.description}")
+    elif damage.description:
+        notes.append(damage.description)
+    if damage.sdrf_category and damage.sdrf_category != "not applicable":
+        notes.append(f"Suggested SDRF category: {damage.sdrf_category}")
+
+    detected = damage.type not in ("none", "unknown") and damage.severity > 0
+    sync.dup_index.add(claim_id or "unknown-claim", "", None, None, [data])
+
+    return VerifyResponse(
+        damage_detected=detected,
+        damage_score=round(damage.severity if detected else 0.0, 2),
+        gps_ok=bool(in_zone),
+        timestamp_ok=bool(time_ok),
+        duplicate=duplicate,
+        notes=notes,
+    )

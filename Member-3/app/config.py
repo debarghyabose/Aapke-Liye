@@ -14,7 +14,14 @@ DISASTER_START = datetime.fromisoformat(os.getenv("DISASTER_START_DATE", "2026-1
 VISION_PROVIDER = os.getenv("VISION_PROVIDER", "gemini").strip().lower()  # gemini | claude
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
+# Tried in order; a busy (503), rate-limited (429) or slow model falls through to the next.
+GEMINI_MODELS = [m.strip() for m in os.getenv(
+    "GEMINI_MODELS", os.getenv("GEMINI_MODEL", "gemini-3.6-flash,gemini-3.5-flash-lite")).split(",") if m.strip()]
+GEMINI_MODEL = GEMINI_MODELS[0]
+# Whole damage check must finish inside Member 2's 30 s timeout.
+VISION_DEADLINE_SECONDS = float(os.getenv("VISION_DEADLINE_SECONDS", "25"))
+# Max time for each model except the last, so a slow model can't use up the whole budget.
+VISION_PER_MODEL_SECONDS = float(os.getenv("VISION_PER_MODEL_SECONDS", "12"))
 
 VISION_API_KEY = os.getenv("VISION_API_KEY", "")  # Anthropic key, for VISION_PROVIDER=claude
 VISION_MODEL = os.getenv("VISION_MODEL", "claude-opus-5-5")
