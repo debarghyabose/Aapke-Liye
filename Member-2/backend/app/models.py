@@ -2,7 +2,7 @@ import base64
 import secrets
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -52,6 +52,9 @@ class Claim(Base):
     history: Mapped[list["StatusEvent"]] = relationship(
         back_populates="claim", cascade="all, delete-orphan", lazy="selectin",
         order_by="StatusEvent.id"
+    )
+    household_id: Mapped[str | None] = mapped_column(
+        ForeignKey("households.id"), nullable=True
     )
 
 
@@ -117,3 +120,44 @@ def audit(db, claim_id: str | None, action: str, actor: str = "claimant", **deta
     """Record an action. Pass only IDs, field names and statuses in `detail`."""
     db.add(AuditLog(claim_id=claim_id, actor=actor, action=action, detail=detail,
                     request_id=request_id_var.get()))
+
+
+def new_household_id():
+    """e.g. HH-K7Q2MZX4P9TB: 12 random base32 characters (60 bits)."""
+    return "HH-" + base64.b32encode(secrets.token_bytes(10)).decode()[:12]
+
+
+class Household(Base):
+    __tablename__ = "households"
+
+    id: Mapped[str] = mapped_column(String(20), primary_key=True, default=new_household_id)
+    token_hash: Mapped[str] = mapped_column(String(64))  # sha256 of the household_token
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+    documents: Mapped[list["VaultDocument"]] = relationship(
+        back_populates="household", cascade="all, delete-orphan", lazy="selectin",
+        order_by="VaultDocument.id"
+    )
+
+
+# Document types that can be stored in the vault (matches proof_substitution.json keys + baseline_photo)
+VAULT_DOC_TYPES = {
+    "aadhaar", "ration_card", "land_record", "bank_passbook",
+    "house_ownership", "voter_id", "death_certificate", "disability_certificate",
+    "baseline_photo",
+}
+
+
+class VaultDocument(Base):
+    __tablename__ = "vault_documents"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    household_id: Mapped[str] = mapped_column(ForeignKey("households.id"), index=True)
+    doc_type: Mapped[str] = mapped_column(String(60))
+    filename_label: Mapped[str] = mapped_column(String(120))  # human label, never used as a path
+    path: Mapped[str] = mapped_column(String(300))             # encrypted storage path
+    content_type: Mapped[str] = mapped_column(String(60))
+    source: Mapped[str] = mapped_column(String(40), default="upload")  # "upload" | "digilocker_mock"
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+    household: Mapped[Household] = relationship(back_populates="documents")

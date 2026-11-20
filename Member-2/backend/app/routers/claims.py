@@ -3,8 +3,9 @@ Claimant APIs. Every call except POST /claims needs the X-Claim-Token header ret
 by POST /claims; a wrong or missing token gives 404.
 """
 import hashlib
+import logging
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.responses import Response
 from pydantic import ValidationError
 from sqlalchemy import select
@@ -14,7 +15,8 @@ from starlette.concurrency import run_in_threadpool
 from .. import storage
 from ..config import SUPPORTED_LANGUAGES, settings
 from ..db import get_db
-from ..models import AudioRecording, AuditLog, Claim, Photo, StatusEvent, audit, now
+from ..models import (AudioRecording, AuditLog, Claim, Household, Photo, StatusEvent,
+                      VaultDocument, audit, now)
 from ..schemas import (ClaimCreate, ClaimCreated, ClaimFields, ClaimFieldsUpdate, ClaimOut,
                        ClaimText, iso_utc)
 from ..security import claim_for_claimant, hash_token, limiter, new_claim_token
@@ -24,6 +26,8 @@ from ..services.pdf_builder import build_claim_pdf
 from ..services.relief import calculate_relief, suggest_proofs
 from ..services.validation import normalize_phone, parse_taken_at, submission_problems
 from ..uploads import AUDIO, MAX_PHOTOS_PER_CLAIM, PHOTO, read_upload
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/claims", tags=["claims"])
 
@@ -49,8 +53,17 @@ def _require_draft(claim: Claim):
 def _refresh_derived(claim: Claim):
     """Recompute relief amount and proof suggestions whenever fields change."""
     claim.relief = calculate_relief(claim.fields.get("losses", []),
-                                    claim.fields.get("crop_insured"))
-    claim.proof_suggestions = suggest_proofs(claim.fields.get("documents_lost", []))
+                                    claim.fields.get("crop_insured"),
+                                    claim.fields.get("is_hilly"))
+    docs_lost = list(claim.fields.get("documents_lost") or [])
+    # If a household is linked, vault documents are available → not "lost"
+    if hasattr(claim, "household_id") and claim.household_id:
+        from ..models import Household  # deferred to avoid circular import at module load
+        # We need a sync check; the household's vault doc types are attached by
+        # _link_household before _refresh_derived is called, so we store them on the claim.
+        vault_types = getattr(claim, "_vault_doc_types", set())
+        docs_lost = [d for d in docs_lost if d not in vault_types]
+    claim.proof_suggestions = suggest_proofs(docs_lost)
 
 
 def _clean_ai_fields(raw: dict) -> dict:
@@ -111,6 +124,29 @@ async def _verify(claim: Claim, photo: Photo, data: bytes) -> dict:
     except ServiceUnavailable:
         return {"status": "pending"}
     return {**v, "status": "complete"}
+
+
+async def _try_before_after(claim: Claim, photo: Photo, data: bytes,
+                            db: AsyncSession) -> None:
+    """If the claim is linked to a household with a baseline_photo, call Member 1's
+    /v1/damage/compare and store the result in photo.verification.before_after.
+    Never fail the upload — comparison errors are silently logged."""
+    if not claim.household_id:
+        return
+    hh = await db.get(Household, claim.household_id)
+    if not hh:
+        return
+    baseline = next((d for d in hh.documents if d.doc_type == "baseline_photo"), None)
+    if not baseline:
+        return
+    try:
+        before_data = await storage.read(baseline.path)
+        comparison = await integrations.compare_photos(before_data, data)
+        v = dict(photo.verification or {})
+        v["before_after"] = comparison
+        photo.verification = v
+    except Exception as exc:
+        log.warning("before/after comparison failed (non-fatal)", extra={"error": str(exc)})
 
 
 @router.post("", response_model=ClaimCreated, status_code=201)
@@ -221,6 +257,8 @@ async def upload_photo(
     p = Photo(path=await storage.save("photos", data), sha256=digest, content_type=content_type,
               lat=lat, lon=lon, taken_at=taken, duplicate_of_claim_id=other_claim)
     p.verification = await _verify(claim, p, data)
+    # Before/after: if the household has a baseline_photo, call Member 1's /v1/damage/compare
+    await _try_before_after(claim, p, data, db)
     claim.photos.append(p)
     await db.flush()
     audit(db, claim.id, "photo_uploaded", photo_id=p.id, verification=p.verification["status"],

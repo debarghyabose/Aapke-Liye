@@ -54,6 +54,7 @@ class ClaimFields(BaseModel):
     vulnerability: Annotated[list[Literal["elderly", "disabled", "single_mother", "child_under_5"]],
                              Field(max_length=4)] | None = None
     crop_insured: bool | None = None   # PMFBY: enables the crop insurance estimate
+    is_hilly: bool | None = None        # hilly area: higher house rate
 
 
 class ClaimCreate(BaseModel):

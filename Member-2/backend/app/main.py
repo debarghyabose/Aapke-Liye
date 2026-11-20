@@ -14,7 +14,7 @@ from . import models  # noqa: F401  (registers tables)
 from .config import SUPPORTED_LANGUAGES, settings
 from .db import create_tables, engine
 from .logs import request_context, setup_logging
-from .routers import claims, staff, status
+from .routers import claims, staff, status, vault
 from .security import limiter
 from .services import integrations
 from .services.relief import load_sdrf_rules, rules_are_sample
@@ -52,7 +52,7 @@ async def limit_body_size(request: Request, call_next):
 app.add_middleware(
     CORSMiddleware, allow_origins=settings.cors_origins,
     allow_methods=["GET", "POST", "PATCH", "PUT"],
-    allow_headers=["Content-Type", "X-Claim-Token", "X-Staff-Key", "X-Request-ID"],
+    allow_headers=["Content-Type", "X-Claim-Token", "X-Staff-Key", "X-Request-ID", "X-Household-Token"],
     expose_headers=["X-Request-ID", "Retry-After", "Content-Disposition"],
 )
 app.middleware("http")(request_context)   # outermost: every response gets X-Request-ID
@@ -60,6 +60,7 @@ app.middleware("http")(request_context)   # outermost: every response gets X-Req
 app.include_router(claims.router)
 app.include_router(status.router)
 app.include_router(staff.router)
+app.include_router(vault.router)
 
 
 class SpeechRequest(BaseModel):
