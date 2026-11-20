@@ -53,3 +53,15 @@ def no_real_api_calls(monkeypatch):
 
     monkeypatch.setattr(config, "VISION_API_KEY", "")
     monkeypatch.setattr(config, "GEMINI_API_KEY", "")
+    monkeypatch.setattr(config, "DASHBOARD_API_KEY", "")
+
+
+@pytest.fixture(autouse=True)
+def temp_store(tmp_path):
+    """Each test gets an empty database, never the real member3.db."""
+    from app import store
+
+    s = store.Store(str(tmp_path / "test.db"))
+    store.set_store(s)
+    yield s
+    store.set_store(None)
