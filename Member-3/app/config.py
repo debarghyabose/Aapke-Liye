@@ -64,5 +64,11 @@ BUILDING_FILES = _files("BUILDING_FILES")
 # A house photo needs a mapped building this close (covers GPS error of a few metres).
 BUILDING_SEARCH_M = float(os.getenv("BUILDING_SEARCH_M", "30"))
 
+# Crop before/after check from Sentinel-2 NDVI (app/ndvi.py). Runs in the background after
+# /verify for crop photos with their own GPS. Reads public images (no account).
+NDVI_ENABLED = os.getenv("NDVI_ENABLED", "true").strip().lower() in ("1", "true", "yes")
+# Half-size of the square of field compared (metres): 30 = about 6 x 6 Sentinel-2 pixels.
+NDVI_RADIUS_M = float(os.getenv("NDVI_RADIUS_M", "30"))
+
 # Secret for phone fingerprints. Set a long random value in production.
 PHONE_HASH_KEY = os.getenv("PHONE_HASH_KEY", "")

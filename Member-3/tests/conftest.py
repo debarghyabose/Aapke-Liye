@@ -54,6 +54,7 @@ def no_real_api_calls(monkeypatch):
     monkeypatch.setattr(config, "VISION_API_KEY", "")
     monkeypatch.setattr(config, "GEMINI_API_KEY", "")
     monkeypatch.setattr(config, "DASHBOARD_API_KEY", "")
+    monkeypatch.setattr(config, "NDVI_ENABLED", False)   # no satellite image requests in tests
 
 
 @pytest.fixture(autouse=True)
