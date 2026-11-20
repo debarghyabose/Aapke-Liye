@@ -26,10 +26,16 @@ def score(claim_id: str, checks: Checks) -> VerificationResult:
         points += 10
         flags.append("timestamp_missing")
 
-    if checks.damage.type != "unknown":
-        points += 20 + int(20 * checks.damage.severity)
-    else:
+    damage = checks.damage
+    if damage.real_photo is False:
+        points -= 40
+        flags.append("not_genuine_photo")
+    if damage.type == "unknown":
         flags.append("damage_unassessed")
+    elif damage.type == "none":
+        flags.append("no_damage_visible")
+    else:
+        points += 20 + int(20 * damage.severity)
 
     points = max(0, min(100, points))
 

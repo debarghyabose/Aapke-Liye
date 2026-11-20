@@ -16,9 +16,11 @@ class VerificationStatus(str, Enum):
 
 
 class DamageResult(BaseModel):
-    type: str = "unknown"  # house | crop | livestock | vehicle | other | unknown
+    type: str = "unknown"  # house | crop | livestock | vehicle | other | none | unknown
     severity: float = Field(0.0, ge=0.0, le=1.0)
     description: str = ""
+    sdrf_category: Optional[str] = None  # e.g. "pucca house fully damaged" (for Member 1)
+    real_photo: Optional[bool] = None  # False = screenshot / stock / AI image
 
 
 class Checks(BaseModel):
