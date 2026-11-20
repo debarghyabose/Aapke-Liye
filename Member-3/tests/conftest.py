@@ -57,6 +57,18 @@ def no_real_api_calls(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def no_map_files(monkeypatch):
+    """Tests start with no flood or building maps unless they load their own."""
+    from app import config, geodata
+
+    monkeypatch.setattr(config, "FLOOD_MAP_FILES", [])
+    monkeypatch.setattr(config, "BUILDING_FILES", [])
+    geodata.reload_geo()
+    yield
+    geodata._geo = None
+
+
+@pytest.fixture(autouse=True)
 def temp_store(tmp_path):
     """Each test gets an empty database, never the real member3.db."""
     from app import store

@@ -54,6 +54,36 @@ amounts and claim status come from Member 2: **join on `claim_id`**.
   in `DASHBOARD_CORS_ORIGINS` (by default, the file opened directly and a few localhost ports).
 - Photo fingerprints are saved too, so a re-used photo is still caught after a restart.
 
+## Satellite and map checks
+
+For photos with their own GPS (EXIF), `/verify` also checks local map files:
+
+| Check | Data (local files) | Result in `notes` / dashboard |
+|---|---|---|
+| **Flood map**: was this spot flooded? | Flood-extent polygons from **Copernicus EMS** or **ISRO Bhuvan/NRSC** (`.geojson` or `.shp`) in `FLOOD_MAP_FILES` | "inside the flooded area", "X km from the mapped flooding" (`outside_flood_extent`), or "No satellite flood map covers this location yet" |
+| **Building map**: is there a building at a "house" photo? | **Google Open Buildings** CSV or **OpenStreetMap** GeoJSON in `BUILDING_FILES` | "a building is mapped X m away", or `no_building_at_location` |
+
+- **Only the photo's own GPS is used.** Relief camps are usually on dry ground, so the phone's
+  location at upload time would make every camp-filed claim look "outside the flood".
+- **Local files only:** no victim location is sent to any outside map service.
+- **Snapshots, not proof:** a flood map shows water at the moment the satellite passed (there is a
+  300 m tolerance), and building maps of rural India are incomplete. Both are review notes.
+- `GET /dashboard/flood-extent.geojson` serves the loaded polygons. Member 5's dashboard draws them
+  as the "Satellite flood map" layer.
+- **Real data included:** `data/copernicus/` has Copernicus EMS flood maps for Andhra Pradesh
+  (EMSR104, 2014) and Puri (EMSR357, Cyclone Fani 2019), plus **9,777 Puri buildings graded from
+  satellite images** (Destroyed / Damaged / Possibly damaged). A claim photo at a graded building
+  gets the note *"Satellite damage grading (Copernicus EMS EMSR357): … graded "Destroyed""*.
+  Credit Copernicus EMS whenever you show them (see `data/copernicus/README.md`).
+- Shapefiles in metres (UTM) are converted automatically using their `.prj` file. Use
+  `scripts/convert_cems.py` to turn a new Copernicus vector package into GeoJSON.
+- Outside the flood map is **not** flagged when satellite grading shows the building damaged
+  (cyclone wind damage).
+- `data/demo/DEMO_synthetic_flood_extent.geojson` is **synthetic demo data**, not from a satellite.
+- **Not possible with free data:** checking whether one specific house was intact before the
+  disaster needs ~0.5 m imagery (ISRO Cartosat through NRSC, or Maxar Open Data for major
+  disasters). Free Sentinel imagery is 10 m per pixel, about one pixel per house.
+
 ## Fraud checks
 
 Every check is a **flag for an official to review**, never an automatic rejection.
@@ -131,7 +161,7 @@ Multipart `photo` (required), plus `lat`, `lon`, `taken_at` (ISO 8601), `claim_i
 ## Phase 2: Roadmap features (after the demo works)
 | Feature | What to do |
 |---|---|
-| Satellite verification | Check the claim location against Sentinel-1 / ISRO Bhuvan flood and damage maps, using PostGIS |
+| 🟡 Satellite verification | Check the claim location against Sentinel-1 / ISRO Bhuvan flood and damage maps (flood map + building map checks done; real Copernicus/Bhuvan data still to load; crop before/after NDVI next) |
 | ✅ Advanced fraud detection | Flag the same photo, house or person claiming twice (see "Fraud checks" below) |
 | WhatsApp bot | File a claim by sending a voice note on WhatsApp |
 | IVR / missed-call line | Feature-phone users call in and speak their claim |

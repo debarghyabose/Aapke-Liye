@@ -18,6 +18,7 @@ from starlette.concurrency import run_in_threadpool
 
 from app import config, sync
 from app.exif_check import distance_km, gps_in_zone, read_exif, timestamp_valid
+from app.geodata import get_geo
 from app.store import get_store
 from app.vision import assess_damage
 
@@ -169,12 +170,46 @@ async def verify(
     if damage.sdrf_category and damage.sdrf_category != "not applicable":
         notes.append(f"Suggested SDRF category: {damage.sdrf_category}")
 
+    # --- Satellite flood map and building map (local files, see app/geodata.py).
+    # Only the photo's own GPS: relief camps on dry ground would look "outside the flood".
+    geo = get_geo()
+    flood = {"in_flood": None, "distance_km": None, "map": None}
+    building = {"building_found": None, "distance_m": None}
+    if gps_source == "exif":
+        flood = geo.flood_check(use_lat, use_lon)
+        # Also when the AI could not assess the photo: satellite grading still helps the official.
+        if damage.type in ("house", "unknown"):
+            building = geo.building_check(use_lat, use_lon)
+    if flood["in_flood"] is True:
+        notes.append(f"Satellite flood map ({flood['map']}): photo location is inside the flooded area")
+    elif flood["in_flood"] is False:
+        where = (f"{flood['distance_km']:.1f} km from" if flood["distance_km"] is not None
+                 else f"more than {config.FLOOD_COVERAGE_MARGIN_KM:.0f} km from")
+        notes.append(f"Satellite flood map ({flood['map']}): photo location is {where} the mapped flooding")
+    elif geo.floods.tree is not None and gps_source == "exif":
+        notes.append("No satellite flood map covers this location yet")
+    if building["building_found"] is True and building.get("damage_grade"):
+        notes.append(f"Satellite damage grading ({building['grade_source']}): the building "
+                     f"{building['distance_m']:.0f} m from the photo is graded \"{building['damage_grade']}\"")
+        if flood["in_flood"] is False:
+            notes.append("Outside the flood map, but satellite grading shows building damage "
+                         "(for example cyclone wind damage), so no flood flag")
+    elif building["building_found"] is True:
+        notes.append(f"Building map: a building is mapped {building['distance_m']:.0f} m from the photo location")
+    elif building["building_found"] is False:
+        notes.append(f"Building map: no building mapped within {config.BUILDING_SEARCH_M:.0f} m of the photo "
+                     "location (maps of rural areas can be incomplete)")
+
     detected = damage.type not in ("none", "unknown") and damage.severity > 0
     score = round(damage.severity if detected else 0.0, 2)
     sync.dup_index.add_hash(fingerprint, claim_id)
     store.record(
         claim_id=claim_id, lat=use_lat, lon=use_lon, gps_source=gps_source,
         phone_hash=phone_fp, nearby_claims=nearby, phone_other_claims=len(phone_others) if phone_fp else None,
+        in_flood=None if flood["in_flood"] is None else int(flood["in_flood"]),
+        flood_distance_km=flood["distance_km"], flood_map=flood["map"],
+        building_found=None if building["building_found"] is None else int(building["building_found"]),
+        building_distance_m=building["distance_m"], satellite_damage_grade=building.get("damage_grade"),
         gps_mismatch_km=None if gap is None else round(gap, 2),
         gps_ok=bool(in_zone), timestamp_ok=bool(time_ok),
         damage_type=damage.type, severity=score, sdrf_category=damage.sdrf_category,

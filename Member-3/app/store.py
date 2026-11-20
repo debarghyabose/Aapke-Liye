@@ -44,6 +44,12 @@ LATER_COLUMNS = {
     "phone_hash": "TEXT",               # keyed fingerprint of the phone number, never the number
     "nearby_claims": "TEXT",            # JSON [{"claim_id", "distance_m"}]: possibly the same house
     "phone_other_claims": "INTEGER",    # other claims from the same phone in the last 24 h
+    "in_flood": "INTEGER",              # satellite flood map: 1 inside, 0 outside, NULL no map here
+    "flood_distance_km": "REAL",        # distance to the mapped flooding
+    "flood_map": "TEXT",                # which flood map file was used
+    "building_found": "INTEGER",        # building map: 1 found, 0 none nearby, NULL no data
+    "building_distance_m": "REAL",
+    "satellite_damage_grade": "TEXT",   # e.g. Copernicus EMS grading: Destroyed / Damaged / ...
 }
 
 
@@ -142,7 +148,8 @@ class Store:
             d.pop("phone_hash", None)  # never leaves the service
             for k in ("gps_ok", "timestamp_ok"):
                 d[k] = bool(d[k])
-            d["real_photo"] = None if d["real_photo"] is None else bool(d["real_photo"])
+            for k in ("real_photo", "in_flood", "building_found"):
+                d[k] = None if d.get(k) is None else bool(d[k])
             out.append(d)
         return out
 
