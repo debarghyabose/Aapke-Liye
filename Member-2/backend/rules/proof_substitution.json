@@ -1,0 +1,30 @@
+{
+  "_note": "SAMPLE list. Member 5 owns this file and replaces it with the real accepted alternatives per state.",
+  "aadhaar": [
+    "Voter ID, ration card or any other photo ID if available",
+    "Attestation by the Gram Panchayat Pradhan or ward councillor",
+    "Apply for a reprint at the nearest Aadhaar Seva Kendra (we can draft the request)"
+  ],
+  "ration_card": [
+    "Name in the local PDS / ration dealer register",
+    "Panchayat attestation of household members"
+  ],
+  "land_record": [
+    "Khatian / RoR copy from the state land records portal",
+    "Certificate from the Block Land & Land Reforms Office (BL&LRO)",
+    "Geo-tagged photos of the plot plus neighbour attestation"
+  ],
+  "bank_passbook": [
+    "Account details from the bank branch or a bank statement",
+    "Aadhaar-seeded account (DBT) confirmation from the bank"
+  ],
+  "house_ownership": [
+    "Panchayat tax receipt or electricity bill",
+    "Geo-tagged, time-stamped photos of the damaged house (from this app)",
+    "Neighbour attestation countersigned by the panchayat"
+  ],
+  "_default": [
+    "Attestation by the Gram Panchayat or local revenue officer",
+    "Geo-tagged, time-stamped photos submitted through this app"
+  ]
+}

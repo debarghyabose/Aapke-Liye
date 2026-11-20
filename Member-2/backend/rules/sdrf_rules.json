@@ -1,0 +1,61 @@
+{
+  "_note": "SAMPLE values based on the MHA SDRF/NDRF norms for 2022-23 to 2025-26 (letter 33-03/2020-NDM-I, 10-10-2022). Member 5 must check every number against the current state notification, as states are moving to revised 2026-31 norms. The backend only reads this file, so Member 5 can replace it without code changes.",
+  "version": "sample-2022-26",
+  "currency": "INR",
+  "categories": {
+    "house": {
+      "unit": "per house",
+      "items": {
+        "fully_damaged_plain": 120000,
+        "fully_damaged_hilly": 130000,
+        "partially_damaged_pucca": 6500,
+        "partially_damaged_kutcha": 4000,
+        "hut_damaged": 8000,
+        "cattle_shed": 3000
+      }
+    },
+    "crop": {
+      "unit": "per hectare",
+      "max_quantity": 2,
+      "min_damage_percent": 33,
+      "items": {
+        "rainfed": 8500,
+        "irrigated": 17000,
+        "perennial": 22500
+      },
+      "min_amount": {
+        "rainfed": 1000,
+        "irrigated": 2000,
+        "perennial": 2500
+      }
+    },
+    "livestock": {
+      "unit": "per animal",
+      "items": {
+        "milch_large": 37500,
+        "milch_small": 4000,
+        "draught_large": 32000,
+        "draught_small": 20000,
+        "poultry": 100
+      },
+      "max_amount": {
+        "poultry": 10000
+      }
+    },
+    "household": {
+      "unit": "per family",
+      "items": {
+        "clothing": 2500,
+        "utensils": 2500
+      }
+    },
+    "ex_gratia": {
+      "unit": "per person",
+      "items": {
+        "death": 400000,
+        "disability_40_60": 74000,
+        "disability_above_60": 250000
+      }
+    }
+  }
+}
