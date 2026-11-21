@@ -771,6 +771,19 @@ export async function vaultFileUrl(householdId: string, docId: string | number):
   }
 }
 
+/** A fresh object URL for one vault file (the caller may revoke it). Used by /prepare. */
+export async function fetchVaultFileBlobUrl(householdId: string, docId: string | number): Promise<string | null> {
+  const token = householdTokenFor(householdId);
+  if (DEMO_MODE || !token || !navigator.onLine) return null;
+  try {
+    const blob = await request<Blob>(`/households/${householdId}/documents/${docId}/file`, { householdToken: token });
+    return URL.createObjectURL(blob);
+  } catch (e) {
+    console.warn('Could not load the vault file', e);
+    return null;
+  }
+}
+
 export async function getHousehold(id: string): Promise<Household | null> {
   const local = await getLocalHousehold(id);
   const token = householdTokenFor(id) || local?.token;

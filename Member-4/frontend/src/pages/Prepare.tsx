@@ -24,6 +24,7 @@ import {
   getHousehold,
   uploadVaultDocument,
   deleteVaultDocument,
+  fetchVaultFileBlobUrl,
   startDigiLockerMock,
   startDigiLockerFlow,
   getSavedHouseholdId,
@@ -42,6 +43,7 @@ export const Prepare: React.FC = () => {
   const navigate = useNavigate();
 
   const [household, setHousehold] = useState<Household | null>(null);
+  const [baselineBlobUrl, setBaselineBlobUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -95,6 +97,49 @@ export const Prepare: React.FC = () => {
     };
     load();
   }, [t]);
+
+  useEffect(() => {
+    let active = true;
+    let objectUrlToRevoke: string | null = null;
+
+    const loadBaseline = async () => {
+      if (!household) {
+        setBaselineBlobUrl(null);
+        return;
+      }
+      const baselineDoc = (household.documents || []).find((d) => d.doc_type === 'baseline_photo');
+      if (baselineDoc) {
+        const blobUrl = await fetchVaultFileBlobUrl(household.id, baselineDoc.id);
+        if (active && blobUrl) {
+          objectUrlToRevoke = blobUrl;
+          setBaselineBlobUrl(blobUrl);
+          return;
+        }
+      }
+      if (household.baseline_photo_url) {
+        if (household.baseline_photo_url.startsWith('blob:') || household.baseline_photo_url.startsWith('data:')) {
+          if (active) setBaselineBlobUrl(household.baseline_photo_url);
+        } else {
+          const blobUrl = await fetchVaultFileBlobUrl(household.id, household.baseline_photo_url);
+          if (active && blobUrl) {
+            objectUrlToRevoke = blobUrl;
+            setBaselineBlobUrl(blobUrl);
+          }
+        }
+      } else {
+        if (active) setBaselineBlobUrl(null);
+      }
+    };
+
+    loadBaseline();
+
+    return () => {
+      active = false;
+      if (objectUrlToRevoke && objectUrlToRevoke.startsWith('blob:')) {
+        URL.revokeObjectURL(objectUrlToRevoke);
+      }
+    };
+  }, [household]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -574,7 +619,7 @@ export const Prepare: React.FC = () => {
           {household.baseline_photo_url ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
               <img
-                src={household.baseline_photo_url}
+                src={baselineBlobUrl || household.baseline_photo_url}
                 alt="Baseline property"
                 style={{ width: '160px', height: '120px', objectFit: 'cover', borderRadius: '8px', border: '2px solid var(--primary)' }}
               />
