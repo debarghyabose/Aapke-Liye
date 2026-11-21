@@ -25,6 +25,7 @@ import {
   uploadVaultDocument,
   deleteVaultDocument,
   startDigiLockerMock,
+  startDigiLockerFlow,
   getSavedHouseholdId,
 } from '../api/client';
 import { Household, VaultDocument } from '../types/api';
@@ -60,6 +61,16 @@ export const Prepare: React.FC = () => {
   const [currentDocType, setCurrentDocType] = useState<string>('aadhaar');
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const digiStatus = params.get('digilocker');
+    if (digiStatus === 'added') {
+      setMsg(t('prepare.digiLockerImported', 'Sample DigiLocker documents synced into your vault.'));
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (digiStatus === 'denied') {
+      setMsg(t('prepare.digiLockerDenied', 'DigiLocker consent was cancelled.'));
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
     const load = async () => {
       setLoading(true);
       try {
@@ -83,7 +94,7 @@ export const Prepare: React.FC = () => {
       }
     };
     load();
-  }, []);
+  }, [t]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -150,6 +161,23 @@ export const Prepare: React.FC = () => {
     } catch (err: any) {
       setMsg(err.message || 'Delete failed');
     }
+  };
+
+  const handleDigiLockerClick = async () => {
+    if (!household) return;
+    setDigiLockerLoading(true);
+    try {
+      const flow = await startDigiLockerFlow(household.id);
+      if (flow && flow.consent_url) {
+        window.location.href = flow.consent_url;
+        return;
+      }
+    } catch (e) {
+      console.warn('Backend DigiLocker flow unavailable, opening in-app demo modal:', e);
+    } finally {
+      setDigiLockerLoading(false);
+    }
+    setShowDigiLockerModal(true);
   };
 
   const handleDigiLockerCallback = async () => {
@@ -407,7 +435,8 @@ export const Prepare: React.FC = () => {
             {/* DigiLocker Trigger Button */}
             <button
               type="button"
-              onClick={() => setShowDigiLockerModal(true)}
+              onClick={handleDigiLockerClick}
+              disabled={digiLockerLoading}
               style={{
                 minHeight: '48px',
                 display: 'inline-flex',
@@ -424,7 +453,7 @@ export const Prepare: React.FC = () => {
               }}
             >
               <ExternalLink size={18} />
-              <span>{t('prepare.digiLockerBtn', 'Import from DigiLocker (Demo)')}</span>
+              <span>{digiLockerLoading ? 'Connecting…' : t('prepare.digiLockerBtn', 'Import from DigiLocker (Demo)')}</span>
             </button>
           </div>
 

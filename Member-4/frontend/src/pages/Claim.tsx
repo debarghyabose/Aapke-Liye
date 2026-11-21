@@ -158,7 +158,7 @@ export const Claim: React.FC = () => {
     setErrorMsg(null);
     i18n.changeLanguage(selectedLang);
     try {
-      const created = await createClaim({
+      let created = await createClaim({
         language: selectedLang,
         disaster_type: 'flood',
         consent: true,
@@ -166,12 +166,25 @@ export const Claim: React.FC = () => {
         household_id: (useHousehold && savedHousehold) ? savedHousehold.id : null,
       });
       if (useHousehold && savedHousehold) {
-        created.fields.household_id = savedHousehold.id;
-        created.fields.name = created.fields.name || savedHousehold.head_name;
-        created.fields.phone = created.fields.phone || savedHousehold.phone;
-        created.fields.village = created.fields.village || savedHousehold.village;
-        created.fields.district = created.fields.district || savedHousehold.district;
-        created.fields.state = created.fields.state || savedHousehold.state;
+        try {
+          created = await linkHouseholdToClaim(created.id, savedHousehold.id);
+        } catch (linkErr) {
+          console.warn('Could not link household to claim via API, applying local link:', linkErr);
+          created.household_id = savedHousehold.id;
+          created.fields.household_id = savedHousehold.id;
+          created.fields.name = created.fields.name || savedHousehold.head_name;
+          created.fields.phone = created.fields.phone || savedHousehold.phone;
+          created.fields.village = created.fields.village || savedHousehold.village;
+          created.fields.district = created.fields.district || savedHousehold.district;
+          created.fields.state = created.fields.state || savedHousehold.state;
+          const vaultTypes = (savedHousehold.documents || []).map((d) => d.doc_type);
+          created.fields.documents_lost = (created.fields.documents_lost || []).filter((d) => !vaultTypes.includes(d));
+          created.documents_in_vault = (savedHousehold.documents || []).map((d) => ({
+            document: d.doc_type,
+            source: d.source || 'upload',
+            id: Number(d.id) || undefined,
+          }));
+        }
       }
       setClaim(created);
       setStep(2);
@@ -1293,32 +1306,56 @@ export const Claim: React.FC = () => {
                       {photo.verification.gemini_reason}
                     </div>
 
-                    {/* Before/After side-by-side comparison */}
-                    {(savedHousehold?.baseline_photo_url || photo.verification?.comparison) && (
+                    {/* Before/After side-by-side comparison from photo.verification.before_after */}
+                    {(photo.verification?.before_after || savedHousehold?.baseline_photo_url || photo.verification?.comparison) && (
                       <div
                         style={{
                           marginTop: '12px',
-                          padding: '12px',
+                          padding: '14px',
                           backgroundColor: '#FDFBF7',
                           border: '1.5px solid var(--border)',
                           borderRadius: '10px',
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                          <Sparkles size={16} style={{ color: 'var(--accent)' }} />
-                          <span style={{ fontWeight: 800, fontSize: '0.86rem', color: 'var(--secondary)' }}>
-                            {t('claim.beforeAfterTitle', 'Before / After Damage Comparison')}
-                          </span>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Sparkles size={16} style={{ color: 'var(--accent)' }} />
+                            <span style={{ fontWeight: 800, fontSize: '0.88rem', color: 'var(--secondary)' }}>
+                              {t('claim.beforeAfterTitle', 'Before / After Damage Comparison')}
+                            </span>
+                          </div>
+                          {photo.verification?.before_after?.status === 'complete' && (
+                            <span
+                              style={{
+                                fontSize: '0.75rem',
+                                padding: '2px 8px',
+                                borderRadius: '999px',
+                                backgroundColor: photo.verification.before_after.same_property ? '#E8F5E9' : '#FFF3E0',
+                                color: photo.verification.before_after.same_property ? 'var(--primary)' : '#B26A00',
+                                fontWeight: 700,
+                              }}
+                            >
+                              {photo.verification.before_after.same_property
+                                ? t('claim.samePropertyConfirmed', '✓ Same Property Confirmed')
+                                : t('claim.reviewPropertyMatch', '⚠ Check Property Match')}
+                            </span>
+                          )}
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
                           <div>
                             <span style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: 'var(--muted)', marginBottom: '3px' }}>
                               {t('claim.beforeLabel', 'BEFORE (Vault Baseline)')}
                             </span>
                             <img
-                              src={savedHousehold?.baseline_photo_url || '/Mother_speaking_into_phone_81a00bd8.jpg'}
+                              src={
+                                savedHousehold?.baseline_photo_url ||
+                                (photo.verification?.before_after?.baseline_document_id
+                                  ? `${API_URL}/households/${claim.household_id || savedHousehold?.id}/documents/${photo.verification.before_after.baseline_document_id}/file`
+                                  : '/Mother_speaking_into_phone_81a00bd8.jpg')
+                              }
                               alt="Before baseline"
-                              style={{ width: '100%', height: '80px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--border)' }}
+                              style={{ width: '100%', height: '90px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--border)' }}
                             />
                           </div>
                           <div>
@@ -1328,14 +1365,37 @@ export const Claim: React.FC = () => {
                             <img
                               src={photo.url || '/hero.webp'}
                               alt="After damage"
-                              style={{ width: '100%', height: '80px', objectFit: 'cover', borderRadius: '6px', border: '1.5px solid var(--accent)' }}
+                              style={{ width: '100%', height: '90px', objectFit: 'cover', borderRadius: '6px', border: '1.5px solid var(--accent)' }}
                             />
                           </div>
                         </div>
-                        <div style={{ fontSize: '0.82rem', color: 'var(--primary)', fontWeight: 700 }}>
-                          {photo.verification?.comparison?.structural_loss_summary ||
-                            t('claim.beforeAfterSummary', 'AI verified structural collapse relative to pre-disaster baseline.')}
-                        </div>
+
+                        {photo.verification?.before_after?.status === 'complete' ? (
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                              <span style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--accent)' }}>
+                                {t('claim.damageScore', 'Damage:')} {photo.verification.before_after.damage_score}% ({photo.verification.before_after.level})
+                              </span>
+                            </div>
+                            <div style={{ fontSize: '0.84rem', color: 'var(--text)', lineHeight: 1.45 }}>
+                              {photo.verification.before_after.reason}
+                            </div>
+                            {(photo.verification.before_after.damaged_items || []).length > 0 && (
+                              <div style={{ marginTop: '4px', fontSize: '0.8rem', color: 'var(--muted)', fontWeight: 600 }}>
+                                {t('claim.damagedItems', 'Damaged elements:')} {photo.verification.before_after.damaged_items.join(', ')}
+                              </div>
+                            )}
+                          </div>
+                        ) : photo.verification?.before_after?.status === 'unavailable' ? (
+                          <div style={{ fontSize: '0.82rem', color: 'var(--muted)', fontWeight: 600 }}>
+                            {t('claim.beforeAfterUnavailable', 'Baseline photo safely recorded. AI comparison will complete when AI service returns.')}
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: '0.82rem', color: 'var(--primary)', fontWeight: 700 }}>
+                            {photo.verification?.comparison?.structural_loss_summary ||
+                              t('claim.beforeAfterSummary', 'AI verified structural collapse relative to pre-disaster baseline.')}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1672,6 +1732,65 @@ export const Claim: React.FC = () => {
                   </ul>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Documents Secured from Pre-Disaster Vault */}
+          {claim.documents_in_vault && claim.documents_in_vault.length > 0 && (
+            <div
+              style={{
+                backgroundColor: '#F0F9F4',
+                border: '1.5px solid var(--primary)',
+                borderRadius: '16px',
+                padding: '20px',
+                marginBottom: '20px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <ShieldCheck size={20} style={{ color: 'var(--primary)' }} />
+                <h4 style={{ margin: 0, color: 'var(--primary)', fontSize: '1.12rem', fontWeight: 800 }}>
+                  {t('claim.vaultDocsAvailable', 'Documents Secured from Pre-Disaster Vault:')}
+                </h4>
+              </div>
+              <p style={{ margin: '0 0 12px 0', fontSize: '0.88rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                {t(
+                  'claim.vaultDocsNote',
+                  'These papers were saved before the disaster. They are marked available and require no lost-document proof substitution.'
+                )}
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                {claim.documents_in_vault.map((d, idx) => (
+                  <span
+                    key={idx}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '6px 14px',
+                      borderRadius: '999px',
+                      backgroundColor: '#FFFFFF',
+                      border: '1px solid var(--border)',
+                      fontSize: '0.86rem',
+                      fontWeight: 700,
+                      color: 'var(--secondary)',
+                    }}
+                  >
+                    <span>{d.document.replace(/_/g, ' ')}</span>
+                    <span
+                      style={{
+                        fontSize: '0.75rem',
+                        padding: '2px 8px',
+                        borderRadius: '999px',
+                        backgroundColor: d.source === 'digilocker_mock' ? '#E3F2FD' : '#E8F5E9',
+                        color: d.source === 'digilocker_mock' ? '#0B4EA2' : 'var(--primary)',
+                        fontWeight: 700,
+                      }}
+                    >
+                      {d.source === 'digilocker_mock' ? 'DigiLocker (demo)' : 'Vault ✓'}
+                    </span>
+                  </span>
+                ))}
+              </div>
             </div>
           )}
 

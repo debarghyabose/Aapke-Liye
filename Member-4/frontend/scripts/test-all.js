@@ -61,11 +61,18 @@ console.log('\n[4/5] Verifying Feature Logic...');
 const claimCode = fs.readFileSync(path.join(srcPages, 'Claim.tsx'), 'utf8');
 assert(claimCode.includes('is_hilly'), 'Claim.tsx includes is_hilly question & state handler');
 assert(claimCode.includes('useMyHousehold'), 'Claim.tsx includes "Use my household" option on Step 1');
+assert(claimCode.includes('photo.verification?.before_after'), 'Claim.tsx reads photo.verification.before_after');
 assert(claimCode.includes('beforeAfterTitle'), 'Claim.tsx includes Before/After damage comparison card on Step 4');
+assert(claimCode.includes('DigiLocker (demo)'), 'Claim.tsx labels digilocker_mock as "DigiLocker (demo)"');
 assert(claimCode.includes('/mesh'), 'Claim.tsx Step 6 links to /mesh for zero-signal neighbour handoff');
+
+const prepareCode = fs.readFileSync(path.join(srcPages, 'Prepare.tsx'), 'utf8');
+assert(prepareCode.includes('DigiLocker (demo)'), 'Prepare.tsx labels digilocker_mock as "DigiLocker (demo)"');
+assert(prepareCode.includes('startDigiLockerFlow'), 'Prepare.tsx connects to backend DigiLocker consent flow');
 
 const apiTypes = fs.readFileSync(path.resolve(__dirname, '../src/types/api.ts'), 'utf8');
 assert(apiTypes.includes('is_hilly?: boolean | null;'), 'api.ts includes is_hilly field');
+assert(apiTypes.includes('interface BeforeAfterComparison'), 'api.ts includes BeforeAfterComparison schema');
 assert(apiTypes.includes('interface Household'), 'api.ts includes Household schema');
 assert(apiTypes.includes('interface VaultDocument'), 'api.ts includes VaultDocument schema');
 assert(apiTypes.includes('interface SealedClaimEnvelope'), 'api.ts includes SealedClaimEnvelope schema');
@@ -73,7 +80,10 @@ assert(apiTypes.includes('interface SealedClaimEnvelope'), 'api.ts includes Seal
 const clientCode = fs.readFileSync(path.resolve(__dirname, '../src/api/client.ts'), 'utf8');
 assert(clientCode.includes('registerHousehold'), 'client.ts exports registerHousehold');
 assert(clientCode.includes('uploadVaultDocument'), 'client.ts exports uploadVaultDocument');
+assert(clientCode.includes('linkHouseholdToClaim'), 'client.ts exports linkHouseholdToClaim');
+assert(clientCode.includes('startDigiLockerFlow'), 'client.ts exports startDigiLockerFlow');
 assert(clientCode.includes('startDigiLockerMock'), 'client.ts exports startDigiLockerMock');
+assert(clientCode.includes('X-Household-Token'), 'client.ts passes X-Household-Token header');
 assert(clientCode.includes('sealClaimEnvelope'), 'client.ts exports sealClaimEnvelope');
 assert(clientCode.includes('submitMeshEnvelope'), 'client.ts exports submitMeshEnvelope');
 

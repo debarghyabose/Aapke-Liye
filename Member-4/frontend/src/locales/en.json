@@ -210,7 +210,14 @@
     "hillyAreaHelp": "Government relief norms provide higher SDRF assistance (₹1,30,000 vs ₹1,20,000) for fully destroyed homes in hilly regions.",
     "meshRelayNotice": "Zero Signal? Hand to a Neighbour",
     "meshRelayDesc": "If network towers are knocked out, generate a sealed QR code to hand this claim to a moving neighbour or volunteer travelling to signal.",
-    "openMeshBtn": "Open Mesh QR Code"
+    "openMeshBtn": "Open Mesh QR Code",
+    "samePropertyConfirmed": "✓ Same Property Confirmed",
+    "reviewPropertyMatch": "⚠ Check Property Match",
+    "damageScore": "Damage:",
+    "damagedItems": "Damaged elements:",
+    "beforeAfterUnavailable": "Baseline photo safely recorded. AI comparison will complete when AI service returns.",
+    "vaultDocsAvailable": "Documents Secured from Pre-Disaster Vault:",
+    "vaultDocsNote": "These papers were saved before the disaster. They are marked available and require no lost-document proof substitution."
   },
   "track": {
     "title": "Track Your Relief Claim",
@@ -350,7 +357,8 @@
     "snapBaseline": "Snap Baseline Photo",
     "digiLockerMockBanner": "Demo: DigiLocker Mock Consent Screen",
     "digiLockerImported": "Sample DigiLocker documents synced into your vault.",
-    "giveConsent": "I Consent (Demo Import)"
+    "giveConsent": "I Consent (Demo Import)",
+    "digiLockerDenied": "DigiLocker consent was cancelled."
   },
   "mesh": {
     "badge": "Phone-to-Phone Emergency Mesh",

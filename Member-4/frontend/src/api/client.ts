@@ -122,9 +122,23 @@ export function setStaffKey(key: string) {
 
 // ---------- HTTP ----------
 
-async function request<T>(path: string, init: RequestInit & { claimId?: string; staff?: boolean } = {}): Promise<T> {
+async function request<T>(
+  path: string,
+  init: RequestInit & {
+    claimId?: string;
+    staff?: boolean;
+    householdId?: string;
+    householdToken?: string;
+  } = {}
+): Promise<T> {
   const headers: Record<string, string> = { ...(init.headers as Record<string, string>) };
   if (init.claimId) headers['X-Claim-Token'] = tokenFor(init.claimId);
+  if (init.householdToken) {
+    headers['X-Household-Token'] = init.householdToken;
+  } else if (init.householdId) {
+    const hhTok = householdTokenFor(init.householdId);
+    if (hhTok) headers['X-Household-Token'] = hhTok;
+  }
   if (init.staff) headers['X-Staff-Key'] = getStaffKey();
   if (init.body && typeof init.body === 'string') headers['Content-Type'] = 'application/json';
 
@@ -193,6 +207,7 @@ function toPhoto(p: any): PhotoOut {
       time_valid: v.timestamp_ok ?? v.time_valid,
       exif_valid: (v.gps_ok && v.timestamp_ok) ?? v.exif_valid,
       duplicate: v.duplicate,
+      before_after: v.before_after,
       comparison: v.comparison,
     },
   } as PhotoOut;
@@ -264,6 +279,8 @@ function toClaim(c: any): ClaimOut {
   const missing: string[] = c.missing_fields || [];
   return {
     ...c,
+    household_id: c.household_id ?? c.fields?.household_id ?? null,
+    documents_in_vault: c.documents_in_vault || [],
     fields: {
       ...c.fields,
       is_hilly: c.fields?.is_hilly ?? false,
@@ -671,6 +688,29 @@ export async function updateStaffStatus(claimId: string, status: string, note?: 
 // ============================================================================
 
 const HOUSEHOLD_KEY = 'aapke_liye_current_household';
+const HOUSEHOLD_TOKEN_KEY = 'aapke_liye_household_tokens';
+
+function allHouseholdTokens(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(HOUSEHOLD_TOKEN_KEY) || '{}');
+  } catch {
+    return {};
+  }
+}
+
+export function householdTokenFor(householdId: string): string {
+  return allHouseholdTokens()[householdId] || '';
+}
+
+export function saveHouseholdToken(householdId: string, token: string) {
+  try {
+    const all = allHouseholdTokens();
+    all[householdId] = token;
+    localStorage.setItem(HOUSEHOLD_TOKEN_KEY, JSON.stringify(all));
+  } catch {
+    // ignore
+  }
+}
 
 export function getSavedHouseholdId(): string | null {
   try {
@@ -696,8 +736,26 @@ export async function registerHousehold(data: {
   state: string;
   ration_card_no?: string;
 }): Promise<Household> {
-  const id = `HH-${Date.now().toString(36).toUpperCase()}`;
-  const token = `tok_hh_${Math.random().toString(36).substring(2, 10)}`;
+  let id = `HH-${Date.now().toString(36).toUpperCase()}`;
+  let token = `tok_hh_${Math.random().toString(36).substring(2, 10)}`;
+
+  try {
+    if (!DEMO_MODE && navigator.onLine) {
+      // Member 2 POST /households takes no body and returns { household_id, household_token }
+      const res = await request<any>('/households', {
+        method: 'POST',
+      });
+      if (res?.household_id && res?.household_token) {
+        id = res.household_id;
+        token = res.household_token;
+      }
+    }
+  } catch (e) {
+    console.warn('Backend /households not available, using offline local vault:', e);
+  }
+
+  saveHouseholdId(id);
+  saveHouseholdToken(id, token);
 
   const newHousehold: Household = {
     id,
@@ -712,37 +770,55 @@ export async function registerHousehold(data: {
     created_at: new Date().toISOString(),
   };
 
-  try {
-    if (!DEMO_MODE && navigator.onLine) {
-      const res = await request<any>('/households', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
-      newHousehold.id = res.id || newHousehold.id;
-      newHousehold.token = res.household_token || newHousehold.token;
-    }
-  } catch (e) {
-    console.warn('Backend /households not available, saved locally in vault:', e);
-  }
-
-  saveHouseholdId(newHousehold.id);
   await saveLocalHousehold(newHousehold);
   return newHousehold;
 }
 
 export async function getHousehold(id: string): Promise<Household | null> {
   const local = await getLocalHousehold(id);
-  if (local) return local;
+  const token = householdTokenFor(id) || local?.token;
 
-  if (!DEMO_MODE && navigator.onLine) {
+  if (!DEMO_MODE && navigator.onLine && token) {
     try {
-      const res = await request<any>(`/households/${id}`);
-      return res as Household;
-    } catch {
-      // return null
+      const docs = await request<any[]>(`/households/${id}/documents`, {
+        householdToken: token,
+      });
+      if (Array.isArray(docs)) {
+        const mappedDocs: VaultDocument[] = docs.map((d) => ({
+          id: String(d.id),
+          household_id: id,
+          doc_type: d.doc_type,
+          filename: `${d.doc_type}.${(d.content_type || 'application/pdf').split('/')[1] || 'bin'}`,
+          file_url: `${API_URL}${d.file_url}`,
+          source: d.source || 'upload', // 'upload' | 'digilocker_mock'
+          uploaded_at: d.created_at || new Date().toISOString(),
+          verified: true,
+        }));
+        const baseline = mappedDocs.find((d) => d.doc_type === 'baseline_photo');
+        const merged: Household = {
+          ...(local || {
+            id,
+            token,
+            head_name: 'Household Head',
+            phone: '',
+            village: '',
+            district: '',
+            state: '',
+            created_at: new Date().toISOString(),
+          }),
+          token,
+          documents: mappedDocs,
+          baseline_photo_url: baseline ? baseline.file_url : local?.baseline_photo_url,
+        };
+        await saveLocalHousehold(merged);
+        return merged;
+      }
+    } catch (e) {
+      console.warn('Could not load household documents from server vault:', e);
     }
   }
-  return null;
+
+  return local;
 }
 
 export async function uploadVaultDocument(
@@ -750,15 +826,47 @@ export async function uploadVaultDocument(
   file: File,
   docType: string
 ): Promise<VaultDocument> {
-  const docId = `doc_${Date.now()}`;
+  const token = householdTokenFor(householdId);
   const fileUrl = URL.createObjectURL(file);
+  let docId = `doc_${Date.now()}`;
+  let source: 'upload' | 'digilocker_mock' = 'upload';
+  let serverFileUrl = fileUrl;
+
+  if (!DEMO_MODE && navigator.onLine && token) {
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      form.append('doc_type', docType);
+
+      const res = await fetch(`${API_URL}/households/${householdId}/documents`, {
+        method: 'POST',
+        headers: {
+          'X-Household-Token': token,
+        },
+        body: form,
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.detail || `Upload failed (HTTP ${res.status})`);
+      }
+
+      const created = await res.json();
+      docId = String(created.id);
+      source = created.source || 'upload';
+      serverFileUrl = `${API_URL}${created.file_url}`;
+    } catch (e) {
+      console.warn('Could not upload to server vault, retained in local storage:', e);
+    }
+  }
+
   const doc: VaultDocument = {
     id: docId,
     household_id: householdId,
     doc_type: docType,
     filename: file.name,
-    file_url: fileUrl,
-    source: 'upload',
+    file_url: serverFileUrl,
+    source,
     uploaded_at: new Date().toISOString(),
     verified: true,
   };
@@ -766,46 +874,63 @@ export async function uploadVaultDocument(
   const hh = await getHousehold(householdId);
   if (hh) {
     if (docType === 'baseline_photo') {
-      hh.baseline_photo_url = fileUrl;
+      hh.baseline_photo_url = serverFileUrl;
     }
-    hh.documents = [doc, ...(hh.documents || [])];
+    hh.documents = [doc, ...(hh.documents || []).filter((d) => d.id !== docId && d.doc_type !== docType)];
     await saveLocalHousehold(hh);
-  }
-
-  if (!DEMO_MODE && navigator.onLine) {
-    try {
-      const form = new FormData();
-      form.append('document', file);
-      form.append('doc_type', docType);
-      await fetch(`${API_URL}/households/${householdId}/documents`, {
-        method: 'POST',
-        body: form,
-      });
-    } catch (e) {
-      console.warn('Could not upload to server vault, retained in local storage:', e);
-    }
   }
 
   return doc;
 }
 
 export async function deleteVaultDocument(householdId: string, docId: string): Promise<void> {
-  const hh = await getHousehold(householdId);
-  if (hh) {
-    hh.documents = (hh.documents || []).filter((d) => d.id !== docId);
-    await saveLocalHousehold(hh);
+  const token = householdTokenFor(householdId);
+  if (!DEMO_MODE && navigator.onLine && token && !docId.startsWith('doc_') && !docId.startsWith('dl_')) {
+    try {
+      await fetch(`${API_URL}/households/${householdId}/documents/${docId}`, {
+        method: 'DELETE',
+        headers: {
+          'X-Household-Token': token,
+        },
+      });
+    } catch (e) {
+      console.warn('Failed to delete on server vault:', e);
+    }
   }
 
-  if (!DEMO_MODE && navigator.onLine) {
-    try {
-      await request(`/households/${householdId}/documents/${docId}`, { method: 'DELETE' });
-    } catch {
-      // ignore
+  const hh = await getLocalHousehold(householdId);
+  if (hh) {
+    hh.documents = (hh.documents || []).filter((d) => String(d.id) !== String(docId));
+    if (hh.documents.find((d) => d.doc_type === 'baseline_photo') === undefined) {
+      hh.baseline_photo_url = undefined;
     }
+    await saveLocalHousehold(hh);
   }
 }
 
-/** DigiLocker Mock Flow: connects sample verified documents */
+/** DigiLocker (Demo) Server Flow: starts consent and returns consent_url */
+export async function startDigiLockerFlow(householdId: string): Promise<{ consent_url: string; banner: string } | null> {
+  const token = householdTokenFor(householdId);
+  if (!DEMO_MODE && navigator.onLine && token) {
+    try {
+      const returnTo = `${window.location.origin}/prepare`;
+      const res = await request<{
+        mode: string;
+        demo: boolean;
+        banner: string;
+        consent_url: string;
+      }>(`/households/${householdId}/digilocker/start?return_to=${encodeURIComponent(returnTo)}`, {
+        householdToken: token,
+      });
+      return { consent_url: `${API_URL}${res.consent_url}`, banner: res.banner };
+    } catch (e) {
+      console.warn('DigiLocker start failed on server, using in-app mock:', e);
+    }
+  }
+  return null;
+}
+
+/** DigiLocker Mock Flow: connects sample verified documents for offline fallback */
 export async function startDigiLockerMock(householdId: string): Promise<VaultDocument[]> {
   const hh = await getHousehold(householdId);
   const mockDocs: VaultDocument[] = [
@@ -838,34 +963,48 @@ export async function startDigiLockerMock(householdId: string): Promise<VaultDoc
 
 export async function linkHouseholdToClaim(claimId: string, householdId: string): Promise<ClaimOut> {
   const hh = await getHousehold(householdId);
-  if (claimId.startsWith('offline-') || DEMO_MODE || !navigator.onLine) {
-    const claim = await getClaim(claimId);
-    if (claim && hh) {
-      claim.fields.household_id = householdId;
-      claim.fields.name = claim.fields.name || hh.head_name;
-      claim.fields.phone = claim.fields.phone || hh.phone;
-      claim.fields.village = claim.fields.village || hh.village;
-      claim.fields.district = claim.fields.district || hh.district;
-      claim.fields.state = claim.fields.state || hh.state;
-      // Mark vault documents as NOT lost
-      const vaultTypes = hh.documents.map((d) => d.doc_type);
-      claim.fields.documents_lost = (claim.fields.documents_lost || []).filter((d) => !vaultTypes.includes(d));
-      await saveOfflineClaim(claim);
-      return claim;
+  const claimToken = tokenFor(claimId);
+  const hhToken = householdTokenFor(householdId) || hh?.token;
+
+  if (!DEMO_MODE && navigator.onLine && claimToken && hhToken && !claimId.startsWith('offline-')) {
+    try {
+      const updated = await request<any>(`/claims/${claimId}/household`, {
+        method: 'POST',
+        headers: {
+          'X-Claim-Token': claimToken,
+          'X-Household-Token': hhToken,
+        },
+        body: JSON.stringify({ household_id: householdId }),
+      });
+      const claimOut = toClaim(updated);
+      await saveOfflineClaim(claimOut);
+      return claimOut;
+    } catch (e) {
+      console.warn('POST /claims/{id}/household server call failed, falling back to local link:', e);
     }
   }
 
-  try {
-    return toClaim(
-      await request<any>(`/claims/${claimId}/household`, {
-        method: 'POST',
-        body: JSON.stringify({ household_id: householdId }),
-        claimId,
-      })
-    );
-  } catch {
-    return updateFields(claimId, { household_id: householdId });
+  const claim = (await getOfflineClaim(claimId)) || (await getClaim(claimId));
+  if (claim && hh) {
+    claim.household_id = householdId;
+    claim.fields.household_id = householdId;
+    claim.fields.name = claim.fields.name || hh.head_name;
+    claim.fields.phone = claim.fields.phone || hh.phone;
+    claim.fields.village = claim.fields.village || hh.village;
+    claim.fields.district = claim.fields.district || hh.district;
+    claim.fields.state = claim.fields.state || hh.state;
+    // Mark vault documents as NOT lost
+    const vaultTypes = (hh.documents || []).map((d) => d.doc_type);
+    claim.fields.documents_lost = (claim.fields.documents_lost || []).filter((d) => !vaultTypes.includes(d));
+    claim.documents_in_vault = (hh.documents || []).map((d) => ({
+      document: d.doc_type,
+      source: d.source || 'upload',
+      id: Number(d.id) || undefined,
+    }));
+    await saveOfflineClaim(claim);
+    return claim;
   }
+  return claim;
 }
 
 // ============================================================================

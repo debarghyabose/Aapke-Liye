@@ -44,6 +44,18 @@ export interface StatusUpdate {
   note?: string | null;
 }
 
+export interface BeforeAfterComparison {
+  status: 'complete' | 'unavailable' | 'pending';
+  same_property?: boolean;
+  damage_score?: number; // 0-100
+  level?: string;
+  damaged_items?: string[];
+  reason?: string;
+  confidence?: number;
+  needs_human_review?: boolean;
+  baseline_document_id?: number;
+}
+
 export interface PhotoComparison {
   damage_score: number;
   damage_detected?: boolean;
@@ -61,6 +73,7 @@ export interface PhotoVerification {
   time_valid?: boolean;
   exif_valid?: boolean;
   duplicate?: boolean;
+  before_after?: BeforeAfterComparison;
   comparison?: PhotoComparison;
   [key: string]: any;
 }
@@ -139,6 +152,12 @@ export interface ClaimOut {
   proof_suggestions: Array<{
     document: string;
     suggestions: string[];
+  }>;
+  household_id?: string | null;
+  documents_in_vault?: Array<{
+    document: string;
+    source: string;
+    id?: number;
   }>;
   status: 'Draft' | 'Submitted' | 'Verified' | 'Approved' | 'Paid' | 'Rejected';
   pdf_url?: string | null;
