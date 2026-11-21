@@ -23,40 +23,40 @@ if [ -n "$DATABASE_URL" ]; then
     cd /app
 fi
 
-# Start Member 1 AI service (port 8001)
-echo "Starting Member 1 AI service on port 8001..."
-cd /app/Member-1
-python3 -u -m uvicorn app.main:app --host 127.0.0.1 --port 8001 > /tmp/member1.log 2>&1 &
-PID_M1=$!
-
-# Start Member 3 verification service (port 8002)
-echo "Starting Member 3 verification service on port 8002..."
-cd /app/Member-3
-python3 -u -m uvicorn app.main:app --host 127.0.0.1 --port 8002 > /tmp/member3.log 2>&1 &
-PID_M3=$!
-
-# Start Member 2 core backend (port 8000)
+# 1. Start Member 2 core backend FIRST (port 8000)
 echo "Starting Member 2 core backend on port 8000..."
 cd /app/Member-2/backend
-python3 -u -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/member2.log 2>&1 &
+python3 -c "import sys; print('Testing Member-2 import...'); from app.main import app; print('Member-2 import OK!')"
+python3 -u -m uvicorn app.main:app --host 127.0.0.1 --port 8000 &
 PID_M2=$!
+
+# 2. Start Member 1 AI service (port 8001)
+echo "Starting Member 1 AI service on port 8001..."
+cd /app/Member-1
+python3 -u -m uvicorn app.main:app --host 127.0.0.1 --port 8001 &
+PID_M1=$!
+
+# 3. Start Member 3 verification service (port 8002)
+echo "Starting Member 3 verification service on port 8002..."
+cd /app/Member-3
+python3 -u -m uvicorn app.main:app --host 127.0.0.1 --port 8002 &
+PID_M3=$!
 
 cd /app
 
-echo "Waiting for services to start..."
-sleep 5
-
-echo "--- Member 1 Log (PID: $PID_M1) ---"
-cat /tmp/member1.log
-
-echo "--- Member 3 Log (PID: $PID_M3) ---"
-cat /tmp/member3.log
-
-echo "--- Member 2 Log (PID: $PID_M2) ---"
-cat /tmp/member2.log
-
-# Stream service logs to container stdout
-tail -n 0 -F /tmp/member1.log /tmp/member2.log /tmp/member3.log &
+# Wait up to 15 seconds for Member 2 to respond
+echo "Waiting for Member 2 core backend to be healthy..."
+count=0
+while [ $count -lt 15 ]; do
+    status=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8000/health || echo "000")
+    if [ "$status" = "200" ]; then
+        echo "Member 2 core backend is healthy (HTTP 200) after ${count}s!"
+        break
+    fi
+    echo "Waiting for Member 2... (status: $status, elapsed: ${count}s)"
+    sleep 1
+    count=$((count + 1))
+done
 
 # Start Nginx in foreground
 echo "Starting Nginx reverse proxy on port $PORT..."
