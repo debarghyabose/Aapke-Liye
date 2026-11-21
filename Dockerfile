@@ -2,7 +2,7 @@
 # Stage 1: Build Frontend (Member-4)
 # ==============================================================================
 FROM node:20-alpine AS frontend-builder
-WORKDIR /app/frontend
+WORKDIR /app/Member-4/frontend
 
 COPY Member-4/frontend/package*.json ./
 RUN npm install
@@ -57,7 +57,7 @@ RUN pip install --no-cache-dir -r ./Member-1/requirements.txt && \
 RUN mkdir -p /data/storage && chmod 777 /data/storage
 
 # Copy frontend distribution files from Stage 1
-COPY --from=frontend-builder /app/frontend/dist /var/www/html
+COPY --from=frontend-builder /app/Member-4/frontend/dist /var/www/html
 
 # Copy application source code for services
 COPY Member-1 /app/Member-1
