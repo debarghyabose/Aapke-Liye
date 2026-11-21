@@ -1,0 +1,38 @@
+steps:
+  # 1. Build the unified Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/trusty-obelisk-515402-p3/aapke-liye:$COMMIT_SHA'
+      - '-t'
+      - 'gcr.io/trusty-obelisk-515402-p3/aapke-liye:latest'
+      - '.'
+
+  # 2. Push the Docker image to Google Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/trusty-obelisk-515402-p3/aapke-liye:latest'
+
+  # 3. Deploy to Google Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'aapke-liye'
+      - '--image'
+      - 'gcr.io/trusty-obelisk-515402-p3/aapke-liye:latest'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+
+images:
+  - 'gcr.io/trusty-obelisk-515402-p3/aapke-liye:latest'
+  - 'gcr.io/trusty-obelisk-515402-p3/aapke-liye:$COMMIT_SHA'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
