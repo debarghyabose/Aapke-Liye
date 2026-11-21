@@ -204,3 +204,12 @@ def test_invalid_phone_stays_missing(client, services):
     cid, h = new_claim(client)
     r = client.post(f"/claims/{cid}/text", headers=h, json={"text": "phone 80"})
     assert "phone" in r.json()["missing_fields"]
+
+
+def test_hilly_area_uses_hilly_pmay_amount():
+    losses = [{"category": "house", "item": "fully_damaged_plain", "quantity": 1, "damage_percent": 100}]
+    plain = calculate_relief(losses)
+    hilly = calculate_relief(losses, is_hilly=True)
+    assert plain["total"] == 120000 and hilly["total"] == 130000
+    pm = lambda r: next(s for s in r["may_also_qualify"] if s["scheme_code"] == "PMAY_G_DISASTER")
+    assert pm(plain)["estimated_amount"] == 156750 and pm(hilly)["estimated_amount"] == 166750

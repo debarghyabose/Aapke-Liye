@@ -7,6 +7,8 @@
 //
 // When offline, transparently falls back to IndexedDB local claim storage & queue.
 import * as mock from './mockClient';
+// Member 3's sealing helper (WebCrypto), used as-is so both sides share one format.
+import * as mesh from '../../../../Member-3/offline-client/mesh.js';
 import {
   ClaimCreate,
   ClaimCreated,
@@ -300,6 +302,22 @@ function toClaim(c: any): ClaimOut {
 
 // ---------- API with full offline-first resilience ----------
 
+/** True when the request never reached the server (no network, server down): only then
+ *  is work saved on the phone for later. A server answer (4xx/5xx) is shown to the person. */
+function isNetworkError(e: unknown): boolean {
+  return !navigator.onLine || e instanceof TypeError;
+}
+
+/** Creates the claim on the server only (used by the offline sync, which must not start a
+ *  second offline draft if the network drops again). */
+export async function createClaimOnServer(payload: ClaimCreate): Promise<ClaimCreated> {
+  const c = await request<any>('/claims', { method: 'POST', body: JSON.stringify(payload) });
+  saveToken(c.id, c.claim_token);
+  const converted = { ...toClaim(c), claim_token: c.claim_token };
+  await saveOfflineClaim(converted);
+  return converted;
+}
+
 export async function createClaim(payload: ClaimCreate): Promise<ClaimCreated> {
   if (DEMO_MODE) return mock.createClaim(payload);
 
@@ -310,61 +328,35 @@ export async function createClaim(payload: ClaimCreate): Promise<ClaimCreated> {
     await saveOfflineClaim(converted);
     return converted;
   } catch (err) {
-    // If server unreachable or client offline, initialize an offline-first draft
-    console.warn('Network offline or backend unreachable: creating local claim on device', err);
+    if (!isNetworkError(err)) throw err;
+    // No network: start the claim on the phone. It is EMPTY until the person speaks or types;
+    // nothing is filled in for them. It is created on the server when the signal returns.
     const localId = `offline-${Date.now()}`;
-    const localToken = `tok_local_${Date.now()}`;
+    const now = new Date().toISOString();
     const offlineDraft: ClaimCreated = {
       id: localId,
-      claim_token: localToken,
+      claim_token: '',
       language: payload.language,
-      disaster_type: payload.disaster_type || 'flood',
+      disaster_type: payload.disaster_type || null,
       transcript: null,
-      fields: {
-        is_hilly: false,
-        household_id: payload.household_id || null,
-        losses: [
-          { category: 'house', item: 'fully_damaged_plain', quantity: 1 },
-          { category: 'household', item: 'clothing', quantity: 1 },
-          { category: 'household', item: 'utensils', quantity: 1 },
-        ],
-        documents_lost: ['aadhaar', 'ration_card'],
-      },
+      fields: {},
       missing_fields: [],
       follow_up_questions: [],
-      relief: {
-        total: 130000,
-        currency: 'INR',
-        breakdown: [
-          { scheme_name: 'SDRF', category: 'house', item: 'House fully destroyed', quantity: 1, rate: 120000, amount: 120000 },
-          { scheme_name: 'SDRF', category: 'household', item: 'Clothing & utensils', quantity: 1, rate: 10000, amount: 10000 },
-        ],
-        matched_schemes: ['SDRF', 'PMAY-G'],
-        estimate_only: true,
-      },
-      proof_suggestions: [
-        { document: 'aadhaar', suggestions: ['Panchayat pradhan certificate', 'Ration card photo / OTP'] },
-      ],
+      relief: null,
+      proof_suggestions: [],
       status: 'Draft',
       photos: [],
       recordings: [],
-      history: [
-        { status: 'Draft', note: 'Claim created offline on phone', at: new Date().toISOString() },
-      ],
+      history: [{ status: 'Draft', note: 'Started on this phone with no network', at: now }],
       consent_text_version: payload.consent_text_version,
-      consent_given_at: new Date().toISOString(),
+      consent_given_at: now,
       submitted_at: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      created_at: now,
+      updated_at: now,
       is_offline_draft: true,
-    };
-    saveToken(localId, localToken);
+    } as ClaimCreated;
     await saveOfflineClaim(offlineDraft);
-    await queueOfflineItem({
-      type: 'claim_create',
-      claimId: localId,
-      payload,
-    });
+    await queueOfflineItem({ type: 'claim_create', claimId: localId, payload });
     return offlineDraft;
   }
 }
@@ -416,7 +408,7 @@ export async function uploadAudio(claimId: string, audioBlob: Blob, onProgressMs
   try {
     return toClaim(await request<any>(`/claims/${claimId}/audio`, { method: 'POST', body: form, claimId }));
   } catch (err) {
-    // Queue offline if network dropped mid-call
+    if (!isNetworkError(err)) throw err; // e.g. 503 (kept on the server, use Retry) or 415
     await queueOfflineItem({
       type: 'audio',
       claimId,
@@ -450,6 +442,7 @@ export async function sendText(claimId: string, text: string): Promise<ClaimOut>
       await request<any>(`/claims/${claimId}/text`, { method: 'POST', body: JSON.stringify({ text }), claimId })
     );
   } catch (err) {
+    if (!isNetworkError(err)) throw err;
     await queueOfflineItem({
       type: 'text',
       claimId,
@@ -489,12 +482,7 @@ export async function uploadPhoto(claimId: string, file: File, lat?: number, lon
         url: localUrl,
         verification: {
           status: 'pending',
-          damage_level: 'severe',
-          gemini_reason: 'Saved offline on device. Damage will be scored when internet returns.',
-          gps_valid: lat != null,
-          time_valid: true,
-          exif_valid: lat != null,
-          duplicate: false,
+          gemini_reason: 'Saved on this phone. It will be checked when the signal returns.',
         },
       };
       local.photos = [offlinePhoto, ...local.photos];
@@ -514,6 +502,7 @@ export async function uploadPhoto(claimId: string, file: File, lat?: number, lon
     await saveOfflineClaim(claim);
     return claim;
   } catch (err) {
+    if (!isNetworkError(err)) throw err; // e.g. too large, wrong type, 10-photo limit
     await queueOfflineItem({
       type: 'photo',
       claimId,
@@ -536,19 +525,9 @@ export async function updateFields(claimId: string, fields: Partial<ClaimFields>
     const local = await getOfflineClaim(claimId);
     if (local) {
       local.fields = { ...local.fields, ...fields };
-      // Recalculate hilly rate preview offline if applicable
-      if (fields.is_hilly !== undefined && local.relief) {
-        const rate = fields.is_hilly ? 130000 : 120000;
-        local.relief.breakdown.forEach((b) => {
-          if (b.category === 'house') {
-            b.rate = rate;
-            b.amount = rate * b.quantity;
-            b.item = fields.is_hilly ? 'House fully destroyed (hilly area)' : 'House fully destroyed';
-          }
-        });
-        local.relief.total = local.relief.breakdown.reduce((sum, item) => sum + item.amount, 0);
-      }
       await saveOfflineClaim(local);
+      // sent to the server, in order, when the signal returns (relief is calculated there)
+      await queueOfflineItem({ type: 'fields', claimId, payload: fields });
       return local;
     }
   }
@@ -566,14 +545,13 @@ export async function submitClaim(claimId: string): Promise<ClaimOut> {
   if (claimId.startsWith('offline-') || !navigator.onLine) {
     const local = await getOfflineClaim(claimId);
     if (local) {
-      local.status = 'Submitted';
-      local.submitted_at = new Date().toISOString();
-      local.history.push({
-        status: 'Submitted',
-        note: 'Sealed & saved on phone. Ready for mesh relay or direct sync.',
-        at: new Date().toISOString(),
-      });
+      local.history = [
+        ...local.history,
+        { status: 'Draft', note: 'Waiting for signal: it will be submitted automatically', at: new Date().toISOString() },
+      ];
+      (local as any).submit_pending = true;
       await saveOfflineClaim(local);
+      await queueOfflineItem({ type: 'submit', claimId });
       return local;
     }
   }
@@ -585,9 +563,10 @@ export async function submitClaim(claimId: string): Promise<ClaimOut> {
 
 /** Downloads the relief form PDF and opens the browser's save dialog. */
 export async function getClaimPdf(claimId: string): Promise<Blob> {
-  const blob = DEMO_MODE || claimId.startsWith('offline-')
-    ? await mock.getClaimPdf(claimId)
-    : await request<Blob>(`/claims/${claimId}/pdf`, { claimId });
+  if (!DEMO_MODE && claimId.startsWith('offline-')) {
+    throw new Error('The relief form PDF is made when your claim reaches the server. Try again when you have signal.');
+  }
+  const blob = DEMO_MODE ? await mock.getClaimPdf(claimId) : await request<Blob>(`/claims/${claimId}/pdf`, { claimId });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -728,6 +707,14 @@ export function saveHouseholdId(id: string) {
   }
 }
 
+// Live mode: the vault lives on Member 2's server. Nothing is reported as saved, deleted or
+// linked unless the server confirmed it. Demo mode (no VITE_API_URL) keeps everything on
+// this phone with sample data.
+
+function vaultOnline(action: string) {
+  if (!navigator.onLine) throw new Error(`Connect to the internet to ${action}.`);
+}
+
 export async function registerHousehold(data: {
   head_name: string;
   phone: string;
@@ -736,27 +723,19 @@ export async function registerHousehold(data: {
   state: string;
   ration_card_no?: string;
 }): Promise<Household> {
-  let id = `HH-${Date.now().toString(36).toUpperCase()}`;
-  let token = `tok_hh_${Math.random().toString(36).substring(2, 10)}`;
-
-  try {
-    if (!DEMO_MODE && navigator.onLine) {
-      // Member 2 POST /households takes no body and returns { household_id, household_token }
-      const res = await request<any>('/households', {
-        method: 'POST',
-      });
-      if (res?.household_id && res?.household_token) {
-        id = res.household_id;
-        token = res.household_token;
-      }
-    }
-  } catch (e) {
-    console.warn('Backend /households not available, using offline local vault:', e);
+  let id = `HH-DEMO-${Date.now().toString(36).toUpperCase()}`;
+  let token = '';
+  if (!DEMO_MODE) {
+    vaultOnline('set up your family vault');
+    // Member 2 POST /households takes no body and returns { household_id, household_token }
+    const res = await request<any>('/households', { method: 'POST' });
+    id = res.household_id;
+    token = res.household_token;
   }
-
   saveHouseholdId(id);
-  saveHouseholdToken(id, token);
-
+  if (token) saveHouseholdToken(id, token);
+  // Name, phone and village stay on this phone (the server vault stores only documents);
+  // they pre-fill claims made with "Use my household".
   const newHousehold: Household = {
     id,
     token,
@@ -769,9 +748,27 @@ export async function registerHousehold(data: {
     documents: [],
     created_at: new Date().toISOString(),
   };
-
   await saveLocalHousehold(newHousehold);
   return newHousehold;
+}
+
+// Vault files need the X-Household-Token header, so an <img src> cannot load them directly:
+// fetch once and keep an object URL for this visit.
+const vaultFileCache: Record<string, string> = {};
+
+export async function vaultFileUrl(householdId: string, docId: string | number): Promise<string | undefined> {
+  const key = `${householdId}/${docId}`;
+  if (vaultFileCache[key]) return vaultFileCache[key];
+  const token = householdTokenFor(householdId);
+  if (DEMO_MODE || !token || !navigator.onLine) return undefined;
+  try {
+    const blob = await request<Blob>(`/households/${householdId}/documents/${docId}/file`, { householdToken: token });
+    vaultFileCache[key] = URL.createObjectURL(blob);
+    return vaultFileCache[key];
+  } catch (e) {
+    console.warn('Could not load the vault file', e);
+    return undefined;
+  }
 }
 
 export async function getHousehold(id: string): Promise<Household | null> {
@@ -780,180 +777,132 @@ export async function getHousehold(id: string): Promise<Household | null> {
 
   if (!DEMO_MODE && navigator.onLine && token) {
     try {
-      const docs = await request<any[]>(`/households/${id}/documents`, {
-        householdToken: token,
-      });
-      if (Array.isArray(docs)) {
-        const mappedDocs: VaultDocument[] = docs.map((d) => ({
-          id: String(d.id),
-          household_id: id,
-          doc_type: d.doc_type,
-          filename: `${d.doc_type}.${(d.content_type || 'application/pdf').split('/')[1] || 'bin'}`,
-          file_url: `${API_URL}${d.file_url}`,
-          source: d.source || 'upload', // 'upload' | 'digilocker_mock'
-          uploaded_at: d.created_at || new Date().toISOString(),
-          verified: true,
-        }));
-        const baseline = mappedDocs.find((d) => d.doc_type === 'baseline_photo');
-        const merged: Household = {
-          ...(local || {
-            id,
-            token,
-            head_name: 'Household Head',
-            phone: '',
-            village: '',
-            district: '',
-            state: '',
-            created_at: new Date().toISOString(),
-          }),
+      const docs = await request<any[]>(`/households/${id}/documents`, { householdToken: token });
+      const mappedDocs: VaultDocument[] = docs.map((d) => ({
+        id: String(d.id),
+        household_id: id,
+        doc_type: d.doc_type,
+        filename: `${d.doc_type}.${(d.content_type || 'application/pdf').split('/')[1] || 'bin'}`,
+        file_url: `${API_URL}${d.file_url}`,
+        source: d.source || 'upload', // 'upload' | 'digilocker_mock' (show as "DigiLocker (demo)")
+        uploaded_at: d.created_at || new Date().toISOString(),
+        verified: false, // nothing in the vault is checked by an official yet
+      }));
+      // newest baseline photo (the server keeps every upload)
+      const baseline = [...mappedDocs].reverse().find((d) => d.doc_type === 'baseline_photo');
+      const merged: Household = {
+        ...(local || {
+          id,
           token,
-          documents: mappedDocs,
-          baseline_photo_url: baseline ? baseline.file_url : local?.baseline_photo_url,
-        };
-        await saveLocalHousehold(merged);
-        return merged;
-      }
+          head_name: '',
+          phone: '',
+          village: '',
+          district: '',
+          state: '',
+          created_at: new Date().toISOString(),
+        }),
+        token,
+        documents: mappedDocs,
+        baseline_photo_url: baseline ? await vaultFileUrl(id, baseline.id) : undefined,
+      };
+      await saveLocalHousehold(merged);
+      return merged;
     } catch (e) {
-      console.warn('Could not load household documents from server vault:', e);
+      console.warn('Could not load household documents from the server vault:', e);
     }
   }
-
   return local;
 }
 
-export async function uploadVaultDocument(
-  householdId: string,
-  file: File,
-  docType: string
-): Promise<VaultDocument> {
-  const token = householdTokenFor(householdId);
-  const fileUrl = URL.createObjectURL(file);
-  let docId = `doc_${Date.now()}`;
-  let source: 'upload' | 'digilocker_mock' = 'upload';
-  let serverFileUrl = fileUrl;
-
-  if (!DEMO_MODE && navigator.onLine && token) {
-    try {
-      const form = new FormData();
-      form.append('file', file);
-      form.append('doc_type', docType);
-
-      const res = await fetch(`${API_URL}/households/${householdId}/documents`, {
-        method: 'POST',
-        headers: {
-          'X-Household-Token': token,
-        },
-        body: form,
-      });
-
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.detail || `Upload failed (HTTP ${res.status})`);
-      }
-
-      const created = await res.json();
-      docId = String(created.id);
-      source = created.source || 'upload';
-      serverFileUrl = `${API_URL}${created.file_url}`;
-    } catch (e) {
-      console.warn('Could not upload to server vault, retained in local storage:', e);
+export async function uploadVaultDocument(householdId: string, file: File, docType: string): Promise<VaultDocument> {
+  if (DEMO_MODE) {
+    const doc: VaultDocument = {
+      id: `doc_${Date.now()}`,
+      household_id: householdId,
+      doc_type: docType,
+      filename: file.name,
+      file_url: URL.createObjectURL(file),
+      source: 'upload',
+      uploaded_at: new Date().toISOString(),
+      verified: false,
+    };
+    const hh = await getLocalHousehold(householdId);
+    if (hh) {
+      if (docType === 'baseline_photo') hh.baseline_photo_url = doc.file_url;
+      hh.documents = [doc, ...(hh.documents || []).filter((d) => d.doc_type !== docType)];
+      await saveLocalHousehold(hh);
     }
+    return doc;
   }
-
-  const doc: VaultDocument = {
-    id: docId,
+  vaultOnline('save documents in your vault');
+  const token = householdTokenFor(householdId);
+  if (!token) throw new Error('This vault was set up on another phone.');
+  const form = new FormData();
+  form.append('file', file);
+  form.append('doc_type', docType);
+  const created = await request<any>(`/households/${householdId}/documents`, {
+    method: 'POST',
+    body: form,
+    householdToken: token,
+  });
+  vaultFileCache[`${householdId}/${created.id}`] = URL.createObjectURL(file);
+  await getHousehold(householdId); // refresh the local copy from the server
+  return {
+    id: String(created.id),
     household_id: householdId,
     doc_type: docType,
     filename: file.name,
-    file_url: serverFileUrl,
-    source,
-    uploaded_at: new Date().toISOString(),
-    verified: true,
+    file_url: `${API_URL}${created.file_url}`,
+    source: created.source || 'upload',
+    uploaded_at: created.created_at || new Date().toISOString(),
+    verified: false,
   };
-
-  const hh = await getHousehold(householdId);
-  if (hh) {
-    if (docType === 'baseline_photo') {
-      hh.baseline_photo_url = serverFileUrl;
-    }
-    hh.documents = [doc, ...(hh.documents || []).filter((d) => d.id !== docId && d.doc_type !== docType)];
-    await saveLocalHousehold(hh);
-  }
-
-  return doc;
 }
 
 export async function deleteVaultDocument(householdId: string, docId: string): Promise<void> {
-  const token = householdTokenFor(householdId);
-  if (!DEMO_MODE && navigator.onLine && token && !docId.startsWith('doc_') && !docId.startsWith('dl_')) {
-    try {
-      await fetch(`${API_URL}/households/${householdId}/documents/${docId}`, {
-        method: 'DELETE',
-        headers: {
-          'X-Household-Token': token,
-        },
-      });
-    } catch (e) {
-      console.warn('Failed to delete on server vault:', e);
-    }
+  if (!DEMO_MODE) {
+    vaultOnline('delete documents from your vault');
+    await request<void>(`/households/${householdId}/documents/${docId}`, {
+      method: 'DELETE',
+      householdToken: householdTokenFor(householdId),
+    });
+    delete vaultFileCache[`${householdId}/${docId}`];
+    await getHousehold(householdId);
+    return;
   }
-
   const hh = await getLocalHousehold(householdId);
   if (hh) {
     hh.documents = (hh.documents || []).filter((d) => String(d.id) !== String(docId));
-    if (hh.documents.find((d) => d.doc_type === 'baseline_photo') === undefined) {
-      hh.baseline_photo_url = undefined;
-    }
+    if (!hh.documents.find((d) => d.doc_type === 'baseline_photo')) hh.baseline_photo_url = undefined;
     await saveLocalHousehold(hh);
   }
 }
 
-/** DigiLocker (Demo) Server Flow: starts consent and returns consent_url */
+/** DigiLocker (demo): Member 2 returns a consent page URL (clearly labelled "Demo"). */
 export async function startDigiLockerFlow(householdId: string): Promise<{ consent_url: string; banner: string } | null> {
-  const token = householdTokenFor(householdId);
-  if (!DEMO_MODE && navigator.onLine && token) {
-    try {
-      const returnTo = `${window.location.origin}/prepare`;
-      const res = await request<{
-        mode: string;
-        demo: boolean;
-        banner: string;
-        consent_url: string;
-      }>(`/households/${householdId}/digilocker/start?return_to=${encodeURIComponent(returnTo)}`, {
-        householdToken: token,
-      });
-      return { consent_url: `${API_URL}${res.consent_url}`, banner: res.banner };
-    } catch (e) {
-      console.warn('DigiLocker start failed on server, using in-app mock:', e);
-    }
-  }
-  return null;
+  if (DEMO_MODE) return null;
+  vaultOnline('connect DigiLocker');
+  const returnTo = `${window.location.origin}/prepare`;
+  const res = await request<{ mode: string; demo: boolean; banner: string; consent_url: string }>(
+    `/households/${householdId}/digilocker/start?return_to=${encodeURIComponent(returnTo)}`,
+    { householdToken: householdTokenFor(householdId) }
+  );
+  return { consent_url: `${API_URL}${res.consent_url}`, banner: res.banner };
 }
 
-/** DigiLocker Mock Flow: connects sample verified documents for offline fallback */
+/** Demo mode only (no backend): sample documents, labelled DigiLocker (demo). */
 export async function startDigiLockerMock(householdId: string): Promise<VaultDocument[]> {
-  const hh = await getHousehold(householdId);
-  const mockDocs: VaultDocument[] = [
-    {
-      id: `dl_aadhaar_${Date.now()}`,
-      household_id: householdId,
-      doc_type: 'aadhaar',
-      filename: 'Aadhaar_Verified_UIDAI.pdf',
-      source: 'digilocker_mock',
-      uploaded_at: new Date().toISOString(),
-      verified: true,
-    },
-    {
-      id: `dl_ration_${Date.now()}`,
-      household_id: householdId,
-      doc_type: 'ration_card',
-      filename: 'NFSA_RationCard_PDS.pdf',
-      source: 'digilocker_mock',
-      uploaded_at: new Date().toISOString(),
-      verified: true,
-    },
-  ];
-
+  if (!DEMO_MODE) throw new Error('DigiLocker (demo) needs the Aapke Liye server. Try again when online.');
+  const hh = await getLocalHousehold(householdId);
+  const mockDocs: VaultDocument[] = ['aadhaar', 'ration_card'].map((t) => ({
+    id: `dl_${t}_${Date.now()}`,
+    household_id: householdId,
+    doc_type: t,
+    filename: `${t}-sample-digilocker-demo.pdf`,
+    source: 'digilocker_mock',
+    uploaded_at: new Date().toISOString(),
+    verified: false,
+  }));
   if (hh) {
     hh.documents = [...mockDocs, ...(hh.documents || [])];
     await saveLocalHousehold(hh);
@@ -961,111 +910,206 @@ export async function startDigiLockerMock(householdId: string): Promise<VaultDoc
   return mockDocs;
 }
 
+/** "Use my household": the server links the vault to the claim (vault papers then count as
+ *  available, and the PDF lists them), and the household's details fill empty claim fields. */
 export async function linkHouseholdToClaim(claimId: string, householdId: string): Promise<ClaimOut> {
-  const hh = await getHousehold(householdId);
-  const claimToken = tokenFor(claimId);
-  const hhToken = householdTokenFor(householdId) || hh?.token;
-
-  if (!DEMO_MODE && navigator.onLine && claimToken && hhToken && !claimId.startsWith('offline-')) {
-    try {
-      const updated = await request<any>(`/claims/${claimId}/household`, {
-        method: 'POST',
-        headers: {
-          'X-Claim-Token': claimToken,
-          'X-Household-Token': hhToken,
-        },
-        body: JSON.stringify({ household_id: householdId }),
-      });
-      const claimOut = toClaim(updated);
-      await saveOfflineClaim(claimOut);
-      return claimOut;
-    } catch (e) {
-      console.warn('POST /claims/{id}/household server call failed, falling back to local link:', e);
-    }
+  const hh = await getLocalHousehold(householdId);
+  if (DEMO_MODE) {
+    const claim = await getClaim(claimId);
+    return { ...claim, household_id: householdId };
   }
-
-  const claim = (await getOfflineClaim(claimId)) || (await getClaim(claimId));
-  if (claim && hh) {
-    claim.household_id = householdId;
-    claim.fields.household_id = householdId;
-    claim.fields.name = claim.fields.name || hh.head_name;
-    claim.fields.phone = claim.fields.phone || hh.phone;
-    claim.fields.village = claim.fields.village || hh.village;
-    claim.fields.district = claim.fields.district || hh.district;
-    claim.fields.state = claim.fields.state || hh.state;
-    // Mark vault documents as NOT lost
-    const vaultTypes = (hh.documents || []).map((d) => d.doc_type);
-    claim.fields.documents_lost = (claim.fields.documents_lost || []).filter((d) => !vaultTypes.includes(d));
-    claim.documents_in_vault = (hh.documents || []).map((d) => ({
-      document: d.doc_type,
-      source: d.source || 'upload',
-      id: Number(d.id) || undefined,
-    }));
-    await saveOfflineClaim(claim);
-    return claim;
+  vaultOnline('use your family vault');
+  const hhToken = householdTokenFor(householdId);
+  if (!hhToken) throw new Error('This vault was set up on another phone.');
+  let updated = toClaim(
+    await request<any>(`/claims/${claimId}/household`, {
+      method: 'POST',
+      claimId,
+      householdToken: hhToken,
+      body: JSON.stringify({ household_id: householdId }),
+    })
+  );
+  const prefill: Record<string, string> = {};
+  if (hh) {
+    const pairs: [string, string | undefined][] = [
+      ['name', hh.head_name], ['phone', hh.phone], ['village', hh.village],
+      ['district', hh.district], ['state', hh.state],
+    ];
+    for (const [k, v] of pairs) if (v && !(updated.fields as any)[k]) prefill[k] = v;
   }
-  return claim;
+  if (Object.keys(prefill).length) updated = await updateFields(claimId, prefill);
+  await saveOfflineClaim(updated);
+  return updated;
 }
 
 // ============================================================================
-// MESH RELAY PROTOCOL (MEMBER 3 CONTRACT)
+// MESH RELAY (Member 3's protocol: Member-3/app/mesh.py + offline-client/mesh.js)
 // ============================================================================
+// Phone A (no network) seals the claim with Member 3's public key (RSA-OAEP + AES-256-GCM):
+// only Member 3's server can open it, and any change on the way makes delivery fail.
+// Phone B carries the sealed text (QR code / copy) and, once online, delivers it to Member 3,
+// which files it through Member 2 and returns a receipt signed with Ed25519.
 
-/** Seals a claim into a portable cryptographic envelope for phone-to-phone relay */
+export const MESH_URL = (import.meta.env.VITE_MESH_URL || 'http://localhost:8002').replace(/\/$/, '');
+const MESH_KEY_STORE = 'aapke_liye_mesh_key';
+const MESH_IDS_STORE = 'aapke_liye_mesh_ids';
+
+/** Member 3's public key and limits. Fetched while online and kept, so a phone with no
+ *  network can still seal. Throws if it was never fetched. */
+export async function getMeshKey(): Promise<any> {
+  if (navigator.onLine) {
+    try {
+      const key = await mesh.fetchMeshKey(MESH_URL);
+      try {
+        localStorage.setItem(MESH_KEY_STORE, JSON.stringify(key));
+      } catch {
+        // private mode: keep it for this visit only
+      }
+      return key;
+    } catch (e) {
+      console.warn('Could not fetch the mesh key; using the saved one', e);
+    }
+  }
+  try {
+    const saved = localStorage.getItem(MESH_KEY_STORE);
+    if (saved) return JSON.parse(saved);
+  } catch {
+    // ignore
+  }
+  throw new Error('Open the app once with internet so it can get the relief office key.');
+}
+
+/** The same envelope id every time one claim is sealed, so carrying it twice files it once. */
+function meshIdFor(claim: ClaimOut): { id: string; createdAt: string } {
+  let ids: Record<string, { id: string; createdAt: string }> = {};
+  try {
+    ids = JSON.parse(localStorage.getItem(MESH_IDS_STORE) || '{}');
+  } catch {
+    ids = {};
+  }
+  if (!ids[claim.id]) {
+    ids[claim.id] = {
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'),
+    };
+    try {
+      localStorage.setItem(MESH_IDS_STORE, JSON.stringify(ids));
+    } catch {
+      // ignore
+    }
+  }
+  return ids[claim.id];
+}
+
+// Only Member 2's claim fields travel (unknown keys would be refused there).
+const MESH_FIELDS = ['name', 'phone', 'village', 'district', 'state', 'disaster_type', 'date_of_incident',
+  'losses', 'documents_lost', 'bank_account_available', 'vulnerability', 'crop_insured', 'is_hilly'];
+
+/** Seals a claim for phone-to-phone relay. The QR code holds only the sealed text: a
+ *  carrier cannot read the name, village or losses. `summary` stays on this phone. */
 export async function sealClaimEnvelope(claim: ClaimOut): Promise<SealedClaimEnvelope> {
-  const summary = {
-    name: claim.fields.name || 'Anonymous Claimant',
-    village: claim.fields.village || 'Unknown Village',
-    disaster_type: claim.disaster_type || 'flood',
-    losses_count: (claim.fields.losses || []).length,
-    has_photos: (claim.photos || []).length > 0,
-  };
-
-  const payload = JSON.stringify({
-    claim_id: claim.id,
-    language: claim.language,
-    fields: claim.fields,
-    photos_count: claim.photos.length,
-    sealed_at: new Date().toISOString(),
-  });
-
+  const key = await getMeshKey();
+  const fields: Record<string, any> = {};
+  for (const k of MESH_FIELDS) {
+    const v = (claim.fields as any)[k];
+    if (v !== undefined && v !== null && v !== '') fields[k] = v;
+  }
+  const priority: 'urgent' | 'normal' = (claim.fields.vulnerability || []).length > 0 ? 'urgent' : 'normal';
+  const { id, createdAt } = meshIdFor(claim);
+  const sealed = await mesh.sealClaim(
+    {
+      consent: true,
+      consent_text_version: claim.consent_text_version || 'v1',
+      language: claim.language,
+      fields,
+      submit: true,
+    },
+    key,
+    { priority, claimId: id, createdAt } as any
+  );
+  const { text, fitsInQr } = mesh.envelopeText(sealed);
   const envelope: SealedClaimEnvelope = {
-    claim_id: claim.id,
-    created_at: claim.created_at || new Date().toISOString(),
-    sender_device_id: `DEV-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-    priority: (claim.fields.vulnerability || []).length > 0 ? 'urgent' : 'normal',
-    summary,
-    payload_json: payload,
-    signature: `ED25519_SIG_${Math.random().toString(36).substring(2, 14)}`,
+    claim_id: sealed.claim_id,
+    local_claim_id: claim.id,
+    created_at: sealed.created_at,
+    sender_device_id: 'this-phone',
+    priority,
+    summary: {
+      name: claim.fields.name || '—',
+      village: claim.fields.village || '—',
+      disaster_type: claim.fields.disaster_type || claim.disaster_type || 'disaster',
+      losses_count: (claim.fields.losses || []).length,
+      has_photos: (claim.photos || []).length > 0,
+    },
+    sealed_text: text,
+    fits_in_qr: fitsInQr,
+    own: true,
   };
-
+  const before = (await getStoredMeshEnvelopes()).find((e) => e.claim_id === envelope.claim_id);
+  if (before?.receipt) {
+    envelope.receipt = before.receipt;
+    envelope.receipt_verified = before.receipt_verified;
+  }
   await saveMeshEnvelope(envelope);
   return envelope;
 }
 
-export async function submitMeshEnvelope(envelope: SealedClaimEnvelope): Promise<{ receipt: string; claim_id: string }> {
-  if (DEMO_MODE || !navigator.onLine) {
-    const receipt = `RCPT-${Date.now().toString(36).toUpperCase()}-M3SIGNED`;
-    envelope.receipt = receipt;
-    await saveMeshEnvelope(envelope);
-    return { receipt, claim_id: envelope.claim_id };
-  }
+/** Phone B: read a scanned / pasted sealed claim. The contents stay private. */
+export async function importMeshEnvelope(text: string): Promise<SealedClaimEnvelope> {
+  const sealed = mesh.parseEnvelope(text.trim());
+  const envelope: SealedClaimEnvelope = {
+    claim_id: sealed.claim_id,
+    created_at: sealed.created_at,
+    sender_device_id: 'carried',
+    priority: sealed.priority === 'urgent' ? 'urgent' : 'normal',
+    summary: { name: 'Sealed claim (private)', village: '—', disaster_type: '—', losses_count: 0, has_photos: false },
+    sealed_text: JSON.stringify(sealed),
+    fits_in_qr: true,
+    own: false,
+  };
+  await saveMeshEnvelope(envelope);
+  return envelope;
+}
 
+function receiptText(r: any): string {
+  return `${r.message || 'Your claim reached the relief office'}${r.reference ? ` · ${r.reference}` : ''}`;
+}
+
+/** Deliver a carried envelope to Member 3 (only when online). A receipt is stored only
+ *  when Member 3 really returned one; otherwise the envelope stays waiting. */
+export async function submitMeshEnvelope(
+  envelope: SealedClaimEnvelope
+): Promise<{ delivered: boolean; receipt?: string; error?: string }> {
+  if (DEMO_MODE) return { delivered: false, error: 'Mesh delivery needs the live servers.' };
+  if (!navigator.onLine) return { delivered: false, error: 'No network yet: the claim stays on this phone.' };
   try {
-    const res = await request<any>('/mesh/envelopes', {
-      method: 'POST',
-      body: JSON.stringify(envelope),
-    });
-    envelope.receipt = res.receipt || `RCPT-${Date.now().toString(36).toUpperCase()}`;
+    const res = await mesh.deliverEnvelope(MESH_URL, mesh.parseEnvelope(envelope.sealed_text));
+    const key = await getMeshKey().catch(() => null);
+    envelope.receipt = receiptText(res.receipt);
+    envelope.receipt_verified = key ? await mesh.verifyReceipt(res.receipt, key) : false;
+    envelope.delivery_status = res.status;
     await saveMeshEnvelope(envelope);
-    return { receipt: envelope.receipt, claim_id: envelope.claim_id };
-  } catch (e) {
-    console.warn('Mesh endpoint offline; storing with local receipt:', e);
-    const receipt = `RCPT-${Date.now().toString(36).toUpperCase()}-QUEUED`;
-    envelope.receipt = receipt;
-    await saveMeshEnvelope(envelope);
-    return { receipt, claim_id: envelope.claim_id };
+    return { delivered: true, receipt: envelope.receipt };
+  } catch (e: any) {
+    return { delivered: false, error: e?.message || 'Delivery failed; try again later.' };
   }
+}
+
+/** Phone A: has my sealed claim reached the relief office? (signed receipt from Member 3) */
+export async function checkMeshReceipt(envelope: SealedClaimEnvelope): Promise<SealedClaimEnvelope> {
+  if (DEMO_MODE || !navigator.onLine || envelope.receipt) return envelope;
+  try {
+    const r = await mesh.fetchReceipt(MESH_URL, envelope.claim_id);
+    if (r) {
+      const key = await getMeshKey().catch(() => null);
+      envelope.receipt = receiptText(r);
+      envelope.receipt_verified = key ? await mesh.verifyReceipt(r, key) : false;
+      await saveMeshEnvelope(envelope);
+    }
+  } catch (e) {
+    console.warn('Could not check the mesh receipt', e);
+  }
+  return envelope;
 }
 
 export { getStoredMeshEnvelopes, removeMeshEnvelope };

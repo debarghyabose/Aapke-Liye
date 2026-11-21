@@ -25,9 +25,11 @@ import {
   sealClaimEnvelope,
   submitMeshEnvelope,
   getStoredMeshEnvelopes,
+  importMeshEnvelope,
+  checkMeshReceipt,
 } from '../api/client';
 import { ClaimOut, SealedClaimEnvelope } from '../types/api';
-import { queueOfflineItem, saveMeshEnvelope } from '../utils/indexedDB';
+import { queueOfflineItem } from '../utils/indexedDB';
 
 export const Mesh: React.FC = () => {
   const { t } = useTranslation();
@@ -40,6 +42,7 @@ export const Mesh: React.FC = () => {
   const [copied, setCopied] = useState<boolean>(false);
   const [isSealing, setIsSealing] = useState<boolean>(false);
   const [receiptMsg, setReceiptMsg] = useState<string | null>(null);
+  const [sealError, setSealError] = useState<string | null>(null);
 
   // Canvas for QR Code
   const qrCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -86,21 +89,21 @@ export const Mesh: React.FC = () => {
     if (!selectedClaimId || activeTab !== 'hand') return;
     const seal = async () => {
       setIsSealing(true);
+      setSealError(null);
       try {
         const claim = deviceClaims.find((c) => c.id === selectedClaimId);
         if (claim) {
-          const env = await sealClaimEnvelope(claim);
+          // Member 3's encrypted envelope: only the relief office can open it.
+          const env = await checkMeshReceipt(await sealClaimEnvelope(claim));
           setEnvelope(env);
-          if (qrCanvasRef.current) {
-            // Encode compact JSON string for high density QR
-            const qrData = JSON.stringify({
-              aapke_mesh: 'v1',
-              id: env.claim_id,
-              pri: env.priority,
-              sum: env.summary,
-              pay: env.payload_json,
-              sig: env.signature,
-            });
+          if (!env.fits_in_qr) {
+            setSealError(
+              t('mesh.tooBigForQr', 'This claim is too big for one QR code. Use "Copy Sealed Text" and send it to the neighbour instead.')
+            );
+            const ctx = qrCanvasRef.current?.getContext('2d');
+            if (ctx && qrCanvasRef.current) ctx.clearRect(0, 0, qrCanvasRef.current.width, qrCanvasRef.current.height);
+          } else if (qrCanvasRef.current) {
+            const qrData = env.sealed_text;
             await QRCode.toCanvas(qrCanvasRef.current, qrData, {
               width: 280,
               margin: 2,
@@ -111,8 +114,10 @@ export const Mesh: React.FC = () => {
             });
           }
         }
-      } catch (err) {
-        console.warn('Could not generate QR code:', err);
+      } catch (err: any) {
+        console.warn('Could not seal the claim:', err);
+        setEnvelope(null);
+        setSealError(err?.message || t('mesh.sealFailed', 'Could not seal this claim.'));
       } finally {
         setIsSealing(false);
       }
@@ -122,7 +127,7 @@ export const Mesh: React.FC = () => {
 
   const handleCopyEnvelope = () => {
     if (!envelope) return;
-    navigator.clipboard.writeText(JSON.stringify(envelope));
+    navigator.clipboard.writeText(envelope.sealed_text);
     setCopied(true);
     setTimeout(() => setCopied(false), 3000);
   };
@@ -131,25 +136,7 @@ export const Mesh: React.FC = () => {
     e.preventDefault();
     setScanError(null);
     try {
-      const parsed = JSON.parse(manualEnvelopeText.trim());
-      let newEnv: SealedClaimEnvelope;
-      if (parsed.aapke_mesh === 'v1') {
-        newEnv = {
-          claim_id: parsed.id,
-          created_at: new Date().toISOString(),
-          sender_device_id: 'SCAN-NEIGHBOUR',
-          priority: parsed.pri || 'normal',
-          summary: parsed.sum || { name: 'Claimant', village: 'Village', disaster_type: 'flood', losses_count: 1, has_photos: false },
-          payload_json: parsed.pay,
-          signature: parsed.sig,
-        };
-      } else if (parsed.claim_id && parsed.payload_json) {
-        newEnv = parsed;
-      } else {
-        throw new Error('Invalid mesh envelope format');
-      }
-
-      await saveMeshEnvelope(newEnv);
+      const newEnv: SealedClaimEnvelope = await importMeshEnvelope(manualEnvelopeText);
       await queueOfflineItem({
         type: 'mesh_relay',
         claimId: newEnv.claim_id,
@@ -167,15 +154,26 @@ export const Mesh: React.FC = () => {
   const handleUploadAllCarried = async () => {
     setUploadingCarried(true);
     try {
-      for (const env of carriedEnvelopes) {
+      let delivered = 0;
+      const errors: string[] = [];
+      for (const env of carriedEnvelopes.filter((e) => !e.own)) {
         if (!env.receipt) {
           const res = await submitMeshEnvelope(env);
-          env.receipt = res.receipt;
+          if (res.delivered) delivered += 1;
+          else if (res.error) errors.push(res.error);
         }
       }
       await loadCarried();
-      setReceiptMsg(t('mesh.deliverySuccess', 'All carried claims uploaded! Signed receipts received from SDMA.'));
-      setTimeout(() => setReceiptMsg(null), 5000);
+      setScanError(errors.length ? `${errors.length} not delivered yet: ${errors[0]}` : null);
+      setReceiptMsg(
+        delivered
+          ? t('mesh.deliveredN', {
+              count: delivered,
+              defaultValue: `${delivered} claim(s) delivered. Signed receipts received from the relief office.`,
+            })
+          : null
+      );
+      setTimeout(() => setReceiptMsg(null), 6000);
     } finally {
       setUploadingCarried(false);
     }
@@ -372,6 +370,11 @@ export const Mesh: React.FC = () => {
                 <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
                   <canvas ref={qrCanvasRef} style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px' }} />
                 </div>
+                {sealError && (
+                  <p role="alert" style={{ color: '#8A1C1C', fontWeight: 700, margin: '0 0 12px 0' }}>
+                    {sealError}
+                  </p>
+                )}
 
                 <div
                   style={{

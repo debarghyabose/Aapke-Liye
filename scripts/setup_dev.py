@@ -86,7 +86,21 @@ def main() -> None:
         "MEMBER2_API_URL": "http://localhost:8000",
     }))
 
-    write(ROOT / "Member-4/frontend/.env", "VITE_API_URL=http://localhost:8000\n")
+    app_env = ROOT / "Member-4/frontend/.env"
+    write(app_env, "VITE_API_URL=http://localhost:8000\nVITE_MESH_URL=http://localhost:8002\n")
+    if "VITE_MESH_URL" not in app_env.read_text(encoding="utf-8"):   # .env made before the mesh
+        with app_env.open("a", encoding="utf-8") as f:
+            f.write("VITE_MESH_URL=http://localhost:8002\n")
+        print("  added    VITE_MESH_URL to Member-4/frontend/.env")
+
+    # Member 3's mesh keys (open sealed claims, sign receipts): made once, kept in Member-3/.env
+    if not read_env(ROOT / "Member-3/.env").get("MESH_PRIVATE_KEY"):
+        import subprocess
+        py = ROOT / "Member-3/.venv/Scripts/python.exe"
+        r = subprocess.run([str(py if py.exists() else sys.executable),
+                            str(ROOT / "Member-3/scripts/make_mesh_keys.py")],
+                           cwd=ROOT / "Member-3", capture_output=True, text=True)
+        print("  mesh     " + (r.stdout.strip() or r.stderr.strip()[-200:]))
 
     m2 = read_env(ROOT / "Member-2/backend/.env")
     m3 = read_env(ROOT / "Member-3/.env")

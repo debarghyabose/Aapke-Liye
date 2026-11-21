@@ -167,23 +167,11 @@ export const Claim: React.FC = () => {
       });
       if (useHousehold && savedHousehold) {
         try {
-          created = await linkHouseholdToClaim(created.id, savedHousehold.id);
+          created = { ...created, ...(await linkHouseholdToClaim(created.id, savedHousehold.id)) };
         } catch (linkErr) {
-          console.warn('Could not link household to claim via API, applying local link:', linkErr);
-          created.household_id = savedHousehold.id;
-          created.fields.household_id = savedHousehold.id;
-          created.fields.name = created.fields.name || savedHousehold.head_name;
-          created.fields.phone = created.fields.phone || savedHousehold.phone;
-          created.fields.village = created.fields.village || savedHousehold.village;
-          created.fields.district = created.fields.district || savedHousehold.district;
-          created.fields.state = created.fields.state || savedHousehold.state;
-          const vaultTypes = (savedHousehold.documents || []).map((d) => d.doc_type);
-          created.fields.documents_lost = (created.fields.documents_lost || []).filter((d) => !vaultTypes.includes(d));
-          created.documents_in_vault = (savedHousehold.documents || []).map((d) => ({
-            document: d.doc_type,
-            source: d.source || 'upload',
-            id: Number(d.id) || undefined,
-          }));
+          setErrorMsg(
+            `${t('claim.vaultLinkFailed', 'Your claim started, but your family vault could not be used')}: ${errorText(linkErr)}`
+          );
         }
       }
       setClaim(created);
@@ -1348,12 +1336,7 @@ export const Claim: React.FC = () => {
                               {t('claim.beforeLabel', 'BEFORE (Vault Baseline)')}
                             </span>
                             <img
-                              src={
-                                savedHousehold?.baseline_photo_url ||
-                                (photo.verification?.before_after?.baseline_document_id
-                                  ? `${API_URL}/households/${claim.household_id || savedHousehold?.id}/documents/${photo.verification.before_after.baseline_document_id}/file`
-                                  : '/Mother_speaking_into_phone_81a00bd8.jpg')
-                              }
+                              src={savedHousehold?.baseline_photo_url || undefined}
                               alt="Before baseline"
                               style={{ width: '100%', height: '90px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--border)' }}
                             />
@@ -1363,7 +1346,7 @@ export const Claim: React.FC = () => {
                               {t('claim.afterLabel', 'AFTER (Current Flood)')}
                             </span>
                             <img
-                              src={photo.url || '/hero.webp'}
+                              src={photo.url || undefined}
                               alt="After damage"
                               style={{ width: '100%', height: '90px', objectFit: 'cover', borderRadius: '6px', border: '1.5px solid var(--accent)' }}
                             />
@@ -1380,9 +1363,14 @@ export const Claim: React.FC = () => {
                             <div style={{ fontSize: '0.84rem', color: 'var(--text)', lineHeight: 1.45 }}>
                               {photo.verification.before_after.reason}
                             </div>
+                            {photo.verification.before_after.same_property === false && (
+                              <div role="alert" style={{ marginTop: '4px', fontSize: '0.84rem', fontWeight: 800, color: '#8A1C1C' }}>
+                                {t('claim.notSameProperty', 'This does not look like the same property as your before photo. An official will check it.')}
+                              </div>
+                            )}
                             {(photo.verification.before_after.damaged_items || []).length > 0 && (
                               <div style={{ marginTop: '4px', fontSize: '0.8rem', color: 'var(--muted)', fontWeight: 600 }}>
-                                {t('claim.damagedItems', 'Damaged elements:')} {photo.verification.before_after.damaged_items.join(', ')}
+                                {t('claim.damagedItems', 'Damaged elements:')} {(photo.verification.before_after.damaged_items || []).join(', ')}
                               </div>
                             )}
                           </div>
@@ -1392,8 +1380,7 @@ export const Claim: React.FC = () => {
                           </div>
                         ) : (
                           <div style={{ fontSize: '0.82rem', color: 'var(--primary)', fontWeight: 700 }}>
-                            {photo.verification?.comparison?.structural_loss_summary ||
-                              t('claim.beforeAfterSummary', 'AI verified structural collapse relative to pre-disaster baseline.')}
+                            {t('claim.beforeAfterPending', 'Comparing this photo with your before photo…')}
                           </div>
                         )}
                       </div>
@@ -1851,13 +1838,20 @@ export const Claim: React.FC = () => {
           </div>
 
           <h2 style={{ fontSize: 'clamp(1.85rem, 3vw, 2.3rem)', marginBottom: '8px', color: 'var(--text)', fontWeight: 800 }}>
-            {t('claim.step6Title', 'Claim Submitted Successfully!')}
+            {claim.status === 'Draft' && !DEMO_MODE
+              ? t('claim.step6SavedTitle', 'Claim saved on this phone')
+              : t('claim.step6Title', 'Claim Submitted Successfully!')}
           </h2>
           <p style={{ color: 'var(--text-muted)', marginBottom: '26px', fontSize: 'clamp(1rem, 1.2vw, 1.1rem)', fontWeight: 600 }}>
-            {t(
-              'claim.step6Subtitle',
-              'Your official disaster relief application has been cryptographically signed and submitted to the Block Development Office (BDO).'
-            )}
+            {claim.status === 'Draft' && !DEMO_MODE
+              ? t(
+                  'claim.step6SavedSubtitle',
+                  'There is no network right now. It will be sent and submitted automatically when the signal returns, or a neighbour can carry it for you from the Mesh page.'
+                )
+              : t(
+                  'claim.step6Subtitle',
+                  'Your relief application has been submitted to the relief office. Keep your claim ID to track it.'
+                )}
           </p>
 
           {/* Claim ID Box */}

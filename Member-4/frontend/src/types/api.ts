@@ -63,6 +63,7 @@ export interface PhotoComparison {
   before_url?: string;
   after_url?: string;
   baseline_matched?: boolean;
+  structural_loss_summary?: string; // demo data only
 }
 
 export interface PhotoVerification {
@@ -216,18 +217,23 @@ export interface Household {
 // ---------- Mesh Phone-to-Phone Relay Types ----------
 
 export interface SealedClaimEnvelope {
-  claim_id: string;
+  claim_id: string; // envelope id (UUID), also Member 3's de-duplication key
+  local_claim_id?: string; // the claim on this phone (sender only)
   created_at: string;
   sender_device_id: string;
   priority: 'urgent' | 'normal';
   summary: {
+    // shown only on the sender's phone; never inside the QR code
     name: string;
     village: string;
     disaster_type: string;
     losses_count: number;
     has_photos: boolean;
   };
-  payload_json: string;
-  signature?: string;
-  receipt?: string;
+  sealed_text: string; // Member 3 envelope JSON (encrypted): this is what the QR code holds
+  fits_in_qr: boolean;
+  own: boolean; // true = my claim, false = carried for a neighbour
+  receipt?: string; // set only from a real Member 3 receipt
+  receipt_verified?: boolean; // Ed25519 signature checked
+  delivery_status?: string; // submitted | draft | draft_missing_details | duplicate
 }

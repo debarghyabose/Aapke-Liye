@@ -3,7 +3,7 @@
 
 import { ClaimOut, SealedClaimEnvelope, Household, VaultDocument } from '../types/api';
 
-export type QueueItemType = 'claim_create' | 'text' | 'audio' | 'photo' | 'mesh_relay';
+export type QueueItemType = 'claim_create' | 'text' | 'audio' | 'photo' | 'fields' | 'submit' | 'mesh_relay';
 
 export interface QueueItem {
   id: string;

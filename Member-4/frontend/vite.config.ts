@@ -84,5 +84,7 @@ export default defineConfig({
   ],
   server: {
     port: 5173,
+    // Member 3's mesh helper (../../Member-3/offline-client/mesh.js) is imported directly.
+    fs: { allow: ['.', '../../Member-3/offline-client'] },
   },
 });

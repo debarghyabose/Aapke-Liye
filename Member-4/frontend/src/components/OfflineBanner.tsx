@@ -9,11 +9,14 @@ import {
   QueueItem,
 } from '../utils/indexedDB';
 import {
-  createClaim,
+  createClaimOnServer,
   uploadAudio,
   uploadPhoto,
   sendText,
   submitMeshEnvelope,
+  linkHouseholdToClaim,
+  updateFields,
+  submitClaim,
   saveToken,
   DEMO_MODE,
 } from '../api/client';
@@ -53,18 +56,32 @@ export const OfflineBanner: React.FC = () => {
 
       let remaining = sorted.length;
       const idMapping: Record<string, string> = {};
+      const blocked = new Set<string>(); // a claim whose earlier step failed waits (keeps the order)
 
       for (const item of sorted) {
         const targetClaimId = idMapping[item.claimId] || item.claimId;
+        if (blocked.has(item.claimId)) continue;
         try {
           if (!DEMO_MODE) {
             if (item.type === 'claim_create') {
-              const res = await createClaim(item.payload);
+              const res = await createClaimOnServer(item.payload);
               if (res && res.id) {
                 idMapping[item.claimId] = res.id;
                 saveToken(res.id, res.claim_token);
                 await updateQueueClaimId(item.claimId, res.id);
+                // "Use my household" chosen while offline: link the vault now
+                if (item.payload?.household_id) {
+                  try {
+                    await linkHouseholdToClaim(res.id, item.payload.household_id);
+                  } catch (linkErr) {
+                    console.warn('Synced claim could not use the family vault', linkErr);
+                  }
+                }
               }
+            } else if (item.type === 'fields' && item.payload) {
+              await updateFields(targetClaimId, item.payload);
+            } else if (item.type === 'submit') {
+              await submitClaim(targetClaimId);
             } else if (item.type === 'text' && item.text) {
               await sendText(targetClaimId, item.text);
             } else if (item.type === 'audio' && item.blob) {
@@ -76,12 +93,14 @@ export const OfflineBanner: React.FC = () => {
               });
               await uploadPhoto(targetClaimId, file, m.lat, m.lon, m.taken_at);
             } else if (item.type === 'mesh_relay' && item.payload) {
-              await submitMeshEnvelope(item.payload);
+              const res = await submitMeshEnvelope(item.payload);
+              if (!res.delivered) throw new Error(res.error || 'mesh delivery failed');
             }
           }
           await removeQueueItem(item.id);
           remaining -= 1;
         } catch (e) {
+          blocked.add(item.claimId);
           console.warn(`Could not sync queued ${item.type}; will retry on next check`, e);
         }
       }
