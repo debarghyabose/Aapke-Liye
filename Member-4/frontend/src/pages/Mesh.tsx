@@ -25,6 +25,8 @@ import {
   sealClaimEnvelope,
   submitMeshEnvelope,
   getStoredMeshEnvelopes,
+  envelopeText,
+  parseEnvelope,
 } from '../api/client';
 import { ClaimOut, SealedClaimEnvelope } from '../types/api';
 import { queueOfflineItem, saveMeshEnvelope } from '../utils/indexedDB';
@@ -92,23 +94,17 @@ export const Mesh: React.FC = () => {
           const env = await sealClaimEnvelope(claim);
           setEnvelope(env);
           if (qrCanvasRef.current) {
-            // Encode compact JSON string for high density QR
-            const qrData = JSON.stringify({
-              aapke_mesh: 'v1',
-              id: env.claim_id,
-              pri: env.priority,
-              sum: env.summary,
-              pay: env.payload_json,
-              sig: env.signature,
-            });
-            await QRCode.toCanvas(qrCanvasRef.current, qrData, {
-              width: 280,
-              margin: 2,
-              color: {
-                dark: '#1B1B1B',
-                light: '#FFFFFF',
-              },
-            });
+            const { text, fitsInQr } = envelopeText(env as any);
+            if (fitsInQr) {
+              await QRCode.toCanvas(qrCanvasRef.current, text, {
+                width: 280,
+                margin: 2,
+                color: {
+                  dark: '#1B1B1B',
+                  light: '#FFFFFF',
+                },
+              });
+            }
           }
         }
       } catch (err) {
@@ -122,7 +118,8 @@ export const Mesh: React.FC = () => {
 
   const handleCopyEnvelope = () => {
     if (!envelope) return;
-    navigator.clipboard.writeText(JSON.stringify(envelope));
+    const { text } = envelopeText(envelope as any);
+    navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 3000);
   };
@@ -131,22 +128,18 @@ export const Mesh: React.FC = () => {
     e.preventDefault();
     setScanError(null);
     try {
-      const parsed = JSON.parse(manualEnvelopeText.trim());
       let newEnv: SealedClaimEnvelope;
-      if (parsed.aapke_mesh === 'v1') {
-        newEnv = {
-          claim_id: parsed.id,
-          created_at: new Date().toISOString(),
-          sender_device_id: 'SCAN-NEIGHBOUR',
-          priority: parsed.pri || 'normal',
-          summary: parsed.sum || { name: 'Claimant', village: 'Village', disaster_type: 'flood', losses_count: 1, has_photos: false },
-          payload_json: parsed.pay,
-          signature: parsed.sig,
-        };
-      } else if (parsed.claim_id && parsed.payload_json) {
-        newEnv = parsed;
-      } else {
-        throw new Error('Invalid mesh envelope format');
+      try {
+        newEnv = parseEnvelope(manualEnvelopeText.trim()) as any;
+      } catch {
+        const parsed = JSON.parse(manualEnvelopeText.trim());
+        if (parsed.v === 1 && parsed.alg && parsed.claim_id) {
+          newEnv = parsed;
+        } else if (parsed.claim_id && parsed.payload_json) {
+          newEnv = parsed;
+        } else {
+          throw new Error('Invalid mesh envelope format');
+        }
       }
 
       await saveMeshEnvelope(newEnv);
@@ -409,7 +402,7 @@ export const Mesh: React.FC = () => {
                       fontWeight: 700,
                     }}
                   >
-                    Delivered ✓ Intake Receipt: {envelope.receipt}
+                    Delivered ✓ Intake Receipt: {typeof envelope.receipt === 'string' ? envelope.receipt : (envelope.receipt?.reference || envelope.receipt?.claim_id || 'Delivered')}
                   </div>
                 ) : (
                   <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -584,7 +577,9 @@ export const Mesh: React.FC = () => {
                         )}
                       </div>
                       <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--muted)' }}>
-                        {env.summary.name} · {env.summary.village} ({env.summary.disaster_type})
+                        {env.summary?.name
+                          ? `${env.summary.name} · ${env.summary.village || 'Village'} (${env.summary.disaster_type || 'Disaster'})`
+                          : `Encrypted Claim · ${env.alg || 'RSA-OAEP+AES-GCM'}`}
                       </p>
                     </div>
 

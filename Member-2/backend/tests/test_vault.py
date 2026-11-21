@@ -111,6 +111,14 @@ def test_hilly_rate():
     assert hilly["total"] == 130000 and hilly["lines"][0]["item"] == "fully_damaged_hilly"
 
 
+def test_hilly_pmay_g_amount():
+    house = [{"category": "house", "item": "fully_damaged_plain", "quantity": 1}]
+    plain = calculate_relief(house, is_hilly=False)
+    hilly = calculate_relief(house, is_hilly=True)
+    assert plain["may_also_qualify"][0]["estimated_amount"] == 156750
+    assert hilly["may_also_qualify"][0]["estimated_amount"] == 166750
+
+
 def test_hilly_rate_from_review_screen(client):
     cid, h = new_claim(client)
     client.post(f"/claims/{cid}/audio", headers=h, files={"audio": ("a.webm", WEBM, "audio/webm")})

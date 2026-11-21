@@ -9,11 +9,12 @@ import {
   QueueItem,
 } from '../utils/indexedDB';
 import {
-  createClaim,
+  createClaimOnServer,
   uploadAudio,
   uploadPhoto,
   sendText,
   submitMeshEnvelope,
+  linkHouseholdToClaim,
   saveToken,
   DEMO_MODE,
 } from '../api/client';
@@ -59,11 +60,18 @@ export const OfflineBanner: React.FC = () => {
         try {
           if (!DEMO_MODE) {
             if (item.type === 'claim_create') {
-              const res = await createClaim(item.payload);
+              const res = await createClaimOnServer(item.payload);
               if (res && res.id) {
                 idMapping[item.claimId] = res.id;
                 saveToken(res.id, res.claim_token);
                 await updateQueueClaimId(item.claimId, res.id);
+                if (item.payload?.household_id) {
+                  try {
+                    await linkHouseholdToClaim(res.id, item.payload.household_id);
+                  } catch (linkErr) {
+                    console.warn(`Could not link household to synced claim ${res.id}:`, linkErr);
+                  }
+                }
               }
             } else if (item.type === 'text' && item.text) {
               await sendText(targetClaimId, item.text);

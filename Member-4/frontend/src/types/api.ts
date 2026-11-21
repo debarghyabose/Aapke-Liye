@@ -213,21 +213,26 @@ export interface Household {
   created_at: string;
 }
 
-// ---------- Mesh Phone-to-Phone Relay Types ----------
+// ---------- Mesh Phone-to-Phone Relay Types (Member 3 Lite Contract) ----------
 
 export interface SealedClaimEnvelope {
+  v?: number;
   claim_id: string;
   created_at: string;
-  sender_device_id: string;
   priority: 'urgent' | 'normal';
-  summary: {
-    name: string;
-    village: string;
-    disaster_type: string;
-    losses_count: number;
-    has_photos: boolean;
+  alg?: string;
+  key?: string;
+  iv?: string;
+  ct?: string;
+  sender_device_id?: string;
+  summary?: {
+    name?: string;
+    village?: string;
+    disaster_type?: string;
+    losses_count?: number;
+    has_photos?: boolean;
   };
-  payload_json: string;
+  payload_json?: string;
   signature?: string;
-  receipt?: string;
+  receipt?: any;
 }

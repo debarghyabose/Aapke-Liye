@@ -33,8 +33,21 @@ import {
   getMeshEnvelopes as getStoredMeshEnvelopes,
   removeMeshEnvelope,
 } from '../utils/indexedDB';
+import {
+  sealClaim,
+  deliverEnvelope,
+  fetchMeshKey,
+  getCachedMeshKey,
+  envelopeText,
+  parseEnvelope,
+  fetchReceipt,
+  verifyReceipt,
+  MeshEnvelope,
+  MeshReceipt,
+} from '../utils/mesh';
 
 const API_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+const MEMBER3_URL = (import.meta.env.VITE_MEMBER3_URL || 'http://localhost:8002').replace(/\/$/, '');
 export const DEMO_MODE = !API_URL;
 
 // ---------- error type the pages can show ----------
@@ -193,7 +206,10 @@ function toPhoto(p: any): PhotoOut {
     lat: p.lat,
     lon: p.lon,
     taken_at: p.taken_at,
-    url: photoPreviews[p.sha256] || p.url,
+    url: (() => {
+      const raw = photoPreviews[p.sha256] || p.url;
+      return raw && raw.startsWith('/') && !raw.startsWith('//') ? `${API_URL}${raw}` : raw;
+    })(),
     duplicate_of_claim_id: p.duplicate_of_claim_id,
     verification: {
       ...v,
@@ -300,17 +316,21 @@ function toClaim(c: any): ClaimOut {
 
 // ---------- API with full offline-first resilience ----------
 
+export async function createClaimOnServer(payload: ClaimCreate): Promise<ClaimCreated> {
+  const c = await request<any>('/claims', { method: 'POST', body: JSON.stringify(payload) });
+  saveToken(c.id, c.claim_token);
+  const converted = { ...toClaim(c), claim_token: c.claim_token };
+  await saveOfflineClaim(converted);
+  return converted;
+}
+
 export async function createClaim(payload: ClaimCreate): Promise<ClaimCreated> {
   if (DEMO_MODE) return mock.createClaim(payload);
 
   try {
-    const c = await request<any>('/claims', { method: 'POST', body: JSON.stringify(payload) });
-    saveToken(c.id, c.claim_token);
-    const converted = { ...toClaim(c), claim_token: c.claim_token };
-    await saveOfflineClaim(converted);
-    return converted;
+    return await createClaimOnServer(payload);
   } catch (err) {
-    // If server unreachable or client offline, initialize an offline-first draft
+    // If server unreachable or client offline, initialize an offline-first draft without false data
     console.warn('Network offline or backend unreachable: creating local claim on device', err);
     const localId = `offline-${Date.now()}`;
     const localToken = `tok_local_${Date.now()}`;
@@ -323,28 +343,13 @@ export async function createClaim(payload: ClaimCreate): Promise<ClaimCreated> {
       fields: {
         is_hilly: false,
         household_id: payload.household_id || null,
-        losses: [
-          { category: 'house', item: 'fully_damaged_plain', quantity: 1 },
-          { category: 'household', item: 'clothing', quantity: 1 },
-          { category: 'household', item: 'utensils', quantity: 1 },
-        ],
-        documents_lost: ['aadhaar', 'ration_card'],
+        losses: [],
+        documents_lost: [],
       },
       missing_fields: [],
       follow_up_questions: [],
-      relief: {
-        total: 130000,
-        currency: 'INR',
-        breakdown: [
-          { scheme_name: 'SDRF', category: 'house', item: 'House fully destroyed', quantity: 1, rate: 120000, amount: 120000 },
-          { scheme_name: 'SDRF', category: 'household', item: 'Clothing & utensils', quantity: 1, rate: 10000, amount: 10000 },
-        ],
-        matched_schemes: ['SDRF', 'PMAY-G'],
-        estimate_only: true,
-      },
-      proof_suggestions: [
-        { document: 'aadhaar', suggestions: ['Panchayat pradhan certificate', 'Ration card photo / OTP'] },
-      ],
+      relief: null,
+      proof_suggestions: [],
       status: 'Draft',
       photos: [],
       recordings: [],
@@ -489,7 +494,6 @@ export async function uploadPhoto(claimId: string, file: File, lat?: number, lon
         url: localUrl,
         verification: {
           status: 'pending',
-          damage_level: 'severe',
           gemini_reason: 'Saved offline on device. Damage will be scored when internet returns.',
           gps_valid: lat != null,
           time_valid: true,
@@ -739,19 +743,16 @@ export async function registerHousehold(data: {
   let id = `HH-${Date.now().toString(36).toUpperCase()}`;
   let token = `tok_hh_${Math.random().toString(36).substring(2, 10)}`;
 
-  try {
-    if (!DEMO_MODE && navigator.onLine) {
-      // Member 2 POST /households takes no body and returns { household_id, household_token }
-      const res = await request<any>('/households', {
-        method: 'POST',
-      });
-      if (res?.household_id && res?.household_token) {
-        id = res.household_id;
-        token = res.household_token;
-      }
+  if (!DEMO_MODE) {
+    // Member 2 POST /households takes no body and returns { household_id, household_token }
+    const res = await request<any>('/households', {
+      method: 'POST',
+    });
+    if (!res?.household_id || !res?.household_token) {
+      throw new Error('Server returned invalid household credentials');
     }
-  } catch (e) {
-    console.warn('Backend /households not available, using offline local vault:', e);
+    id = res.household_id;
+    token = res.household_token;
   }
 
   saveHouseholdId(id);
@@ -832,32 +833,29 @@ export async function uploadVaultDocument(
   let source: 'upload' | 'digilocker_mock' = 'upload';
   let serverFileUrl = fileUrl;
 
-  if (!DEMO_MODE && navigator.onLine && token) {
-    try {
-      const form = new FormData();
-      form.append('file', file);
-      form.append('doc_type', docType);
+  if (!DEMO_MODE) {
+    if (!token) throw new Error('Missing household token. Please register or re-authenticate your household.');
+    const form = new FormData();
+    form.append('file', file);
+    form.append('doc_type', docType);
 
-      const res = await fetch(`${API_URL}/households/${householdId}/documents`, {
-        method: 'POST',
-        headers: {
-          'X-Household-Token': token,
-        },
-        body: form,
-      });
+    const res = await fetch(`${API_URL}/households/${householdId}/documents`, {
+      method: 'POST',
+      headers: {
+        'X-Household-Token': token,
+      },
+      body: form,
+    });
 
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.detail || `Upload failed (HTTP ${res.status})`);
-      }
-
-      const created = await res.json();
-      docId = String(created.id);
-      source = created.source || 'upload';
-      serverFileUrl = `${API_URL}${created.file_url}`;
-    } catch (e) {
-      console.warn('Could not upload to server vault, retained in local storage:', e);
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.detail || `Upload failed (HTTP ${res.status})`);
     }
+
+    const created = await res.json();
+    docId = String(created.id);
+    source = created.source || 'upload';
+    serverFileUrl = `${API_URL}${created.file_url}`;
   }
 
   const doc: VaultDocument = {
@@ -885,16 +883,19 @@ export async function uploadVaultDocument(
 
 export async function deleteVaultDocument(householdId: string, docId: string): Promise<void> {
   const token = householdTokenFor(householdId);
-  if (!DEMO_MODE && navigator.onLine && token && !docId.startsWith('doc_') && !docId.startsWith('dl_')) {
-    try {
-      await fetch(`${API_URL}/households/${householdId}/documents/${docId}`, {
+  if (!DEMO_MODE) {
+    if (!token) throw new Error('Missing household token');
+    if (!docId.startsWith('doc_') && !docId.startsWith('dl_')) {
+      const res = await fetch(`${API_URL}/households/${householdId}/documents/${docId}`, {
         method: 'DELETE',
         headers: {
           'X-Household-Token': token,
         },
       });
-    } catch (e) {
-      console.warn('Failed to delete on server vault:', e);
+      if (!res.ok && res.status !== 404) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.detail || `Failed to delete document (HTTP ${res.status})`);
+      }
     }
   }
 
@@ -908,24 +909,46 @@ export async function deleteVaultDocument(householdId: string, docId: string): P
   }
 }
 
+export async function fetchVaultFileBlobUrl(householdId: string, docIdOrPath: string | number): Promise<string | null> {
+  if (typeof docIdOrPath === 'string' && (docIdOrPath.startsWith('blob:') || docIdOrPath.startsWith('data:'))) {
+    return docIdOrPath;
+  }
+  const token = householdTokenFor(householdId);
+  if (!token) return null;
+  let url = `${API_URL}/households/${householdId}/documents/${docIdOrPath}/file`;
+  if (typeof docIdOrPath === 'string' && docIdOrPath.includes('/documents/')) {
+    url = docIdOrPath.startsWith('http') ? docIdOrPath : `${API_URL}${docIdOrPath}`;
+  }
+  try {
+    const res = await fetch(url, {
+      headers: {
+        'X-Household-Token': token,
+      },
+    });
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
+  } catch (e) {
+    console.warn('Failed to fetch vault file blob:', e);
+    return null;
+  }
+}
+
 /** DigiLocker (Demo) Server Flow: starts consent and returns consent_url */
 export async function startDigiLockerFlow(householdId: string): Promise<{ consent_url: string; banner: string } | null> {
   const token = householdTokenFor(householdId);
-  if (!DEMO_MODE && navigator.onLine && token) {
-    try {
-      const returnTo = `${window.location.origin}/prepare`;
-      const res = await request<{
-        mode: string;
-        demo: boolean;
-        banner: string;
-        consent_url: string;
-      }>(`/households/${householdId}/digilocker/start?return_to=${encodeURIComponent(returnTo)}`, {
-        householdToken: token,
-      });
-      return { consent_url: `${API_URL}${res.consent_url}`, banner: res.banner };
-    } catch (e) {
-      console.warn('DigiLocker start failed on server, using in-app mock:', e);
-    }
+  if (!DEMO_MODE) {
+    if (!token) throw new Error('Missing household token');
+    const returnTo = `${window.location.origin}/prepare`;
+    const res = await request<{
+      mode: string;
+      demo: boolean;
+      banner: string;
+      consent_url: string;
+    }>(`/households/${householdId}/digilocker/start?return_to=${encodeURIComponent(returnTo)}`, {
+      householdToken: token,
+    });
+    return { consent_url: `${API_URL}${res.consent_url}`, banner: res.banner };
   }
   return null;
 }
@@ -955,7 +978,7 @@ export async function startDigiLockerMock(householdId: string): Promise<VaultDoc
   ];
 
   if (hh) {
-    hh.documents = [...mockDocs, ...(hh.documents || [])];
+    hh.documents = [...mockDocs, ...(hh.documents || []).filter((d) => !mockDocs.some((m) => m.doc_type === d.doc_type))];
     await saveLocalHousehold(hh);
   }
   return mockDocs;
@@ -966,22 +989,21 @@ export async function linkHouseholdToClaim(claimId: string, householdId: string)
   const claimToken = tokenFor(claimId);
   const hhToken = householdTokenFor(householdId) || hh?.token;
 
-  if (!DEMO_MODE && navigator.onLine && claimToken && hhToken && !claimId.startsWith('offline-')) {
-    try {
-      const updated = await request<any>(`/claims/${claimId}/household`, {
-        method: 'POST',
-        headers: {
-          'X-Claim-Token': claimToken,
-          'X-Household-Token': hhToken,
-        },
-        body: JSON.stringify({ household_id: householdId }),
-      });
-      const claimOut = toClaim(updated);
-      await saveOfflineClaim(claimOut);
-      return claimOut;
-    } catch (e) {
-      console.warn('POST /claims/{id}/household server call failed, falling back to local link:', e);
-    }
+  if (!DEMO_MODE && !claimId.startsWith('offline-')) {
+    if (!claimToken) throw new Error('Missing claim token to link household');
+    if (!hhToken) throw new Error('Missing household token to link household');
+
+    const updated = await request<any>(`/claims/${claimId}/household`, {
+      method: 'POST',
+      headers: {
+        'X-Claim-Token': claimToken,
+        'X-Household-Token': hhToken,
+      },
+      body: JSON.stringify({ household_id: householdId }),
+    });
+    const claimOut = toClaim(updated);
+    await saveOfflineClaim(claimOut);
+    return claimOut;
   }
 
   const claim = (await getOfflineClaim(claimId)) || (await getClaim(claimId));
@@ -1011,7 +1033,19 @@ export async function linkHouseholdToClaim(claimId: string, householdId: string)
 // MESH RELAY PROTOCOL (MEMBER 3 CONTRACT)
 // ============================================================================
 
-/** Seals a claim into a portable cryptographic envelope for phone-to-phone relay */
+export {
+  sealClaim,
+  parseEnvelope,
+  envelopeText,
+  deliverEnvelope,
+  fetchReceipt,
+  verifyReceipt,
+  fetchMeshKey,
+  getCachedMeshKey,
+};
+export type { MeshEnvelope, MeshReceipt, MeshPublicKey } from '../utils/mesh';
+
+/** Seals a claim into a portable cryptographic envelope for phone-to-phone relay using Member 3 WebCrypto */
 export async function sealClaimEnvelope(claim: ClaimOut): Promise<SealedClaimEnvelope> {
   const summary = {
     name: claim.fields.name || 'Anonymous Claimant',
@@ -1021,51 +1055,82 @@ export async function sealClaimEnvelope(claim: ClaimOut): Promise<SealedClaimEnv
     has_photos: (claim.photos || []).length > 0,
   };
 
-  const payload = JSON.stringify({
-    claim_id: claim.id,
-    language: claim.language,
+  const priority: 'urgent' | 'normal' =
+    (claim.fields.vulnerability || []).length > 0 ? 'urgent' : 'normal';
+
+  const payload = {
+    consent: true,
+    consent_text_version: 'v1',
+    language: claim.language || 'en',
     fields: claim.fields,
-    photos_count: claim.photos.length,
+    photos_count: (claim.photos || []).length,
     sealed_at: new Date().toISOString(),
+    submit: true,
+  };
+
+  let meshKey = getCachedMeshKey();
+  if (navigator.onLine || !meshKey) {
+    try {
+      meshKey = await fetchMeshKey(MEMBER3_URL);
+    } catch (e) {
+      console.warn('Could not fetch fresh mesh key from Member 3, using cached key if available:', e);
+    }
+  }
+
+  if (!meshKey) {
+    if (DEMO_MODE) {
+      const env: SealedClaimEnvelope = {
+        v: 1,
+        claim_id: claim.id,
+        created_at: claim.created_at || new Date().toISOString(),
+        priority,
+        alg: 'RSA-OAEP-256+A256GCM',
+        key: 'DEMO_KEY_BASE64',
+        iv: 'DEMO_IV_BASE64',
+        ct: 'DEMO_CT_BASE64',
+        summary,
+      };
+      await saveMeshEnvelope(env);
+      return env;
+    }
+    throw new Error('No mesh public key available to encrypt claim. Connect to internet once to cache keys.');
+  }
+
+  const sealed = await sealClaim(payload, meshKey, {
+    priority,
+    claimId: claim.id,
   });
 
   const envelope: SealedClaimEnvelope = {
-    claim_id: claim.id,
-    created_at: claim.created_at || new Date().toISOString(),
-    sender_device_id: `DEV-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-    priority: (claim.fields.vulnerability || []).length > 0 ? 'urgent' : 'normal',
+    ...sealed,
     summary,
-    payload_json: payload,
-    signature: `ED25519_SIG_${Math.random().toString(36).substring(2, 14)}`,
   };
 
   await saveMeshEnvelope(envelope);
   return envelope;
 }
 
-export async function submitMeshEnvelope(envelope: SealedClaimEnvelope): Promise<{ receipt: string; claim_id: string }> {
-  if (DEMO_MODE || !navigator.onLine) {
-    const receipt = `RCPT-${Date.now().toString(36).toUpperCase()}-M3SIGNED`;
+export async function submitMeshEnvelope(
+  envelope: SealedClaimEnvelope
+): Promise<{ receipt: any; claim_id: string }> {
+  if (DEMO_MODE) {
+    const receipt = {
+      claim_id: envelope.claim_id,
+      received_at: new Date().toISOString(),
+      signature: `DEMO_SIG_${Date.now()}`,
+      reference: `DEMO-REF-${Date.now().toString(36).toUpperCase()}`,
+      message: 'Your claim reached the relief office',
+    };
     envelope.receipt = receipt;
     await saveMeshEnvelope(envelope);
     return { receipt, claim_id: envelope.claim_id };
   }
 
-  try {
-    const res = await request<any>('/mesh/envelopes', {
-      method: 'POST',
-      body: JSON.stringify(envelope),
-    });
-    envelope.receipt = res.receipt || `RCPT-${Date.now().toString(36).toUpperCase()}`;
-    await saveMeshEnvelope(envelope);
-    return { receipt: envelope.receipt, claim_id: envelope.claim_id };
-  } catch (e) {
-    console.warn('Mesh endpoint offline; storing with local receipt:', e);
-    const receipt = `RCPT-${Date.now().toString(36).toUpperCase()}-QUEUED`;
-    envelope.receipt = receipt;
-    await saveMeshEnvelope(envelope);
-    return { receipt, claim_id: envelope.claim_id };
-  }
+  // Deliver to Member 3 real endpoint: POST http://localhost:8002/mesh/envelopes
+  const res = await deliverEnvelope(MEMBER3_URL, envelope as any);
+  envelope.receipt = res.receipt;
+  await saveMeshEnvelope(envelope);
+  return { receipt: res.receipt, claim_id: envelope.claim_id };
 }
 
 export { getStoredMeshEnvelopes, removeMeshEnvelope };

@@ -42,6 +42,7 @@ import {
   getSavedHouseholdId,
   getHousehold,
   linkHouseholdToClaim,
+  fetchVaultFileBlobUrl,
 } from '../api/client';
 import { ClaimOut, Household } from '../types/api';
 import { getLocalizedSampleClaim } from '../mocks/sampleData';
@@ -93,6 +94,52 @@ export const Claim: React.FC = () => {
   // Household pre-registration state
   const [savedHousehold, setSavedHousehold] = useState<Household | null>(null);
   const [useHousehold, setUseHousehold] = useState<boolean>(true);
+  const [baselineBlobUrl, setBaselineBlobUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    let objectUrlToRevoke: string | null = null;
+
+    const loadBaseline = async () => {
+      const hh = savedHousehold;
+      const hhId = claim?.household_id || hh?.id;
+      if (!hhId) {
+        setBaselineBlobUrl(null);
+        return;
+      }
+      const baselineDoc = (hh?.documents || []).find((d) => d.doc_type === 'baseline_photo');
+      if (baselineDoc) {
+        const blobUrl = await fetchVaultFileBlobUrl(hhId, baselineDoc.id);
+        if (active && blobUrl) {
+          objectUrlToRevoke = blobUrl;
+          setBaselineBlobUrl(blobUrl);
+          return;
+        }
+      }
+      if (hh?.baseline_photo_url) {
+        if (hh.baseline_photo_url.startsWith('blob:') || hh.baseline_photo_url.startsWith('data:')) {
+          if (active) setBaselineBlobUrl(hh.baseline_photo_url);
+        } else {
+          const blobUrl = await fetchVaultFileBlobUrl(hhId, hh.baseline_photo_url);
+          if (active && blobUrl) {
+            objectUrlToRevoke = blobUrl;
+            setBaselineBlobUrl(blobUrl);
+          }
+        }
+      } else {
+        if (active) setBaselineBlobUrl(null);
+      }
+    };
+
+    loadBaseline();
+
+    return () => {
+      active = false;
+      if (objectUrlToRevoke && objectUrlToRevoke.startsWith('blob:')) {
+        URL.revokeObjectURL(objectUrlToRevoke);
+      }
+    };
+  }, [claim?.household_id, savedHousehold]);
 
   useEffect(() => {
     const loadHh = async () => {
@@ -1347,26 +1394,59 @@ export const Claim: React.FC = () => {
                             <span style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: 'var(--muted)', marginBottom: '3px' }}>
                               {t('claim.beforeLabel', 'BEFORE (Vault Baseline)')}
                             </span>
-                            <img
-                              src={
-                                savedHousehold?.baseline_photo_url ||
-                                (photo.verification?.before_after?.baseline_document_id
-                                  ? `${API_URL}/households/${claim.household_id || savedHousehold?.id}/documents/${photo.verification.before_after.baseline_document_id}/file`
-                                  : '/Mother_speaking_into_phone_81a00bd8.jpg')
-                              }
-                              alt="Before baseline"
-                              style={{ width: '100%', height: '90px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--border)' }}
-                            />
+                            {baselineBlobUrl ? (
+                              <img
+                                src={baselineBlobUrl}
+                                alt="Before baseline"
+                                style={{ width: '100%', height: '90px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--border)' }}
+                              />
+                            ) : (
+                              <div
+                                style={{
+                                  width: '100%',
+                                  height: '90px',
+                                  borderRadius: '6px',
+                                  border: '1px dashed var(--border)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: '0.75rem',
+                                  color: 'var(--muted)',
+                                  textAlign: 'center',
+                                  padding: '4px',
+                                }}
+                              >
+                                {t('claim.noBaselinePhoto', 'No baseline photo saved yet')}
+                              </div>
+                            )}
                           </div>
                           <div>
                             <span style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: 'var(--accent)', marginBottom: '3px' }}>
                               {t('claim.afterLabel', 'AFTER (Current Flood)')}
                             </span>
-                            <img
-                              src={photo.url || '/hero.webp'}
-                              alt="After damage"
-                              style={{ width: '100%', height: '90px', objectFit: 'cover', borderRadius: '6px', border: '1.5px solid var(--accent)' }}
-                            />
+                            {photo.url ? (
+                              <img
+                                src={photo.url}
+                                alt="After damage"
+                                style={{ width: '100%', height: '90px', objectFit: 'cover', borderRadius: '6px', border: '1.5px solid var(--accent)' }}
+                              />
+                            ) : (
+                              <div
+                                style={{
+                                  width: '100%',
+                                  height: '90px',
+                                  borderRadius: '6px',
+                                  border: '1px dashed var(--border)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: '0.75rem',
+                                  color: 'var(--muted)',
+                                }}
+                              >
+                                {t('claim.photoAlt', 'Damage evidence')}
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -1391,9 +1471,9 @@ export const Claim: React.FC = () => {
                             {t('claim.beforeAfterUnavailable', 'Baseline photo safely recorded. AI comparison will complete when AI service returns.')}
                           </div>
                         ) : (
-                          <div style={{ fontSize: '0.82rem', color: 'var(--primary)', fontWeight: 700 }}>
+                          <div style={{ fontSize: '0.82rem', color: 'var(--muted)', fontWeight: 600 }}>
                             {photo.verification?.comparison?.structural_loss_summary ||
-                              t('claim.beforeAfterSummary', 'AI verified structural collapse relative to pre-disaster baseline.')}
+                              t('claim.beforeAfterSummary', 'Baseline photo linked. AI before/after comparison pending.')}
                           </div>
                         )}
                       </div>

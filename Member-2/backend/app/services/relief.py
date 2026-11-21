@@ -168,7 +168,7 @@ def calculate_relief(losses: list[dict], crop_insured: bool | None = None,
             # What the person said they lost, for comparison. SDRF relief is fixed by MHA
             # norms per item, so it is usually much lower than the real loss.
             "claimed_total": int(round(sum(claimed))) if claimed else None,
-            "may_also_qualify": other_schemes(losses, crop_insured)}
+            "may_also_qualify": other_schemes(losses, crop_insured, is_hilly)}
 
 
 @lru_cache
@@ -177,14 +177,16 @@ def load_scheme(name: str) -> dict:
     return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
 
 
-def other_schemes(losses: list[dict], crop_insured: bool | None = None) -> list[dict]:
+def other_schemes(losses: list[dict], crop_insured: bool | None = None,
+                  is_hilly: bool | None = None) -> list[dict]:
     """Schemes the family may also qualify for (Member 5's multi-scheme rules). Not added to
     the SDRF total: each needs its own application and eligibility checks."""
     out = []
     pmay = load_scheme("pmay_g_disaster")
     if pmay and any((l.get("category") == "house" and "fully_damaged" in (l.get("item") or ""))
                     for l in losses or []):
-        amount = pmay.get("total_package", {}).get("plain_areas")
+        package = pmay.get("total_package", {})
+        amount = package.get("hilly_tribal_areas") if is_hilly else package.get("plain_areas")
         out.append({"scheme_code": "PMAY_G_DISASTER", "scheme_name": pmay.get("scheme_name"),
                     "authority": pmay.get("ministry"), "estimated_amount": amount,
                     "conditions": pmay.get("eligibility_conditions", [])})

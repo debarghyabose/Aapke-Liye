@@ -86,7 +86,15 @@ def main() -> None:
         "MEMBER2_API_URL": "http://localhost:8000",
     }))
 
-    write(ROOT / "Member-4/frontend/.env", "VITE_API_URL=http://localhost:8000\n")
+    # Generate Member 3 mesh keys if not present
+    m3_env_path = ROOT / "Member-3/.env"
+    if m3_env_path.exists():
+        lines = m3_env_path.read_text(encoding="utf-8").splitlines()
+        if not any(l.startswith("MESH_PRIVATE_KEY=") and l.split("=", 1)[1].strip() for l in lines):
+            import subprocess
+            subprocess.run([sys.executable, str(ROOT / "Member-3/scripts/make_mesh_keys.py")], check=True)
+
+    write(ROOT / "Member-4/frontend/.env", "VITE_API_URL=http://localhost:8000\nVITE_MEMBER3_URL=http://localhost:8002\n")
 
     m2 = read_env(ROOT / "Member-2/backend/.env")
     m3 = read_env(ROOT / "Member-3/.env")
