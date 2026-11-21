@@ -55,7 +55,7 @@ export const Prepare: React.FC = () => {
   const [phone, setPhone] = useState<string>('9876543210');
   const [village, setVillage] = useState<string>('Ghatal');
   const [district, setDistrict] = useState<string>('Paschim Medinipur');
-  const [state, setState] = useState<string>('West Bengal');
+  const [state, setState] = useState<string>('');
   const [rationCardNo, setRationCardNo] = useState<string>('NFSA-WB-8839201');
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -399,6 +399,19 @@ export const Prepare: React.FC = () => {
                 type="text"
                 value={district}
                 onChange={(e) => setDistrict(e.target.value)}
+                required
+                className="input-field"
+                style={{ width: '100%', padding: '10px 14px', borderRadius: '6px', border: '1px solid var(--border)' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 600, marginBottom: '6px' }}>
+                {t('prepare.state', 'State')}
+              </label>
+              <input
+                type="text"
+                value={state}
+                onChange={(e) => setState(e.target.value)}
                 required
                 className="input-field"
                 style={{ width: '100%', padding: '10px 14px', borderRadius: '6px', border: '1px solid var(--border)' }}

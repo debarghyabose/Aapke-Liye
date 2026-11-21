@@ -358,7 +358,8 @@
     "digiLockerMockBanner": "Demo: DigiLocker Mock Consent Screen",
     "digiLockerImported": "Sample DigiLocker documents synced into your vault.",
     "giveConsent": "I Consent (Demo Import)",
-    "digiLockerDenied": "DigiLocker consent was cancelled."
+    "digiLockerDenied": "DigiLocker consent was cancelled.",
+    "state": "State"
   },
   "mesh": {
     "badge": "Phone-to-Phone Emergency Mesh",

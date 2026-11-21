@@ -465,7 +465,7 @@ export const Mesh: React.FC = () => {
               rows={3}
               value={manualEnvelopeText}
               onChange={(e) => setManualEnvelopeText(e.target.value)}
-              placeholder='{"aapke_mesh":"v1", ...}'
+              placeholder='{"v":1,"claim_id":"…","alg":"RSA-OAEP-256+A256GCM", …}'
               style={{
                 width: '100%',
                 padding: '10px 12px',
