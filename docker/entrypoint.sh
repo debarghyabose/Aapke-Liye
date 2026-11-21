@@ -1,5 +1,4 @@
 #!/bin/sh
-set -e
 
 # Default PORT for Cloud Run
 export PORT="${PORT:-8080}"
@@ -19,23 +18,26 @@ mkdir -p /data/storage /data/db /data/member3
 # Run database migrations if DATABASE_URL is set
 if [ -n "$DATABASE_URL" ]; then
     echo "Running Alembic migrations..."
-    (cd /app/Member-2/backend && PYTHONPATH=/app/Member-2/backend alembic upgrade head) || echo "Migration warning: proceeding with startup"
+    cd /app/Member-2/backend
+    PYTHONPATH=/app/Member-2/backend alembic upgrade head || echo "Migration warning: proceeding with startup"
+    cd /app
 fi
 
 # Start Member 1 AI service (port 8001)
 echo "Starting Member 1 AI service on port 8001..."
-cd /app/Member-1 && PYTHONPATH=/app/Member-1 uvicorn app.main:app --host 127.0.0.1 --port 8001 &
+PYTHONPATH=/app/Member-1 uvicorn app.main:app --host 127.0.0.1 --port 8001 --app-dir /app/Member-1 &
 
 # Start Member 3 verification service (port 8002)
 echo "Starting Member 3 verification service on port 8002..."
-cd /app/Member-3 && PYTHONPATH=/app/Member-3 uvicorn app.main:app --host 127.0.0.1 --port 8002 &
+PYTHONPATH=/app/Member-3 uvicorn app.main:app --host 127.0.0.1 --port 8002 --app-dir /app/Member-3 &
 
 # Start Member 2 core backend (port 8000)
 echo "Starting Member 2 core backend on port 8000..."
-cd /app/Member-2/backend && PYTHONPATH=/app/Member-2/backend uvicorn app.main:app --host 127.0.0.1 --port 8000 &
+PYTHONPATH=/app/Member-2/backend uvicorn app.main:app --host 127.0.0.1 --port 8000 --app-dir /app/Member-2/backend &
 
-# Give services a moment to start
-sleep 2
+# Wait for backends to start
+echo "Waiting for services to start..."
+sleep 3
 
 # Start Nginx in foreground
 echo "Starting Nginx reverse proxy on port $PORT..."
