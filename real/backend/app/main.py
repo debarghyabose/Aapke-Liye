@@ -33,6 +33,17 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
+# On Vercel the backend is exposed at /api/*. Strip that prefix so the same routes work
+# both there and at the root (Docker / Cloud Run); root_path keeps /docs pointing at /api/openapi.json.
+@app.middleware("http")
+async def strip_api_prefix(request: Request, call_next):
+    path = request.scope["path"]
+    if path == "/api" or path.startswith("/api/"):
+        request.scope["path"] = path[4:] or "/"
+        request.scope["root_path"] = request.scope.get("root_path", "") + "/api"
+    return await call_next(request)
+
+
 # Include core routers
 app.include_router(claims.router)
 app.include_router(vault.router)

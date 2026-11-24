@@ -21,12 +21,20 @@ ALG = "RSA-OAEP-256+A256GCM"
 
 class MeshCryptoEngine:
     def __init__(self):
-        self._rsa_private_key: rsa.RSAPrivateKey = serialization.load_der_private_key(
-            base64.b64decode(config.MESH_PRIVATE_KEY.strip()), password=None
-        )
-        self._ed_private_key: ed25519.Ed25519PrivateKey = ed25519.Ed25519PrivateKey.from_private_bytes(
-            base64.b64decode(config.MESH_RECEIPT_KEY.strip())
-        )
+        if config.MESH_PRIVATE_KEY.strip():
+            self._rsa_private_key: rsa.RSAPrivateKey = serialization.load_der_private_key(
+                base64.b64decode(config.MESH_PRIVATE_KEY.strip()), password=None
+            )
+        else:
+            log.warning("MESH_PRIVATE_KEY not set; using an ephemeral RSA key (dev only)")
+            self._rsa_private_key = rsa.generate_private_key(public_exponent=65537, key_size=4096)
+        if config.MESH_RECEIPT_KEY.strip():
+            self._ed_private_key: ed25519.Ed25519PrivateKey = ed25519.Ed25519PrivateKey.from_private_bytes(
+                base64.b64decode(config.MESH_RECEIPT_KEY.strip())
+            )
+        else:
+            log.warning("MESH_RECEIPT_KEY not set; using an ephemeral Ed25519 key (dev only)")
+            self._ed_private_key = ed25519.Ed25519PrivateKey.generate()
 
     def get_public_key_info(self) -> Dict[str, Any]:
         """Returns SPKI public key and relay limits for offline phones."""

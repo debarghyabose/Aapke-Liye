@@ -153,7 +153,7 @@ async def digilocker_consent_page(household_id: str):
             <h2>Disaster Document Vault Sync</h2>
             <p>You are granting <b>Aapke Liye</b> secure permission to fetch verified demographic credentials (Aadhaar & NFSA Ration Card) directly into your disaster preparedness vault.</p>
             <p>Household ID: <code>{household_id}</code></p>
-            <a href="/digilocker/callback?household_id={household_id}" class="btn">Allow & Import Verified Records</a>
+            <a href="callback?household_id={household_id}" class="btn">Allow & Import Verified Records</a>
         </div>
     </body>
     </html>

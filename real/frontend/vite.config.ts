@@ -43,7 +43,7 @@ export default defineConfig({
         navigateFallback: '/index.html',
         runtimeCaching: [
           {
-            urlPattern: ({ url }) => url.pathname.startsWith('/health'),
+            urlPattern: ({ url }) => /^(\/api)?\/health/.test(url.pathname),
             handler: 'NetworkFirst',
             options: {
               cacheName: 'api-health',
