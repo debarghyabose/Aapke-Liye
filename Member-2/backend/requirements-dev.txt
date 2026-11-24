@@ -1,4 +1,0 @@
--r requirements.txt
-pytest>=8.0
-respx>=0.21     # mocks Member 1 / Member 3 HTTP calls in tests
-pypdf>=4.0      # reads PDF text in tests

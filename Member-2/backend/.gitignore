@@ -1,9 +1,0 @@
-.venv/
-__pycache__/
-*.pyc
-.pytest_cache/
-.env
-*.db
-*.db-journal
-storage/
-# fonts/ is committed on purpose (Noto fonts + OFL licences for the PDF)

@@ -1,0 +1,15 @@
+node_modules
+frontend/node_modules
+dist
+frontend/dist
+.git
+.github
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.venv
+storage
+*.log
+.env
+serviceAccountKey.json

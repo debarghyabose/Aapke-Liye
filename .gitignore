@@ -12,3 +12,8 @@ venv/
 
 # Secrets
 .env
+
+# Credentials & generated runtime data
+serviceAccountKey.json
+*.pem
+real/backend/storage/
