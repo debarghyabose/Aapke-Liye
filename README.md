@@ -278,6 +278,6 @@ Released under the [MIT License](LICENSE).
 
 <div align="center">
 
-**Made with ❤️ by Team OPUS, for the people who need it most: *aapke liye*.**
+**Made with ❤️ by Team OPUS, for the people who need it most: *aapke liye* .**
 
 </div>
