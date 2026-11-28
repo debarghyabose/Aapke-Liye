@@ -41,6 +41,8 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,json}'],
         navigateFallback: '/index.html',
+        // Backend pages (DigiLocker consent, /api/docs, files) must reach the server, not the SPA shell.
+        navigateFallbackDenylist: [/^\/api\//, /^\/storage\//],
         runtimeCaching: [
           {
             urlPattern: ({ url }) => /^(\/api)?\/health/.test(url.pathname),

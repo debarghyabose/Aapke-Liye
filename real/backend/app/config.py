@@ -16,6 +16,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Vercel functions only have a writable /tmp (ephemeral; use Cloudinary for durable images there)
 _DEFAULT_STORAGE = Path("/tmp/storage") if os.getenv("VERCEL") else BASE_DIR / "storage"
 STORAGE_DIR = Path(os.getenv("STORAGE_DIR", _DEFAULT_STORAGE))
+if os.getenv("VERCEL") and not str(STORAGE_DIR).startswith("/tmp"):
+    STORAGE_DIR = _DEFAULT_STORAGE  # only /tmp is writable on Vercel
 RULES_DIR = BASE_DIR / "rules"
 TEMPLATES_DIR = BASE_DIR / "templates"
 FONTS_DIR = BASE_DIR / "fonts"

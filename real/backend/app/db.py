@@ -17,7 +17,22 @@ from . import config
 log = logging.getLogger(__name__)
 
 def _get_credentials():
-    """Returns credentials for Firestore: ADC or gcloud access token."""
+    """Returns credentials for Firestore: env JSON key, ADC, or gcloud access token."""
+    # 0. Service-account key passed as an env var (Vercel and other serverless hosts).
+    #    GOOGLE_CREDENTIALS_JSON may hold the raw JSON or its base64 encoding.
+    raw = os.getenv("GOOGLE_CREDENTIALS_JSON", "").strip()
+    if raw:
+        try:
+            import base64
+            import json
+            from google.oauth2 import service_account
+            info = json.loads(raw if raw.startswith("{") else base64.b64decode(raw).decode("utf-8"))
+            return service_account.Credentials.from_service_account_info(
+                info, scopes=["https://www.googleapis.com/auth/cloud-platform"]
+            )
+        except Exception as e:
+            log.error("GOOGLE_CREDENTIALS_JSON is set but could not be loaded: %s", e)
+
     # 1. Standard Google credentials
     try:
         from google.auth import default
